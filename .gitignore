@@ -1,0 +1,9 @@
+# build output
+bin/
+obj/
+dist/
+publish/
+# graft's local graph cache - regenerable, not committed (run `graft build`).
+/graft/
+.ignore
+.claude/

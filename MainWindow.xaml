@@ -1,0 +1,186 @@
+<Window x:Class="FileExplorer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:FileExplorer"
+        Title="File Labs" Width="1400" Height="860" Background="Transparent"
+        Foreground="#E8E8E8" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12">
+  <Window.Resources>
+    <Style x:Key="StatValue" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="20"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+    </Style>
+    <Style x:Key="StatSub" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+      <Setter Property="FontSize" Value="11"/>
+    </Style>
+    <Style x:Key="StatIcon" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="Segoe Fluent Icons"/>
+      <Setter Property="FontSize" Value="18"/>
+      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+      <Setter Property="Margin" Value="0,5,12,0"/>
+    </Style>
+    <!-- One Ferry job: progress, speed/ETA, pause/cancel, and the conflict decision inline -->
+    <DataTemplate x:Key="JobCard">
+      <Border Background="#0DFFFFFF" BorderBrush="#16FFFFFF" BorderThickness="1" CornerRadius="10" Padding="12,9" Margin="0,0,0,6">
+        <StackPanel>
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+              <Button Style="{StaticResource Ghost}" FontFamily="Segoe Fluent Icons" FontSize="11" Content="{Binding PauseGlyph}" ToolTip="Pause / resume"
+                      Visibility="{Binding Copying, Converter={StaticResource Vis}}" Click="JobPause_Click"/>
+              <Button Style="{StaticResource Ghost}" FontFamily="Segoe Fluent Icons" FontSize="11" Content="&#xE711;" ToolTip="Cancel"
+                      Visibility="{Binding Active, Converter={StaticResource Vis}}" Click="JobCancel_Click"/>
+              <Button Style="{StaticResource Ghost}" FontFamily="Segoe Fluent Icons" FontSize="11" Content="&#xE8BB;" ToolTip="Dismiss"
+                      Visibility="{Binding Finished, Converter={StaticResource Vis}}" Click="JobDismiss_Click"/>
+            </StackPanel>
+            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+          </DockPanel>
+          <ProgressBar Value="{Binding Fraction, Mode=OneWay}" Margin="0,7,0,5"/>
+          <TextBlock Text="{Binding Stats}" Foreground="#8A97AA" FontSize="11" Typography.NumeralAlignment="Tabular"/>
+          <DockPanel Visibility="{Binding Copying, Converter={StaticResource Vis}}" Margin="0,4,0,0">
+            <ProgressBar DockPanel.Dock="Right" Width="120" Height="3" Value="{Binding CurrentFraction, Mode=OneWay}" Foreground="#8A97AA" Margin="10,0,0,0"/>
+            <TextBlock Text="{Binding Current}" Foreground="#8A97AA" FontSize="11" TextTrimming="CharacterEllipsis"/>
+          </DockPanel>
+          <!-- speed over time -->
+          <local:SpeedChart Height="96" Margin="0,8,0,2" Samples="{Binding SpeedSamples}" Ceiling="{Binding SpeedCeiling}"
+                            Visibility="{Binding HasGraph, Converter={StaticResource Vis}}"/>
+          <TextBlock Text="{Binding ErrorSummary}" ToolTip="{Binding ErrorDetail}" Foreground="#F87171" FontSize="11" Margin="0,4,0,0"
+                     Visibility="{Binding HasErrors, Converter={StaticResource Vis}}"/>
+
+          <StackPanel Visibility="{Binding HasConflicts, Converter={StaticResource Vis}}" Margin="0,8,0,0">
+            <TextBlock Text="{Binding ConflictTitle}" Foreground="#FFD23F"/>
+            <ItemsControl ItemsSource="{Binding Conflicts}" MaxHeight="110" Margin="0,4,0,6">
+              <ItemsControl.Template>
+                <ControlTemplate><ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer></ControlTemplate>
+              </ItemsControl.Template>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <DockPanel Margin="0,1">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" Foreground="#8A97AA" FontSize="11" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="{Binding Name}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+                  </DockPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="For all:" Foreground="#8A97AA" VerticalAlignment="Center" Margin="0,0,6,0"/>
+              <Button Style="{StaticResource Tab}" Content="Keep both" Tag="on" Click="JobResolve_Click" CommandParameter="Rename"/>
+              <Button Style="{StaticResource Tab}" Content="Replace if newer" Click="JobResolve_Click" CommandParameter="Newer"/>
+              <Button Style="{StaticResource Tab}" Content="Replace" Click="JobResolve_Click" CommandParameter="Overwrite"/>
+              <Button Style="{StaticResource Tab}" Content="Skip" Click="JobResolve_Click" CommandParameter="Skip"/>
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+
+
+  </Window.Resources>
+
+  <!-- Dark tint over the acrylic keeps text readable on bright wallpapers -->
+  <Grid x:Name="Root" Background="#B30A0D13">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition x:Name="SidebarColumn" Width="270" MinWidth="160" MaxWidth="600"/>
+      <ColumnDefinition/>
+    </Grid.ColumnDefinitions>
+
+    <!-- Sidebar: a bit more opaque, it sits over whatever is behind the window -->
+    <DockPanel Background="#40000000">
+      <Button DockPanel.Dock="Bottom" Style="{StaticResource Side}" Margin="8,4,8,10" Click="Settings_Click" ToolTip="Settings (Ctrl+,)">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xE713;" FontFamily="Segoe Fluent Icons" Foreground="{StaticResource Muted}" Margin="0,2,10,0"/>
+          <TextBlock Text="Settings"/>
+        </StackPanel>
+      </Button>
+      <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,12">
+        <StackPanel>
+          <TextBlock Text="Quick access" Foreground="{StaticResource Muted}" FontSize="11" Margin="8,0,0,4"/>
+          <StackPanel x:Name="QuickAccess"/>
+          <TextBlock x:Name="QuickHint" Text="Ctrl+D pins a folder here" Foreground="#59FFFFFF" FontSize="11" Margin="8,2,0,0"/>
+          <TextBlock Text="Favorites" Foreground="{StaticResource Muted}" FontSize="11" Margin="8,14,0,4"/>
+          <StackPanel x:Name="Favorites"/>
+          <TextBlock Text="Drives" Foreground="{StaticResource Muted}" FontSize="11" Margin="8,14,0,4"/>
+          <StackPanel x:Name="Drives"/>
+        </StackPanel>
+      </ScrollViewer>
+    </DockPanel>
+
+    <!-- drag to resize the sidebar -->
+    <GridSplitter Grid.Column="0" Width="5" HorizontalAlignment="Right" Background="Transparent" ResizeBehavior="CurrentAndNext"
+                  DragCompleted="SidebarSplitter_DragCompleted"/>
+
+    <Grid Grid.Column="1" Margin="14,12,14,0">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+
+      <!-- Stats for the active pane -->
+      <UniformGrid Rows="1" Margin="6,0,0,12">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xEDA2;" Style="{StaticResource StatIcon}" Foreground="{StaticResource Accent}"/>
+          <StackPanel>
+            <TextBlock x:Name="StatTotal" Style="{StaticResource StatValue}"/>
+            <TextBlock Style="{StaticResource StatSub}"><Run x:Name="StatUsed" Foreground="{StaticResource Accent}"/> used</TextBlock>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xEA3A;" Style="{StaticResource StatIcon}"/>
+          <StackPanel>
+            <TextBlock x:Name="StatFree" Style="{StaticResource StatValue}"/>
+            <TextBlock x:Name="StatFreePct" Style="{StaticResource StatSub}"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xE8B7;" Style="{StaticResource StatIcon}"/>
+          <StackPanel>
+            <TextBlock x:Name="StatFolder" Style="{StaticResource StatValue}"/>
+            <TextBlock x:Name="StatFolderSub" Style="{StaticResource StatSub}"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xE81E;" Style="{StaticResource StatIcon}"/>
+          <StackPanel>
+            <TextBlock x:Name="StatLabel" Style="{StaticResource StatValue}"/>
+            <TextBlock x:Name="StatFs" Style="{StaticResource StatSub}"/>
+          </StackPanel>
+        </StackPanel>
+      </UniformGrid>
+
+      <Grid Grid.Row="1" x:Name="PaneGrid">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition MinWidth="250"/>
+          <ColumnDefinition Width="10"/>
+          <ColumnDefinition MinWidth="250"/>
+        </Grid.ColumnDefinitions>
+        <!-- drag to resize the two panes; double-click resets 50/50 -->
+        <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Stretch" Background="Transparent" ResizeBehavior="PreviousAndNext"
+                      MouseDoubleClick="PaneSplitter_Reset"/>
+        <local:PaneView x:Name="Left"/>
+        <local:PaneView x:Name="Right" Grid.Column="2"/>
+      </Grid>
+
+      <!-- Ferry transfers -->
+      <ScrollViewer Grid.Row="2" MaxHeight="280" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
+        <ItemsControl x:Name="Transfers" ItemTemplate="{StaticResource JobCard}"/>
+      </ScrollViewer>
+
+      <!-- Command bar -->
+      <DockPanel Grid.Row="3" Margin="0,6,0,6">
+        <TextBlock x:Name="Status" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420"/>
+        <StackPanel Orientation="Horizontal" TextElement.FontSize="11">
+          <Button Style="{StaticResource Ghost}" Click="Rename_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F2</Run> Rename</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Open_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F3</Run> Open</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Copy_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F5</Run> Copy</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Move_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F6</Run> Move</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="MkDir_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F7</Run> New folder</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Delete_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F8</Run> Delete</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Terminal_Click"><TextBlock><Run Foreground="{StaticResource Muted}">Ctrl+`</Run> Terminal</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Hidden_Click"><TextBlock><Run Foreground="{StaticResource Muted}">Ctrl+H</Run> Hidden</TextBlock></Button>
+        </StackPanel>
+      </DockPanel>
+    </Grid>
+  </Grid>
+</Window>
