@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 
@@ -82,20 +82,20 @@ public class SpeedChart : FrameworkElement
         dc.DrawText(ft, new Point(alignRight ? x - ft.Width : x, y));
     }
 
-    /// Axis marks drop the decimal the live reading keeps.
+    /// Axis marks drop the decimal the live reading keeps. Decimal units (1 MB = 1000 KB), like every size in the app.
     static string AxisSpeed(double bps)
     {
-        double mb = bps / (1024 * 1024);
-        return mb >= 1 ? $"{Math.Round(mb)} MB/s" : $"{Math.Round(bps / 1024)} KB/s";
+        double mb = bps / 1e6;
+        return mb >= 1 ? $"{Math.Round(mb)} MB/s" : $"{Math.Round(bps / 1000)} KB/s";
     }
 
     /// A round number at or above the fastest seen, never below 50 MB/s.
     public static double NiceCeiling(double bps)
     {
-        double mb = Math.Max(bps, 50.0 * 1024 * 1024) / (1024 * 1024);
+        double mb = Math.Max(bps, 50e6) / 1e6;
         double magnitude = Math.Pow(10, Math.Floor(Math.Log10(mb)));
         double step = new[] { 1.0, 2, 5, 10 }.First(x => mb <= x * magnitude);
-        return step * magnitude * 1024 * 1024;
+        return step * magnitude * 1e6;
     }
 
     static Brush Frozen(Brush b) { b.Freeze(); return b; }
