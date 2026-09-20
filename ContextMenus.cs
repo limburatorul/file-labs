@@ -86,10 +86,10 @@ public partial class MainWindow
         var m = new ContextMenu();
         m.Items.Add(Item("Paste", "", "Ctrl+V", ClipboardPaste, Clipboard.ContainsFileDropList()));
         m.Items.Add(new Separator());
-        m.Items.Add(Item("New folder", "", "F7", MkDir));
-        m.Items.Add(Item("New text file", "", "", NewTextFile));
+        m.Items.Add(Item("New folder", "", "Ctrl+Shift+N", MkDir));
+        m.Items.Add(Item("New file…", "", "Ctrl+N", NewFile));
         m.Items.Add(new Separator());
-        m.Items.Add(Item("Refresh", "", "Ctrl+R", () => { PaneView.SizeCache.Clear(); p.Refresh(); }));
+        m.Items.Add(Item("Refresh", "", "Ctrl+R", () => { SizeCache.Clear(); p.Refresh(); }));
         m.Items.Add(Item(Settings.ShowHidden ? "Hide hidden files" : "Show hidden files", "", "Ctrl+H", ToggleHidden));
         m.Items.Add(Item("Pin to Quick access", "", "Ctrl+D", PinSelected));
         m.Items.Add(Item("Open terminal here", "", "Ctrl+`", OpenTerminal));
@@ -113,19 +113,6 @@ public partial class MainWindow
         return candidates.FirstOrDefault(p => !string.IsNullOrEmpty(p) && File.Exists(p));
     });
     static string NotepadPlusPlus => nppPath.Value;
-
-    void NewTextFile()
-    {
-        var name = Interaction.InputBox("File name:", "New text file", "New Text Document.txt");
-        if (name == "") return;
-        Run(() =>
-        {
-            var path = Path.Combine(active.Dir, name);
-            if (File.Exists(path)) throw new IOException($"{name} already exists");
-            File.Create(path).Dispose();
-        });
-        active.Navigate(active.Dir, name, record: false);
-    }
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern bool SHObjectProperties(IntPtr hwnd, int type, string name, string page);
     void Properties(string path) => SHObjectProperties(new System.Windows.Interop.WindowInteropHelper(this).Handle, 2 /* SHOP_FILEPATH */, path, null);

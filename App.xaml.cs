@@ -45,6 +45,8 @@ public partial class App : Application
         }
         else _ = Listen();
         Settings.Load(); // before any window: the panes read column widths while being built
+        SizeCache.Load(); // folder sizes from previous sessions: a full 12 TB drive is minutes of walking
+        Exit += (_, _) => SizeCache.Save();
         base.OnStartup(e);
         new MainWindow().Show(); // opened here, not via StartupUri, so --agent etc. never build it
     }

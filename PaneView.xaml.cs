@@ -132,8 +132,6 @@ public partial class PaneView : UserControl
         foreach (var p in panes)
             foreach (var e in p.items) e.IsCut = CutPaths.Contains(e.Path);
     }
-    // ponytail: cache is cleared wholesale on refresh/ops; per-path invalidation if it ever matters.
-    public static readonly ConcurrentDictionary<string, long> SizeCache = new(StringComparer.OrdinalIgnoreCase);
 
     public string Dir => tabs[tab];
     public event Action Activated, StatsChanged;
@@ -194,22 +192,15 @@ public partial class PaneView : UserControl
         List.Opacity = on ? 1 : 0.88;
     }
 
+    int navVersion; // a newer Navigate wins; a slow share must not overwrite the folder you moved on to
+
     public void Navigate(string dir, string select = null, bool record = true)
     {
-        var list = new List<Entry>();
         DirectoryInfo di;
         try
         {
             di = new DirectoryInfo(dir);
-            // no ".." row: going up is Backspace / Alt+Up / the ↑ button
-            foreach (var fsi in di.EnumerateFileSystemInfos())
-            {
-                if (!ShowHidden && fsi.Attributes.HasFlag(FileAttributes.Hidden)) continue;
-                bool isDir = fsi is DirectoryInfo;
-                var e = new Entry { Name = fsi.Name, Path = fsi.FullName, IsDir = isDir, Modified = fsi.LastWriteTime, IsCut = CutPaths.Contains(fsi.FullName) };
-                e.Size = isDir ? (SizeCache.TryGetValue(fsi.FullName, out var s) ? s : -1) : ((FileInfo)fsi).Length;
-                list.Add(e);
-            }
+            if (!di.Exists) throw new DirectoryNotFoundException($"{dir} does not exist");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or System.Security.SecurityException)
         {
@@ -219,30 +210,71 @@ public partial class PaneView : UserControl
 
         if (record && tabs[tab] != "" && !tabs[tab].Equals(di.FullName, StringComparison.OrdinalIgnoreCase)) { back.Push(tabs[tab]); fwd.Clear(); }
         tabs[tab] = di.FullName;
-        items = list;
-        view = new ListCollectionView(items) { CustomSort = new EntrySort(sortKey, sortDesc) };
-        ApplyFilter();
-        List.ItemsSource = view;
-        List.SelectedItem = items.FirstOrDefault(e => e.Name.Equals(select, StringComparison.OrdinalIgnoreCase)) ?? view.Cast<Entry>().FirstOrDefault();
-        if (List.SelectedItem != null) List.ScrollIntoView(List.SelectedItem);
-
         BuildCrumbs();
         BuildTabs();
-        Watch();
-        StartSizing();
-        StartVersions();
-        StartThumbs();
-        StartIcons();
+        int v = ++navVersion;
 
-        var drive = new DriveInfo(System.IO.Path.GetPathRoot(Dir));
-        if (drive.IsReady)
+        // Reading the folder and asking the drive for free space both block — on a network share for
+        // the best part of a second — so they happen off the UI thread and the list is handed over
+        // when it's ready. The window never freezes on a folder change.
+        Task.Run(() =>
         {
-            UsedBar.Width = double.NaN;
-            UsedBar.SetBinding(WidthProperty, new Binding("ActualWidth") { Source = UsedBar.Parent, Converter = new Scale(1 - (double)drive.AvailableFreeSpace / drive.TotalSize) });
-            DriveInfoText.Text = $"{MainWindow.Fmt(drive.AvailableFreeSpace)} free of {MainWindow.Fmt(drive.TotalSize)}";
-        }
-        UpdateFooter();
-        StatsChanged?.Invoke();
+            var list = new List<Entry>();
+            string error = null;
+            try
+            {
+                foreach (var fsi in di.EnumerateFileSystemInfos())
+                {
+                    if (!ShowHidden && fsi.Attributes.HasFlag(FileAttributes.Hidden)) continue;
+                    bool isDir = fsi is DirectoryInfo;
+                    var e = new Entry { Name = fsi.Name, Path = fsi.FullName, IsDir = isDir, Modified = fsi.LastWriteTime, IsCut = CutPaths.Contains(fsi.FullName) };
+                    e.Size = isDir ? SizeCache.Get(fsi.FullName, fsi.LastWriteTimeUtc) : ((FileInfo)fsi).Length;
+                    list.Add(e);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or System.Security.SecurityException)
+            {
+                error = ex.Message;
+            }
+
+            double used = -1; string driveText = null;
+            try
+            {
+                var drive = new DriveInfo(System.IO.Path.GetPathRoot(di.FullName));
+                if (drive.IsReady)
+                {
+                    used = 1 - (double)drive.AvailableFreeSpace / drive.TotalSize;
+                    driveText = $"{MainWindow.Fmt(drive.AvailableFreeSpace)} free of {MainWindow.Fmt(drive.TotalSize)}";
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { }
+
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (v != navVersion) return; // the user has already moved on
+                if (error != null) { Error?.Invoke(error); return; }
+                items = list;
+                view = new ListCollectionView(items) { CustomSort = new EntrySort(sortKey, sortDesc) };
+                ApplyFilter();
+                List.ItemsSource = view;
+                List.SelectedItem = items.FirstOrDefault(e => e.Name.Equals(select, StringComparison.OrdinalIgnoreCase)) ?? view.Cast<Entry>().FirstOrDefault();
+                if (List.SelectedItem != null) List.ScrollIntoView(List.SelectedItem);
+
+                Watch();
+                StartSizing();
+                StartVersions();
+                StartThumbs();
+                StartIcons();
+
+                if (driveText != null)
+                {
+                    UsedBar.SetBinding(WidthProperty, new Binding("ActualWidth") { Source = UsedBar.Parent, Converter = new Scale(used) });
+                    DriveInfoText.Text = driveText;
+                }
+                UpdateFooter();
+                StatsChanged?.Invoke();
+            });
+        });
     }
 
     class Scale(double f) : IValueConverter
@@ -268,7 +300,7 @@ public partial class PaneView : UserControl
                 long total = 0;
                 try { foreach (var f in new DirectoryInfo(e.Path).EnumerateFiles("*", opts)) { total += f.Length; cts.Token.ThrowIfCancellationRequested(); } }
                 catch (IOException) { } catch (UnauthorizedAccessException) { }
-                SizeCache[e.Path] = total;
+                SizeCache.Set(e.Path, Directory.GetLastWriteTimeUtc(e.Path), total);
                 Dispatcher.BeginInvoke(() => { e.Size = total; UpdateFooter(); StatsChanged?.Invoke(); });
             });
         }, cts.Token).ContinueWith(_ => { }); // swallow cancellation
@@ -318,7 +350,15 @@ public partial class PaneView : UserControl
         int folders = Items.Count(e => e.IsDir), files = Items.Count() - folders;
         Footer.Text = sel.Count > 0
             ? $"{sel.Count} selected  ·  {MainWindow.Fmt(sel.Sum(e => Math.Max(0, e.Size)))}"
-            : $"{folders} folders  ·  {files} files  ·  {MainWindow.Fmt(FolderTotal)}{(SizesPending ? "  ·  calculating…" : "")}";
+            : $"{folders} folders  ·  {files} files  ·  {MainWindow.Fmt(FolderTotal)}{Pending()}";
+
+        string Pending()
+        {
+            int left = Items.Count(e => e.Size < 0);
+            if (left == 0) return "";
+            int cached = Items.Count(e => e.IsDir && e.Size >= 0);
+            return cached > 0 ? $"  ·  measuring {left} folders ({cached} cached)" : $"  ·  measuring {left} folders";
+        }
     }
 
     void BuildCrumbs()

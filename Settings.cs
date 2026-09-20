@@ -15,6 +15,7 @@ public static class Settings
     public static double Opacity = 70;       // 30–100, floor keeps text readable
     public static bool Verify;               // xxHash3 check after copying
     public static bool ShowHidden;
+    public static string LastSeenVersion = "";   // What's new is shown once per version
     public static bool NativeMenu;          // right-click shows the Windows menu instead of ours
     public static double SidebarWidth = 270;
     public static double Split = 0.5;                                  // left pane share
@@ -36,6 +37,7 @@ public static class Settings
                 case "verify": Verify = v == "1"; break;
                 case "hidden": ShowHidden = v == "1"; break;
                 case "nativemenu": NativeMenu = v == "1"; break;
+                case "lastseen": LastSeenVersion = v; break;
                 case "split" when double.TryParse(v, CultureInfo.InvariantCulture, out var sp) && double.IsFinite(sp): Split = Math.Clamp(sp, 0.15, 0.85); break;
                 case "maximized": Maximized = v == "1"; break;
                 case "window": try { var r = Rect.Parse(v); if (!r.IsEmpty) WindowBounds = r; } catch (FormatException) { } break; // hand-edited file
@@ -56,6 +58,7 @@ public static class Settings
             $"verify={(Verify ? 1 : 0)}",
             $"hidden={(ShowHidden ? 1 : 0)}",
             $"nativemenu={(NativeMenu ? 1 : 0)}",
+            $"lastseen={LastSeenVersion}",
             $"sidebar={SidebarWidth.ToString(CultureInfo.InvariantCulture)}",
             $"split={Split.ToString(CultureInfo.InvariantCulture)}",
             $"maximized={(Maximized ? 1 : 0)}",

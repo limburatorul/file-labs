@@ -60,6 +60,15 @@ public partial class SettingsWindow : Window
         Refresh();
     }
 
+    // The manual check ignores a "Later": asking explicitly deserves an answer.
+    async void Update_Click(object s, RoutedEventArgs e)
+    {
+        UpdateCheck.IsEnabled = false;
+        UpdateStatus.Text = "Checking…";
+        UpdateStatus.Text = await main.CheckForUpdate(manual: true) ?? "";
+        UpdateCheck.IsEnabled = true;
+    }
+
     void Hidden_Click(object s, RoutedEventArgs e) { Settings.ShowHidden = HiddenBox.IsChecked == true; Settings.Save(); main.RefreshPanes(); }
     void Verify_Click(object s, RoutedEventArgs e) { Settings.Verify = VerifyBox.IsChecked == true; Settings.Save(); }
 

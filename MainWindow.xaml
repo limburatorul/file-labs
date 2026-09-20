@@ -175,7 +175,8 @@
           <Button Style="{StaticResource Ghost}" Click="Open_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F3</Run> Open</TextBlock></Button>
           <Button Style="{StaticResource Ghost}" Click="Copy_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F5</Run> Copy</TextBlock></Button>
           <Button Style="{StaticResource Ghost}" Click="Move_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F6</Run> Move</TextBlock></Button>
-          <Button Style="{StaticResource Ghost}" Click="MkDir_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F7</Run> New folder</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="MkDir_Click" ToolTip="New folder (F7 or Ctrl+Shift+N)"><TextBlock><Run Foreground="{StaticResource Muted}">F7</Run> New folder</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="NewFile_Click" ToolTip="New file (Ctrl+N)"><TextBlock><Run Foreground="{StaticResource Muted}">Ctrl+N</Run> New file</TextBlock></Button>
           <Button Style="{StaticResource Ghost}" Click="Delete_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F8</Run> Delete</TextBlock></Button>
           <Button Style="{StaticResource Ghost}" Click="Terminal_Click"><TextBlock><Run Foreground="{StaticResource Muted}">Ctrl+`</Run> Terminal</TextBlock></Button>
           <Button Style="{StaticResource Ghost}" Click="Hidden_Click"><TextBlock><Run Foreground="{StaticResource Muted}">Ctrl+H</Run> Hidden</TextBlock></Button>

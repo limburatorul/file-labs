@@ -42,6 +42,7 @@ public partial class MainWindow : Window
             Settings.Save();
         };
         SourceInitialized += (_, _) => ApplyAcrylic(this);
+        StartUpdateChecks();
 
         foreach (var p in new[] { Left, Right })
         {
@@ -141,6 +142,51 @@ public partial class MainWindow : Window
     {
         PaneView.ShowHidden = Settings.ShowHidden;
         Left.Refresh(); Right.Refresh();
+    }
+
+    // Shelf's schedule: 3 s after launch, then every 30 minutes — the app stays open for days.
+    readonly System.Windows.Threading.DispatcherTimer updateTimer = new() { Interval = TimeSpan.FromMinutes(30) };
+    UpdateDialog updateDialog;
+
+    void StartUpdateChecks()
+    {
+        var first = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        first.Tick += async (_, _) =>
+        {
+            first.Stop();
+            await ShowWhatsNew();
+            await CheckForUpdate(manual: false);
+        };
+        first.Start();
+        updateTimer.Tick += async (_, _) => await CheckForUpdate(manual: false);
+        updateTimer.Start();
+    }
+
+    /// Returns what to tell the user (only used by the manual check in Settings).
+    public async Task<string> CheckForUpdate(bool manual)
+    {
+        if (updateDialog != null) { updateDialog.Activate(); return null; }
+        var release = await Updater.Check(manual);
+        if (release == null) return manual ? $"File Labs {Updater.Current} is the latest version." : null;
+
+        updateDialog = new UpdateDialog(this, release);
+        updateDialog.Closed += (_, _) => { Updater.Dismiss(release); updateDialog = null; };
+        updateDialog.Show();
+        return null;
+    }
+
+    // First launch after an update: the release notes for the version now running.
+    async Task ShowWhatsNew()
+    {
+        var current = Updater.Current.ToString();
+        if (Settings.LastSeenVersion == current) return;
+        bool upgraded = Settings.LastSeenVersion != "";       // empty = fresh install, nothing to show
+        Settings.LastSeenVersion = current;
+        Settings.Save();
+        if (!upgraded) return;
+        // Check() only returns something newer than us; right after updating, the latest IS us.
+        var latest = await Updater.Latest();
+        if (latest?.Version.ToString() == current) new UpdateDialog(this, latest, notesOnly: true).Show();
     }
 
     SettingsWindow settingsWindow;
@@ -355,7 +401,6 @@ public partial class MainWindow : Window
     void JobDone(Job job) => Dispatcher.BeginInvoke(() =>
     {
         job.Refresh();
-        PaneView.SizeCache.Clear();
         Left.Refresh(); Right.Refresh();
     });
 
@@ -411,7 +456,6 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(() =>
             {
                 if (error != null) MessageBox.Show(this, error, "Delete");
-                PaneView.SizeCache.Clear();
                 Left.Refresh(); Right.Refresh();
             });
         }) { IsBackground = false }; // finishing a delete beats closing fast
@@ -425,6 +469,16 @@ public partial class MainWindow : Window
         if (name == "") return;
         Run(() => Directory.CreateDirectory(Path.Combine(active.Dir, name)));
         active.Navigate(active.Dir, name, record: false);
+    }
+
+    // Ctrl+N: pick a type (Explorer's own New list), then the name.
+    void NewFile()
+    {
+        var dialog = new NewFileDialog(this);
+        if (dialog.ShowDialog() != true) return;
+        string created = null;
+        Run(() => created = dialog.Create(active.Dir));
+        if (created != null) active.Navigate(active.Dir, created, record: false);
     }
 
     void Rename()
@@ -443,7 +497,6 @@ public partial class MainWindow : Window
         try { a(); }
         catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { MessageBox.Show(this, ex.Message, "Error"); }
-        PaneView.SizeCache.Clear();
         Left.Refresh(); Right.Refresh();
     }
 
@@ -515,7 +568,7 @@ public partial class MainWindow : Window
             case Key.C when ctrl && !shift: ClipboardPut(cut: false); break;
             case Key.X when ctrl: ClipboardPut(cut: true); break;
             case Key.V when ctrl: ClipboardPaste(); break;
-            case Key.R when ctrl: PaneView.SizeCache.Clear(); active.Refresh(); break;
+            case Key.R when ctrl: SizeCache.Clear(); active.Refresh(); break;
             case Key.C when ctrl && shift:
                 Clipboard.SetText(string.Join(Environment.NewLine, active.Selected.Select(x => x.Path)));
                 Status.Text = "Path copied"; break;
@@ -529,6 +582,8 @@ public partial class MainWindow : Window
             case Key.F5: Transfer(false); break;
             case Key.F6: Transfer(true); break;
             case Key.F7: MkDir(); break;
+            case Key.N when ctrl && shift: MkDir(); break;
+            case Key.N when ctrl: NewFile(); break;
             case Key.F8: case Key.Delete: Delete(); break;
             default: return;
         }
@@ -539,6 +594,7 @@ public partial class MainWindow : Window
     void Copy_Click(object s, RoutedEventArgs e) => Transfer(false);
     void Move_Click(object s, RoutedEventArgs e) => Transfer(true);
     void MkDir_Click(object s, RoutedEventArgs e) => MkDir();
+    void NewFile_Click(object s, RoutedEventArgs e) => NewFile();
     void Delete_Click(object s, RoutedEventArgs e) => Delete();
     void Rename_Click(object s, RoutedEventArgs e) => Rename();
     void Terminal_Click(object s, RoutedEventArgs e) => OpenTerminal();
