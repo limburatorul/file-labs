@@ -441,6 +441,7 @@ public partial class PaneView : UserControl
             TabStrip.Children.Add(b);
         }
         FitTabs();
+        Dispatcher.BeginInvoke(UpdateStripShape, DispatcherPriority.Loaded); // after the tabs have their sizes
     }
 
     // ---- dragging tabs: within a pane to reorder, or across to the other pane ----
@@ -563,8 +564,42 @@ public partial class PaneView : UserControl
     {
         double room = TabBand.ActualWidth - 4 /* left edge */ - NewTabBox.ActualWidth - 8 /* keep some strip visible */;
         if (room > 0) TabStrip.Width = Math.Min(tabs.Count * TabMax, room);
+        Dispatcher.BeginInvoke(UpdateStripShape, DispatcherPriority.Loaded);
     }
-    void TabBand_SizeChanged(object s, SizeChangedEventArgs e) => FitTabs();
+    void TabBand_SizeChanged(object s, SizeChangedEventArgs e) { FitTabs(); UpdateStripShape(); }
+
+    // The strip, minus the active tab. Built by hand rather than stretched, so the corner radii stay
+    // round whatever the tab width is.
+    const double TabRadius = 8, TabFlare = 8, StripTop = 4;
+    void UpdateStripShape()
+    {
+        double w = TabBand.ActualWidth, h = TabBand.ActualHeight;
+        if (w <= 0 || h <= 0) return;
+        StripShape.Width = w; StripShape.Height = h;
+
+        var band = new RectangleGeometry(new Rect(0, 0, w, h), 9, 9);
+        Geometry shape = band;
+        if (tab >= 0 && tab < TabStrip.Children.Count && TabStrip.Children[tab] is FrameworkElement activeTab)
+        {
+            double x = activeTab.TranslatePoint(new Point(0, 0), TabBand).X, tw = activeTab.ActualWidth;
+            var cut = new StreamGeometry();
+            using (var g = cut.Open())
+            {
+                g.BeginFigure(new Point(x - TabFlare, h), true, true);
+                g.QuadraticBezierTo(new Point(x, h), new Point(x, h - TabFlare), true, true);           // flare out, bottom left
+                g.LineTo(new Point(x, StripTop + TabRadius), true, true);
+                g.ArcTo(new Point(x + TabRadius, StripTop), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
+                g.LineTo(new Point(x + tw - TabRadius, StripTop), true, true);
+                g.ArcTo(new Point(x + tw, StripTop + TabRadius), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
+                g.LineTo(new Point(x + tw, h - TabFlare), true, true);
+                g.QuadraticBezierTo(new Point(x + tw, h), new Point(x + tw + TabFlare, h), true, true); // flare out, bottom right
+            }
+            cut.Freeze();
+            shape = new CombinedGeometry(GeometryCombineMode.Exclude, band, cut);
+        }
+        shape.Freeze();
+        StripShape.Data = shape;
+    }
 
     public void NewTab() { tabs.Insert(tab + 1, Dir); tab++; Navigate(Dir, record: false); }
     public void CloseTab(int i = -1)

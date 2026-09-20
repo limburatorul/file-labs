@@ -88,14 +88,18 @@
            + area, the rest of the row). The active tab paints nothing, so it is exactly the panel's
            own surface and flows into the path bar below — no colour to keep in sync. -->
       <Grid DockPanel.Dock="Top">
-      <DockPanel x:Name="TabBand" AllowDrop="True" SizeChanged="TabBand_SizeChanged" DragOver="Tabs_DragOver" DragLeave="Tabs_DragLeave" Drop="Tabs_Drop">
-        <Border DockPanel.Dock="Left" Width="4" Background="{StaticResource TabStripBg}" CornerRadius="9,0,0,0"/>
+      <!-- one shape for the whole strip, with the active tab's silhouette cut out of it: rounded
+           top corners flaring outwards at the bottom, the way a browser (and FilePilot) draws tabs.
+           The cut-out shows the panel's own surface, so the active tab always matches it exactly. -->
+      <Path x:Name="StripShape" Fill="{StaticResource TabStripBg}"/>
+      <DockPanel x:Name="TabBand" AllowDrop="True" Background="Transparent" SizeChanged="TabBand_SizeChanged" DragOver="Tabs_DragOver" DragLeave="Tabs_DragLeave" Drop="Tabs_Drop">
+        <Border DockPanel.Dock="Left" Width="4"/>
         <UniformGrid x:Name="TabStrip" DockPanel.Dock="Left" Rows="1"/>
-        <Border x:Name="NewTabBox" DockPanel.Dock="Left" Background="{StaticResource TabStripBg}" Padding="4,4,4,2">
+        <Border x:Name="NewTabBox" DockPanel.Dock="Left" Padding="4,4,4,2">
           <Button x:Name="NewTabButton" Style="{StaticResource Ghost}" Content="&#xE710;" FontFamily="Segoe Fluent Icons" FontSize="11"
                   ToolTip="New tab (Ctrl+T)" Click="NewTab_Click" VerticalAlignment="Center"/>
         </Border>
-        <Border Background="{StaticResource TabStripBg}" CornerRadius="0,9,0,0"/>
+        <Border/>
       </DockPanel>
       <!-- where a dragged tab would land; an overlay, so the tabs never move under the pointer -->
       <Canvas IsHitTestVisible="False">

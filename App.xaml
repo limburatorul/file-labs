@@ -215,21 +215,15 @@
       <Setter Property="FontSize" Value="12"/>
       <Setter Property="MinWidth" Value="0"/>
       <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Grid>
-              <!-- inactive: part of the dark strip, top margin keeps the strip's height -->
-              <Border x:Name="Strip" Background="{StaticResource TabStripBg}"/>
+            <Grid Background="Transparent">
+              <!-- the strip shape behind paints the tab; this only adds hover and the divider -->
               <Border x:Name="Bd" Background="Transparent" CornerRadius="8,8,0,0" Padding="9,7,6,7" Margin="0,4,0,0">
                 <ContentPresenter/>
               </Border>
-              <!-- active: no fill at all, only the strip's colour in the two corners outside its rounding -->
-              <Path x:Name="CornerL" Visibility="Collapsed" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0,4,0,0"
-                    Fill="{StaticResource TabStripBg}" Data="M0,0 L8,0 A8,8 0 0 0 0,8 Z"/>
-              <Path x:Name="CornerR" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,0,0"
-                    Fill="{StaticResource TabStripBg}" Data="M0,0 L8,0 L8,8 A8,8 0 0 0 0,0 Z"/>
-              <Border x:Name="TopGap" Visibility="Collapsed" Height="4" VerticalAlignment="Top" Background="{StaticResource TabStripBg}"/>
               <Border x:Name="Divider" Width="1" Margin="0,12,0,8" HorizontalAlignment="Right" Background="#2EFFFFFF"/>
             </Grid>
             <ControlTemplate.Triggers>
@@ -237,15 +231,10 @@
                 <Setter TargetName="Bd" Property="Background" Value="#0DFFFFFF"/>
               </Trigger>
               <Trigger Property="Tag" Value="on">
-                <Setter TargetName="Strip" Property="Visibility" Value="Collapsed"/>
                 <Setter TargetName="Bd" Property="Background" Value="Transparent"/>
-                <Setter TargetName="CornerL" Property="Visibility" Value="Visible"/>
-                <Setter TargetName="CornerR" Property="Visibility" Value="Visible"/>
-                <Setter TargetName="TopGap" Property="Visibility" Value="Visible"/>
                 <Setter TargetName="Divider" Property="Visibility" Value="Hidden"/>
                 <Setter Property="Foreground" Value="#F2F6FB"/>
               </Trigger>
-              <!-- no divider right before the active tab either -->
               <Trigger Property="Uid" Value="beforeActive">
                 <Setter TargetName="Divider" Property="Visibility" Value="Hidden"/>
               </Trigger>
