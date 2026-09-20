@@ -87,7 +87,8 @@
       <!-- The dark strip is painted by everything AROUND the active tab (left edge, inactive tabs, the
            + area, the rest of the row). The active tab paints nothing, so it is exactly the panel's
            own surface and flows into the path bar below — no colour to keep in sync. -->
-      <DockPanel x:Name="TabBand" DockPanel.Dock="Top" SizeChanged="TabBand_SizeChanged">
+      <Grid DockPanel.Dock="Top">
+      <DockPanel x:Name="TabBand" AllowDrop="True" SizeChanged="TabBand_SizeChanged" DragOver="Tabs_DragOver" DragLeave="Tabs_DragLeave" Drop="Tabs_Drop">
         <Border DockPanel.Dock="Left" Width="4" Background="{StaticResource TabStripBg}" CornerRadius="9,0,0,0"/>
         <UniformGrid x:Name="TabStrip" DockPanel.Dock="Left" Rows="1"/>
         <Border x:Name="NewTabBox" DockPanel.Dock="Left" Background="{StaticResource TabStripBg}" Padding="4,4,4,2">
@@ -96,6 +97,11 @@
         </Border>
         <Border Background="{StaticResource TabStripBg}" CornerRadius="0,9,0,0"/>
       </DockPanel>
+      <!-- where a dragged tab would land; an overlay, so the tabs never move under the pointer -->
+      <Canvas IsHitTestVisible="False">
+        <Border x:Name="TabDropLine" Width="3" CornerRadius="1.5" Background="{StaticResource Accent}" Visibility="Collapsed"/>
+      </Canvas>
+      </Grid>
 
       <!-- Path: breadcrumbs, editable on click in empty area / Ctrl+L -->
       <DockPanel DockPanel.Dock="Top" Margin="8,4,8,0">

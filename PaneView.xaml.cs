@@ -172,6 +172,22 @@ public partial class PaneView : UserControl
         List.Drop += Drop_Drop;
         debounce.Tick += (_, _) => { debounce.Stop(); Refresh(); };
 
+        // Drags start from the strip, not from a tab button: the strip is rebuilt whenever the tabs
+        // change, and a button that disappears mid-press takes the mouse capture with it.
+        TabStrip.PreviewMouseLeftButtonDown += (_, e) => { tabDragFrom = e.GetPosition(TabStrip); tabDragIndex = TabIndexAt(tabDragFrom); };
+        TabStrip.PreviewMouseMove += (_, e) =>
+        {
+            if (e.LeftButton != MouseButtonState.Pressed || tabDragIndex < 0 || dragTab != null) return;
+            var moved = e.GetPosition(TabStrip) - tabDragFrom;
+            if (Math.Abs(moved.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(moved.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+            if (tabDragIndex >= tabs.Count) return;
+            dragTab = (this, tabs[tabDragIndex]);
+            tabDragIndex = -1;
+            try { DragDrop.DoDragDrop(TabStrip, new DataObject("FileLabsTab", ""), DragDropEffects.Move); }
+            finally { dragTab = null; }
+        };
+        TabStrip.PreviewMouseLeftButtonUp += (_, _) => tabDragIndex = -1;
+
         // Name fills whatever the other columns leave: shrinks with the pane, and absorbs
         // width when you resize another column. Dragging Name itself sticks until the pane resizes.
         List.SizeChanged += (_, _) => { if (Mode == ViewMode.Details) FitName(); };
@@ -197,6 +213,7 @@ public partial class PaneView : UserControl
         List.Opacity = on ? 1 : 0.88;
     }
 
+    readonly Dictionary<string, List<Entry>> listCache = new(StringComparer.OrdinalIgnoreCase);
     int navVersion; // a newer Navigate wins; a slow share must not overwrite the folder you moved on to
 
     public void Navigate(string dir, string select = null, bool record = true)
@@ -218,6 +235,20 @@ public partial class PaneView : UserControl
         BuildCrumbs();
         BuildTabs();
         int v = ++navVersion;
+
+        // Show the folder as we last saw it, immediately; the read below replaces it a moment later.
+        // Without this, every tab switch waits on the disk — measured at 1.2 s for a cold folder.
+        if (listCache.TryGetValue(di.FullName, out var cached))
+        {
+            items = cached;
+            view = new ListCollectionView(items) { CustomSort = new EntrySort(sortKey, sortDesc) };
+            ApplyFilter();
+            List.ItemsSource = view;
+            List.SelectedItem = items.FirstOrDefault(e => e.Name.Equals(select, StringComparison.OrdinalIgnoreCase)) ?? view.Cast<Entry>().FirstOrDefault();
+            if (select != null && List.SelectedItem != null) List.ScrollIntoView(List.SelectedItem);
+            UpdateFooter();
+            StatsChanged?.Invoke();
+        }
 
         // Reading the folder and asking the drive for free space both block — on a network share for
         // the best part of a second — so they happen off the UI thread and the list is handed over
@@ -258,12 +289,14 @@ public partial class PaneView : UserControl
             {
                 if (v != navVersion) return; // the user has already moved on
                 if (error != null) { Error?.Invoke(error); return; }
+                listCache[di.FullName] = list;
+                if (listCache.Count > 24) listCache.Remove(listCache.Keys.First()); // a few folders is plenty
                 items = list;
                 view = new ListCollectionView(items) { CustomSort = new EntrySort(sortKey, sortDesc) };
                 ApplyFilter();
                 List.ItemsSource = view;
                 List.SelectedItem = items.FirstOrDefault(e => e.Name.Equals(select, StringComparison.OrdinalIgnoreCase)) ?? view.Cast<Entry>().FirstOrDefault();
-                if (List.SelectedItem != null) List.ScrollIntoView(List.SelectedItem);
+                if (select != null && List.SelectedItem != null) List.ScrollIntoView(List.SelectedItem);
 
                 Watch();
                 StartSizing();
@@ -383,8 +416,13 @@ public partial class PaneView : UserControl
     }
 
     // Browser-style tabs: folder icon + name + close (x), active one lifted with an accent underline.
+    string tabsShown = "";
+
     void BuildTabs()
     {
+        var signature = string.Join("|", tabs) + "@" + tab + "#" + tabs.Count;
+        if (signature == tabsShown) return;
+        tabsShown = signature;
         TabStrip.Children.Clear();
         for (int i = 0; i < tabs.Count; i++)
         {
@@ -400,10 +438,123 @@ public partial class PaneView : UserControl
             row.Children.Add(new TextBlock { Text = name == "" ? tabs[i] : name, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
             var b = new Button { Content = row, Style = (Style)FindResource("BrowserTab"), Tag = i == tab ? "on" : null, Uid = i == tab - 1 ? "beforeActive" : "", ToolTip = tabs[i] };
             b.Click += (_, _) => SwitchTab(idx);
-            b.MouseUp += (_, e) => { if (e.ChangedButton == MouseButton.Middle) CloseTab(idx); };
             TabStrip.Children.Add(b);
         }
         FitTabs();
+    }
+
+    // ---- dragging tabs: within a pane to reorder, or across to the other pane ----
+    static (PaneView Pane, string Path)? dragTab; // static: the other pane must see what is being dragged
+    Point tabDragFrom;
+    int tabDragIndex = -1;
+    int dropIndex = -1;
+
+    /// Which tab sits under a point in the strip, or -1.
+    int TabIndexAt(Point p)
+    {
+        for (int i = 0; i < TabStrip.Children.Count; i++)
+        {
+            var tabButton = (FrameworkElement)TabStrip.Children[i];
+            var left = tabButton.TranslatePoint(new Point(0, 0), TabStrip).X;
+            if (p.X >= left && p.X < left + tabButton.ActualWidth) return i;
+        }
+        return -1;
+    }
+
+    /// Where the dragged tab would land, from the pointer's x over the tab strip.
+    int InsertIndexAt(DragEventArgs e)
+    {
+        var x = e.GetPosition(TabStrip).X;
+        for (int i = 0; i < TabStrip.Children.Count; i++)
+        {
+            var tabButton = (FrameworkElement)TabStrip.Children[i];
+            var left = tabButton.TranslatePoint(new Point(0, 0), TabStrip).X;
+            if (x < left + tabButton.ActualWidth / 2) return i;
+        }
+        return TabStrip.Children.Count;
+    }
+
+
+    void Tabs_DragOver(object s, DragEventArgs e)
+    {
+        e.Handled = true;
+        e.Effects = dragTab != null && e.Data.GetDataPresent("FileLabsTab") ? DragDropEffects.Move : DragDropEffects.None;
+        if (e.Effects == DragDropEffects.None) { ShowTabDropLine(-1); return; }
+        ShowTabDropLine(InsertIndexAt(e));
+    }
+
+    // DragLeave bubbles from every child, so it only counts when the pointer really left the band.
+    void Tabs_DragLeave(object s, DragEventArgs e)
+    {
+        var p = e.GetPosition(TabBand);
+        if (p.X < 0 || p.Y < 0 || p.X > TabBand.ActualWidth || p.Y > TabBand.ActualHeight) ShowTabDropLine(-1);
+    }
+
+    void ShowTabDropLine(int index)
+    {
+        if (index == dropIndex) return; // only on change: setting it every move is what flickers
+        dropIndex = index;
+        if (index < 0) { TabDropLine.Visibility = Visibility.Collapsed; return; }
+        double x = TabStrip.Children.Count == 0 ? 0
+            : index < TabStrip.Children.Count
+                ? ((FrameworkElement)TabStrip.Children[index]).TranslatePoint(new Point(0, 0), TabBand).X
+                : ((FrameworkElement)TabStrip.Children[^1]).TranslatePoint(new Point(0, 0), TabBand).X + ((FrameworkElement)TabStrip.Children[^1]).ActualWidth;
+        Canvas.SetLeft(TabDropLine, x - 1.5);
+        Canvas.SetTop(TabDropLine, 4);
+        TabDropLine.Height = Math.Max(0, TabBand.ActualHeight - 4);
+        TabDropLine.Visibility = Visibility.Visible;
+    }
+
+    void Tabs_Drop(object s, DragEventArgs e)
+    {
+        int at = dropIndex;
+        ShowTabDropLine(-1);
+        if (dragTab is not { } drag || at < 0) return;
+        e.Handled = true;
+        if (drag.Pane == this)
+        {
+            int from = tabs.IndexOf(drag.Path);
+            if (from < 0 || at == from || at == from + 1) return;
+            var active = tabs[tab];
+            tabs.RemoveAt(from);
+            tabs.Insert(at > from ? at - 1 : at, drag.Path);
+            tab = tabs.IndexOf(active);
+            BuildTabs();
+        }
+        else
+        {
+            drag.Pane.TakeTabAway(drag.Path);
+            tabs.Insert(Math.Clamp(at, 0, tabs.Count), drag.Path);
+            tab = at;
+            Navigate(drag.Path, record: false);
+            Activated?.Invoke();
+        }
+        Settings.Save();
+    }
+
+    /// Removes a tab that has been dragged to the other pane; a pane always keeps one.
+    void TakeTabAway(string path)
+    {
+        int i = tabs.IndexOf(path);
+        if (i < 0) return;
+        if (tabs.Count == 1) { tabs[0] = System.IO.Path.GetPathRoot(path) ?? path; Navigate(tabs[0], record: false); return; }
+        tabs.RemoveAt(i);
+        if (i < tab || tab == tabs.Count) tab--;
+        Navigate(Dir, record: false);
+    }
+
+    // ---- remembering the open tabs ----
+    public IReadOnlyList<string> OpenTabs => tabs;
+    public int ActiveTab => tab;
+
+    public void Restore(List<string> paths, int active)
+    {
+        var usable = paths.Where(Directory.Exists).ToList();
+        if (usable.Count == 0) return;
+        tabs.Clear();
+        tabs.AddRange(usable);
+        tab = Math.Clamp(active, 0, tabs.Count - 1);
+        Navigate(Dir, record: false);
     }
 
     // Each tab gets up to 170 px; when they don't all fit, they shrink evenly so the + stays visible.

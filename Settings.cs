@@ -24,7 +24,9 @@ public static class Settings
     public static Rect? WindowBounds;                                  // restore bounds
     public static bool Maximized;
     public static readonly Dictionary<string, double> ColumnWidths = new(); // "Size" → 80
-    public static readonly Dictionary<string, PaneView.ViewMode> Views = new(); // "Left" → Details
+    public static readonly Dictionary<string, PaneView.ViewMode> Views = new();
+    public static readonly Dictionary<string, List<string>> Tabs = new();   // "Left" → folders open in that pane
+    public static readonly Dictionary<string, int> ActiveTab = new(); // "Left" → Details
 
     public static void Load()
     {
@@ -43,6 +45,8 @@ public static class Settings
                 case "split" when double.TryParse(v, CultureInfo.InvariantCulture, out var sp) && double.IsFinite(sp): Split = Math.Clamp(sp, 0.15, 0.85); break;
                 case "maximized": Maximized = v == "1"; break;
                 case "window": try { var r = Rect.Parse(v); if (!r.IsEmpty) WindowBounds = r; } catch (FormatException) { } break; // hand-edited file
+                case var k when k.StartsWith("tabs.") && v != "": Tabs[k[5..]] = v.Split('|').Where(x => x != "").ToList(); break;
+                case var k when k.StartsWith("activetab.") && int.TryParse(v, out var ai): ActiveTab[k[10..]] = ai; break;
                 case var k when k.StartsWith("view.") && Enum.TryParse<PaneView.ViewMode>(v, out var vm): Views[k[5..]] = vm; break;
                 case var k when k.StartsWith("col.") && double.TryParse(v, CultureInfo.InvariantCulture, out var cw) && double.IsFinite(cw): ColumnWidths[k[4..]] = Math.Clamp(cw, 30, 800); break;
                 case "sidebarorder" when v != "": SidebarOrder = v.Split(',').Where(x => x != "").ToList(); break;
@@ -70,7 +74,9 @@ public static class Settings
             $"maximized={(Maximized ? 1 : 0)}",
             WindowBounds is { } r ? $"window={r.ToString(CultureInfo.InvariantCulture)}" : "",
         }.Concat(ColumnWidths.Select(c => $"col.{c.Key}={c.Value.ToString(CultureInfo.InvariantCulture)}"))
-         .Concat(Views.Select(v => $"view.{v.Key}={v.Value}")));
+         .Concat(Views.Select(v => $"view.{v.Key}={v.Value}"))
+         .Concat(Tabs.Select(t => $"tabs.{t.Key}={string.Join("|", t.Value)}"))
+         .Concat(ActiveTab.Select(a => $"activetab.{a.Key}={a.Value}")));
     }
 
     // ---- Default file manager (per user, HKCU only; turning it off removes every key it added) ----

@@ -39,6 +39,11 @@ public partial class MainWindow : Window
             var cols = PaneGrid.ColumnDefinitions;
             double total = cols[0].ActualWidth + cols[2].ActualWidth;
             if (total > 0) Settings.Split = cols[0].ActualWidth / total; // closed before layout: keep the old value
+            foreach (var p in new[] { Left, Right })
+            {
+                Settings.Tabs[p.Name] = p.OpenTabs.ToList();
+                Settings.ActiveTab[p.Name] = p.ActiveTab;
+            }
             Settings.Save();
         };
         SourceInitialized += (_, _) => ApplyAcrylic(this);
@@ -80,9 +85,14 @@ public partial class MainWindow : Window
 
 
         active = Left;
-        var arg = Environment.GetCommandLineArgs().Skip(1).FirstOrDefault(a => !a.StartsWith("--"));
-        Left.Navigate(arg != null && Directory.Exists(arg) ? arg : user);
+        // last session's tabs, then the folder asked for on the command line as a new tab
+        Left.Navigate(user);
         Right.Navigate(DriveInfo.GetDrives().First(d => d.IsReady).Name);
+        foreach (var p in new[] { Left, Right })
+            if (Settings.Tabs.TryGetValue(p.Name, out var paths))
+                p.Restore(paths, Settings.ActiveTab.TryGetValue(p.Name, out var a) ? a : 0);
+        var arg = Environment.GetCommandLineArgs().Skip(1).FirstOrDefault(a => !a.StartsWith("--"));
+        if (arg != null && Directory.Exists(arg)) { Left.NewTab(); Left.Navigate(arg); }
         SetActive(Left);
         Loaded += (_, _) => Left.FocusList();
         // started from the Win+E agent or a folder double-click: make sure we open in front.
@@ -337,14 +347,32 @@ public partial class MainWindow : Window
     static readonly Dictionary<string, ImageSource> shellIcons = new(StringComparer.OrdinalIgnoreCase);
     public static FrameworkElement ShellIcon(string path, string fallbackGlyph, double size, Thickness margin)
     {
-        if (!shellIcons.TryGetValue(path, out var img)) shellIcons[path] = img = Thumbnails.Get(path, 32, iconOnly: true);
-        if (img != null)
+        var box = new Grid { Width = size, Height = size, Margin = margin, VerticalAlignment = VerticalAlignment.Center };
+        var glyph = new TextBlock { Text = fallbackGlyph, FontFamily = new FontFamily("Segoe Fluent Icons"), Foreground = Hex("#F5C451"), FontSize = size * 0.9, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        box.Children.Add(glyph);
+
+        void Show(ImageSource img)
         {
-            var image = new Image { Source = img, Width = size, Height = size, Margin = margin, VerticalAlignment = VerticalAlignment.Center, SnapsToDevicePixels = true };
+            if (img == null) return;
+            var image = new Image { Source = img, Width = size, Height = size, SnapsToDevicePixels = true };
             RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
-            return image;
+            box.Children.Add(image);
+            glyph.Visibility = Visibility.Collapsed;
         }
-        return new TextBlock { Text = fallbackGlyph, FontFamily = new FontFamily("Segoe Fluent Icons"), Foreground = Hex("#F5C451"), Margin = margin, VerticalAlignment = VerticalAlignment.Center };
+
+        if (shellIcons.TryGetValue(path, out var cached)) { Show(cached); return box; }
+
+        // Asking the shell blocks — on a network path for the best part of a second — so it happens
+        // off the UI thread and the glyph stands in until the icon arrives.
+        var dispatcher = box.Dispatcher;
+        var thread = new Thread(() =>
+        {
+            var img = Thumbnails.Get(path, 32, iconOnly: true);
+            dispatcher.BeginInvoke(() => { shellIcons[path] = img; Show(img); });
+        }) { IsBackground = true };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        return box;
     }
 
     public static Brush Hex(string c) => (Brush)new BrushConverter().ConvertFrom(c);
