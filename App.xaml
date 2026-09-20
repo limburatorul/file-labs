@@ -67,6 +67,7 @@
               </Grid>
             </Border>
             <ControlTemplate.Triggers>
+              <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#404C8DFF"/></Trigger>
             </ControlTemplate.Triggers>
@@ -122,29 +123,6 @@
       </Style.Triggers>
     </Style>
 
-    <DataTemplate x:Key="NameCell">
-      <StackPanel Orientation="Horizontal">
-        <Grid Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource CutDim}">
-          <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.5">
-            <TextBlock.Visibility><Binding Path="NoSmallIcon"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility>
-          </TextBlock>
-          <Image Source="{Binding SmallIcon}" RenderOptions.BitmapScalingMode="HighQuality"/>
-        </Grid>
-        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
-      </StackPanel>
-    </DataTemplate>
-    <DataTemplate x:Key="SizeCell">
-      <TextBlock Text="{Binding SizeText}" Foreground="#B3FFFFFF" Typography.NumeralAlignment="Tabular" TextAlignment="Right" Margin="0,0,6,0"/>
-    </DataTemplate>
-    <DataTemplate x:Key="DateCell">
-      <StackPanel Orientation="Horizontal" ToolTip="{Binding FullDate}">
-        <Border Background="{Binding AgeBrush}" CornerRadius="3" Width="36" Margin="0,0,8,0">
-          <TextBlock Text="{Binding Age}" Foreground="{Binding AgeTextBrush}" FontSize="11" FontWeight="SemiBold"
-                     HorizontalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
-        </Border>
-        <TextBlock Text="{Binding DateText}" Foreground="#99FFFFFF" Typography.NumeralAlignment="Tabular"/>
-      </StackPanel>
-    </DataTemplate>
 
     <!-- Icon / list views: size comes from the ListView's Tag (thumbnail edge in px) -->
     <Style x:Key="ListViewItem.Plain" TargetType="ListViewItem">
@@ -156,6 +134,7 @@
               <ContentPresenter/>
             </Border>
             <ControlTemplate.Triggers>
+              <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#404C8DFF"/></Trigger>
             </ControlTemplate.Triggers>
@@ -174,6 +153,7 @@
               <ContentPresenter/>
             </Border>
             <ControlTemplate.Triggers>
+              <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#404C8DFF"/></Trigger>
             </ControlTemplate.Triggers>
@@ -181,35 +161,6 @@
         </Setter.Value>
       </Setter>
     </Style>
-    <DataTemplate x:Key="TileCell">
-      <StackPanel ToolTip="{Binding FullDate}">
-        <Grid Width="{Binding Tag, RelativeSource={RelativeSource AncestorType=ListView}}"
-              Height="{Binding Tag, RelativeSource={RelativeSource AncestorType=ListView}}" HorizontalAlignment="Center" Style="{StaticResource CutDim}">
-          <!-- either the shell thumbnail or, until it arrives, a dim placeholder glyph — never both -->
-          <Viewbox Margin="16" Opacity="0.35">
-            <Viewbox.Visibility>
-              <Binding Path="NoThumb"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding>
-            </Viewbox.Visibility>
-            <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}"/>
-          </Viewbox>
-          <Image Source="{Binding Thumb}" Stretch="Uniform" StretchDirection="DownOnly" RenderOptions.BitmapScalingMode="HighQuality"/>
-        </Grid>
-        <Border Height="3" Width="26" CornerRadius="1.5" Background="{Binding AgeBrush}" Margin="0,4,0,3" HorizontalAlignment="Center"/>
-        <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="34" FontSize="11.5"/>
-      </StackPanel>
-    </DataTemplate>
-    <DataTemplate x:Key="ListCell">
-      <DockPanel Width="230" ToolTip="{Binding FullDate}">
-        <Border DockPanel.Dock="Left" Width="3" Margin="0,1,6,1" CornerRadius="1.5" Background="{Binding AgeBrush}"/>
-        <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource CutDim}">
-          <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.5">
-            <TextBlock.Visibility><Binding Path="NoSmallIcon"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility>
-          </TextBlock>
-          <Image Source="{Binding SmallIcon}" RenderOptions.BitmapScalingMode="HighQuality"/>
-        </Grid>
-        <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
-      </DockPanel>
-    </DataTemplate>
 
     <Style x:Key="Ghost" TargetType="Button">
       <Setter Property="Foreground" Value="#D0FFFFFF"/>

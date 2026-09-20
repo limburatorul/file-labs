@@ -27,6 +27,11 @@ public class Entry : INotifyPropertyChanged
     ImageSource smallIcon;
     public ImageSource SmallIcon { get => smallIcon; set { smallIcon = value; Changed(nameof(SmallIcon)); Changed(nameof(NoSmallIcon)); } }
     public bool NoSmallIcon => smallIcon == null;
+    bool renaming;
+    public bool Renaming { get => renaming; set { renaming = value; Changed(nameof(Renaming)); Changed(nameof(NotRenaming)); } }
+    public bool NotRenaming => !renaming;
+    bool dimmed;
+    public bool Dimmed { get => dimmed; set { dimmed = value; Changed(nameof(Dimmed)); } } // the other rows, while one is being renamed
     bool isCut;
     public bool IsCut { get => isCut; set { if (isCut != value) { isCut = value; Changed(nameof(IsCut)); } } }
     string version = "";
@@ -427,6 +432,46 @@ public partial class PaneView : UserControl
     public void Forward() { if (fwd.Count > 0) { back.Push(Dir); Navigate(fwd.Pop(), record: false); } }
     public void Up() { if (Directory.GetParent(Dir) is { } p) Navigate(p.FullName, System.IO.Path.GetFileName(Dir)); }
 
+    // Rename in place (F2), like Explorer: the row's name turns into an edit box.
+    public event Action<Entry, string> RenameCommitted;
+    Entry renamingEntry;
+
+    public void BeginRename()
+    {
+        if (List.SelectedItem is not Entry e || renamingEntry != null) return;
+        renamingEntry = e;
+        e.Renaming = true;
+        foreach (var other in items) other.Dimmed = other != e; // the edited row is the only bright one
+    }
+
+    void Rename_Loaded(object s, RoutedEventArgs e)
+    {
+        var box = (TextBox)s;
+        box.Focus();
+        var dot = System.IO.Path.GetFileNameWithoutExtension(box.Text).Length;
+        box.Select(0, dot > 0 ? dot : box.Text.Length); // keep the extension out of the selection
+    }
+
+    void Rename_KeyDown(object s, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter) { Finish((TextBox)s, commit: true); e.Handled = true; }
+        else if (e.Key == Key.Escape) { Finish((TextBox)s, commit: false); e.Handled = true; }
+    }
+
+    // Clicking away keeps the new name, as Explorer does.
+    void Rename_Done(object s, KeyboardFocusChangedEventArgs e) => Finish((TextBox)s, commit: true);
+
+    void Finish(TextBox box, bool commit)
+    {
+        if (box.Tag is not Entry entry || !entry.Renaming) return;
+        entry.Renaming = false;
+        renamingEntry = null;
+        foreach (var other in items) other.Dimmed = false;
+        var name = box.Text.Trim();
+        if (commit && name != "" && name != entry.Name) RenameCommitted?.Invoke(entry, name);
+        else List.Focus();
+    }
+
     public void OpenSelected()
     {
         if (List.SelectedItem is not Entry e) return;
@@ -629,8 +674,17 @@ public partial class PaneView : UserControl
         return (d as ListViewItem)?.DataContext as Entry;
     }
 
+    static bool InTextBox(object source)
+    {
+        var d = source as DependencyObject;
+        while (d != null && d is not TextBox) d = d is Visual ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
+        return d != null;
+    }
+
     void Drag_Down(object s, MouseButtonEventArgs e)
     {
+        // A press inside the rename box belongs to the text, not to a file drag.
+        if (renamingEntry != null || InTextBox(e.OriginalSource)) { dragArmed = false; keepSelection = null; return; }
         var row = FindRow(e.OriginalSource as DependencyObject);
         dragArmed = row is { IsUp: false };
         dragStart = e.GetPosition(List);
@@ -651,7 +705,7 @@ public partial class PaneView : UserControl
 
     void Drag_Move(object s, MouseEventArgs e)
     {
-        if (!dragArmed || e.LeftButton != MouseButtonState.Pressed) return;
+        if (!dragArmed || renamingEntry != null || e.LeftButton != MouseButtonState.Pressed) return;
         var d = e.GetPosition(List) - dragStart;
         if (Math.Abs(d.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(d.Y) < SystemParameters.MinimumVerticalDragDistance) return;
         dragArmed = false; keepSelection = null;

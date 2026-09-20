@@ -1,6 +1,85 @@
 ﻿<UserControl x:Class="FileExplorer.PaneView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <UserControl.Resources>
+    <DataTemplate x:Key="NameCell">
+      <StackPanel Orientation="Horizontal">
+        <Grid Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource CutDim}">
+          <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.5">
+            <TextBlock.Visibility><Binding Path="NoSmallIcon"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility>
+          </TextBlock>
+          <Image Source="{Binding SmallIcon}" RenderOptions.BitmapScalingMode="HighQuality"/>
+        </Grid>
+        <Grid>
+          <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility></TextBlock>
+          <Border Background="#F2151A22" BorderBrush="{StaticResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
+            <Border.Visibility><Binding Path="Renaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></Border.Visibility>
+            <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
+                     SelectionBrush="{StaticResource Accent}" SelectionOpacity="0.85" SelectionTextBrush="White" IsInactiveSelectionHighlightEnabled="True"
+                     Loaded="Rename_Loaded" KeyDown="Rename_KeyDown" LostKeyboardFocus="Rename_Done" Tag="{Binding}"/>
+          </Border>
+        </Grid>
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate x:Key="SizeCell">
+      <TextBlock Text="{Binding SizeText}" Foreground="#B3FFFFFF" Typography.NumeralAlignment="Tabular" TextAlignment="Right" Margin="0,0,6,0"/>
+    </DataTemplate>
+    <DataTemplate x:Key="DateCell">
+      <StackPanel Orientation="Horizontal" ToolTip="{Binding FullDate}">
+        <Border Background="{Binding AgeBrush}" CornerRadius="3" Width="36" Margin="0,0,8,0">
+          <TextBlock Text="{Binding Age}" Foreground="{Binding AgeTextBrush}" FontSize="11" FontWeight="SemiBold"
+                     HorizontalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
+        </Border>
+        <TextBlock Text="{Binding DateText}" Foreground="#99FFFFFF" Typography.NumeralAlignment="Tabular"/>
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate x:Key="TileCell">
+      <StackPanel ToolTip="{Binding FullDate}">
+        <Grid Width="{Binding Tag, RelativeSource={RelativeSource AncestorType=ListView}}"
+              Height="{Binding Tag, RelativeSource={RelativeSource AncestorType=ListView}}" HorizontalAlignment="Center" Style="{StaticResource CutDim}">
+          <!-- either the shell thumbnail or, until it arrives, a dim placeholder glyph — never both -->
+          <Viewbox Margin="16" Opacity="0.35">
+            <Viewbox.Visibility>
+              <Binding Path="NoThumb"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding>
+            </Viewbox.Visibility>
+            <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}"/>
+          </Viewbox>
+          <Image Source="{Binding Thumb}" Stretch="Uniform" StretchDirection="DownOnly" RenderOptions.BitmapScalingMode="HighQuality"/>
+        </Grid>
+        <Border Height="3" Width="26" CornerRadius="1.5" Background="{Binding AgeBrush}" Margin="0,4,0,3" HorizontalAlignment="Center"/>
+        <Grid>
+          <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="34" FontSize="11.5"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility></TextBlock>
+          <Border Background="#F2151A22" BorderBrush="{StaticResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
+            <Border.Visibility><Binding Path="Renaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></Border.Visibility>
+            <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
+                     SelectionBrush="{StaticResource Accent}" SelectionOpacity="0.85" SelectionTextBrush="White" IsInactiveSelectionHighlightEnabled="True"
+                     Loaded="Rename_Loaded" KeyDown="Rename_KeyDown" LostKeyboardFocus="Rename_Done" Tag="{Binding}"/>
+          </Border>
+        </Grid>
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate x:Key="ListCell">
+      <DockPanel Width="230" ToolTip="{Binding FullDate}">
+        <Border DockPanel.Dock="Left" Width="3" Margin="0,1,6,1" CornerRadius="1.5" Background="{Binding AgeBrush}"/>
+        <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource CutDim}">
+          <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.5">
+            <TextBlock.Visibility><Binding Path="NoSmallIcon"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility>
+          </TextBlock>
+          <Image Source="{Binding SmallIcon}" RenderOptions.BitmapScalingMode="HighQuality"/>
+        </Grid>
+        <Grid>
+          <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility></TextBlock>
+          <Border Background="#F2151A22" BorderBrush="{StaticResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
+            <Border.Visibility><Binding Path="Renaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></Border.Visibility>
+            <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
+                     SelectionBrush="{StaticResource Accent}" SelectionOpacity="0.85" SelectionTextBrush="White" IsInactiveSelectionHighlightEnabled="True"
+                     Loaded="Rename_Loaded" KeyDown="Rename_KeyDown" LostKeyboardFocus="Rename_Done" Tag="{Binding}"/>
+          </Border>
+        </Grid>
+      </DockPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+
   <Border x:Name="Card" Background="#0DFFFFFF" CornerRadius="10" BorderThickness="1" BorderBrush="#1AFFFFFF">
     <DockPanel>
       <!-- Tabs -->

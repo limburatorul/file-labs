@@ -6,7 +6,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.FileIO;
 using VbFs = Microsoft.VisualBasic.FileIO.FileSystem;
 
@@ -20,6 +19,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Title = $"File Labs {Updater.Current}";
         PaneView.ShowHidden = Settings.ShowHidden;
         SidebarColumn.Width = new GridLength(Settings.SidebarWidth);
         PaneGrid.ColumnDefinitions[0].Width = new GridLength(Settings.Split, GridUnitType.Star);
@@ -50,6 +50,7 @@ public partial class MainWindow : Window
             p.StatsChanged += () => { if (p == active) UpdateStats(); };
             p.Error += msg => Status.Text = msg;
             p.FilesDropped += (files, dest, move) => Submit(files, dest, move);
+            p.RenameCommitted += (entry, name) => RenameCommitted(p, entry, name);
         }
 
         var user = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -465,8 +466,8 @@ public partial class MainWindow : Window
 
     void MkDir()
     {
-        var name = Interaction.InputBox("Folder name:", "New folder", "New folder");
-        if (name == "") return;
+        var name = PromptDialog.Ask(this, "New folder", "Folder name", "New folder", "Create");
+        if (name == null) return;
         Run(() => Directory.CreateDirectory(Path.Combine(active.Dir, name)));
         active.Navigate(active.Dir, name, record: false);
     }
@@ -481,15 +482,12 @@ public partial class MainWindow : Window
         if (created != null) active.Navigate(active.Dir, created, record: false);
     }
 
-    void Rename()
+    void Rename() => active.BeginRename();
+
+    void RenameCommitted(PaneView pane, Entry entry, string name)
     {
-        var sel = active.Selected;
-        if (sel.Count != 1) return;
-        var e = sel[0];
-        var name = Interaction.InputBox("New name:", "Rename", e.Name);
-        if (name == "" || name == e.Name) return;
-        Run(() => { if (e.IsDir) VbFs.RenameDirectory(e.Path, name); else VbFs.RenameFile(e.Path, name); });
-        active.Navigate(active.Dir, name, record: false);
+        Run(() => { if (entry.IsDir) VbFs.RenameDirectory(entry.Path, name); else VbFs.RenameFile(entry.Path, name); });
+        pane.Navigate(pane.Dir, name, record: false);
     }
 
     void Run(Action a)
