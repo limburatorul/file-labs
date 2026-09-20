@@ -162,6 +162,14 @@
       </Setter>
     </Style>
 
+    <Style x:Key="SidebarHeader" TargetType="Border">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="CornerRadius" Value="5"/>
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#10FFFFFF"/></Trigger>
+      </Style.Triggers>
+    </Style>
+
     <Style x:Key="Ghost" TargetType="Button">
       <Setter Property="Foreground" Value="#D0FFFFFF"/>
       <Setter Property="Cursor" Value="Hand"/>

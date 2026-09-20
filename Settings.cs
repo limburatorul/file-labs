@@ -18,6 +18,8 @@ public static class Settings
     public static string LastSeenVersion = "";   // What's new is shown once per version
     public static bool NativeMenu;          // right-click shows the Windows menu instead of ours
     public static double SidebarWidth = 270;
+    public static List<string> SidebarOrder = new() { "quick", "favorites", "drives" };
+    public static readonly HashSet<string> SidebarCollapsed = new();
     public static double Split = 0.5;                                  // left pane share
     public static Rect? WindowBounds;                                  // restore bounds
     public static bool Maximized;
@@ -43,6 +45,8 @@ public static class Settings
                 case "window": try { var r = Rect.Parse(v); if (!r.IsEmpty) WindowBounds = r; } catch (FormatException) { } break; // hand-edited file
                 case var k when k.StartsWith("view.") && Enum.TryParse<PaneView.ViewMode>(v, out var vm): Views[k[5..]] = vm; break;
                 case var k when k.StartsWith("col.") && double.TryParse(v, CultureInfo.InvariantCulture, out var cw) && double.IsFinite(cw): ColumnWidths[k[4..]] = Math.Clamp(cw, 30, 800); break;
+                case "sidebarorder" when v != "": SidebarOrder = v.Split(',').Where(x => x != "").ToList(); break;
+                case "sidebarcollapsed": SidebarCollapsed.Clear(); SidebarCollapsed.UnionWith(v.Split(',').Where(x => x != "")); break;
                 case "sidebar" when double.TryParse(v, CultureInfo.InvariantCulture, out var w) && double.IsFinite(w): SidebarWidth = Math.Clamp(w, 160, 600); break;
             }
         }
@@ -60,6 +64,8 @@ public static class Settings
             $"nativemenu={(NativeMenu ? 1 : 0)}",
             $"lastseen={LastSeenVersion}",
             $"sidebar={SidebarWidth.ToString(CultureInfo.InvariantCulture)}",
+            $"sidebarorder={string.Join(",", SidebarOrder)}",
+            $"sidebarcollapsed={string.Join(",", SidebarCollapsed)}",
             $"split={Split.ToString(CultureInfo.InvariantCulture)}",
             $"maximized={(Maximized ? 1 : 0)}",
             WindowBounds is { } r ? $"window={r.ToString(CultureInfo.InvariantCulture)}" : "",

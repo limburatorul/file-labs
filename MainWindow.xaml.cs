@@ -76,6 +76,7 @@ public partial class MainWindow : Window
 
         foreach (var d in DriveInfo.GetDrives().Where(d => d.IsReady))
             Drives.Children.Add(DriveButton(d));
+        BuildSidebar();
 
 
         active = Left;

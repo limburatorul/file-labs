@@ -93,15 +93,21 @@
         </StackPanel>
       </Button>
       <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,12">
-        <StackPanel>
-          <TextBlock Text="Quick access" Foreground="{StaticResource Muted}" FontSize="11" Margin="8,0,0,4"/>
+        <!-- Sections (Quick access / Favorites / Drives) are added by SidebarSections.cs, in the
+             order the user dragged them into; each one collapses and both are remembered. -->
+        <Grid>
+        <StackPanel x:Name="SidebarHost">
+          <!-- declared here so the code can find them by name; BuildSidebar moves each one into its section -->
           <StackPanel x:Name="QuickAccess"/>
           <TextBlock x:Name="QuickHint" Text="Ctrl+D pins a folder here" Foreground="#59FFFFFF" FontSize="11" Margin="8,2,0,0"/>
-          <TextBlock Text="Favorites" Foreground="{StaticResource Muted}" FontSize="11" Margin="8,14,0,4"/>
           <StackPanel x:Name="Favorites"/>
-          <TextBlock Text="Drives" Foreground="{StaticResource Muted}" FontSize="11" Margin="8,14,0,4"/>
           <StackPanel x:Name="Drives"/>
         </StackPanel>
+        <!-- drop position while reordering sections: drawn over the list, so it never moves anything -->
+        <Canvas IsHitTestVisible="False">
+          <Border x:Name="DropLine" Height="3" CornerRadius="1.5" Background="{StaticResource Accent}" Visibility="Collapsed"/>
+        </Canvas>
+        </Grid>
       </ScrollViewer>
     </DockPanel>
 
