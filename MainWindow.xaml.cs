@@ -571,7 +571,9 @@ public partial class MainWindow : Window
         {
             // tab shortcuts work from the filter/path box too
             if (ctrl && key is Key.W or Key.T) { if (key == Key.W) active.CloseTab(); else active.NewTab(); e.Handled = true; return; }
-            // Filter box: arrows/Enter/Esc hand control back to the list.
+            // Filter box only: arrows/Enter/Esc hand control back to the list. The path and rename
+            // boxes handle their own Enter/Esc.
+            if (((TextBox)e.OriginalSource).Name != "FilterBox") return;
             if (key is Key.Down or Key.Enter) { active.FocusList(); e.Handled = true; }
             else if (key == Key.Escape) { ((TextBox)e.OriginalSource).Clear(); active.FocusList(); e.Handled = true; }
             return;

@@ -679,7 +679,7 @@ public partial class PaneView : UserControl
     void Crumbs_Click(object s, MouseButtonEventArgs e) { if (e.OriginalSource is Border) EditPath(); }
     void PathBox_KeyDown(object s, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter) { EndEditPath(); Navigate(Environment.ExpandEnvironmentVariables(PathBox.Text)); List.Focus(); }
+        if (e.Key == Key.Enter) { EndEditPath(); Navigate(Environment.ExpandEnvironmentVariables(PathBox.Text.Trim().Trim('"'))); List.Focus(); }
         else if (e.Key == Key.Escape) { EndEditPath(); List.Focus(); }
     }
     void PathBox_Lost(object s, KeyboardFocusChangedEventArgs e) => EndEditPath();

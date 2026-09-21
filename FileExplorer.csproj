@@ -6,7 +6,7 @@
     <AssemblyName>FileLabs</AssemblyName>
     <Product>File Labs</Product>
     <Company>Protagonist Labs</Company>
-    <Version>1.0.6</Version>
+    <Version>1.0.7</Version>
     <!-- WPF windows without their own Icon use this one, so every window gets it -->
     <ApplicationIcon>app.ico</ApplicationIcon>
     <DefaultItemExcludes>$(DefaultItemExcludes);dist\**;installer\**</DefaultItemExcludes>
