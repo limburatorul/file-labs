@@ -166,7 +166,8 @@ public partial class PaneView : UserControl
         Loaded += (_, _) => SetView(Settings.Views.TryGetValue(Name, out var v) ? v : ViewMode.Details);
         List.GotKeyboardFocus += (_, _) => Activated?.Invoke();
         PreviewMouseDown += (_, _) => Activated?.Invoke(); // anywhere in the pane: tabs, path, list
-        List.MouseDoubleClick += (_, e) => { if (e.OriginalSource is FrameworkElement { DataContext: Entry }) OpenSelected(); };
+        // FindRow, not "OriginalSource is FrameworkElement": a double-click on the name lands on a Run
+        List.MouseDoubleClick += (_, e) => { if (FindRow(e.OriginalSource as DependencyObject) != null) OpenSelected(); };
         List.SelectionChanged += (_, _) => { if (bulkSelect) return; UpdateFooter(); StatsChanged?.Invoke(); };
         // Middle click, as in a browser: a folder opens in a tab behind this one, a tab closes.
         List.PreviewMouseDown += (_, e) =>
