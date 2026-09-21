@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -15,7 +16,54 @@ public partial class MainWindow
         ("quick",     "Quick access", "", (Panel)QuickAccess),
         ("favorites", "Favorites",    "", (Panel)Favorites),
         ("drives",    "Drives",       "", (Panel)Drives),
+        ("tree",      "Folders",      "", (Panel)FolderTree),
     };
+
+    // ---- Folders: Explorer's navigation tree, loaded one level at a time as branches open ----
+    void BuildFolderTree()
+    {
+        var tree = new TreeView { Background = Brushes.Transparent, BorderThickness = new(0), Foreground = Hex("#E8EEF6"), Margin = new(2, 0, 0, 0) };
+        foreach (var d in DriveInfo.GetDrives().Where(d => d.IsReady))
+            tree.Items.Add(TreeNode(d.Name, d.Name.TrimEnd('\\') + (d.VolumeLabel != "" ? "  " + d.VolumeLabel : "")));
+        FolderTree.Children.Add(tree);
+    }
+
+    TreeViewItem TreeNode(string path, string label)
+    {
+        var header = new StackPanel { Orientation = Orientation.Horizontal };
+        header.Children.Add(ShellIcon(path, "", 16, new(0, 0, 7, 0)));
+        header.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center });
+        var node = new TreeViewItem { Header = header, Tag = path, Foreground = Hex("#E8EEF6"), Padding = new(2, 3, 4, 3) };
+        node.Items.Add("…"); // placeholder so the expander shows; replaced on first open
+        node.Expanded += async (_, e) =>
+        {
+            e.Handled = true; // Expanded bubbles up to the parent nodes
+            if (node.Items.Count != 1 || node.Items[0] is not string) return;
+            var skip = Settings.ShowHidden ? FileAttributes.System : FileAttributes.Hidden | FileAttributes.System;
+            var subs = await Task.Run(() =>
+            {
+                try { return Directory.EnumerateDirectories(path, "*", new EnumerationOptions { IgnoreInaccessible = true, AttributesToSkip = skip }).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).Take(2000).ToList(); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return new List<string>(); }
+            });
+            node.Items.Clear();
+            foreach (var s in subs) node.Items.Add(TreeNode(s, Path.GetFileName(s)));
+        };
+        // clicking a row opens that folder in the active pane; the arrow only expands
+        node.Selected += (_, e) => { e.Handled = true; if (node.IsSelected) active.Navigate(path); };
+        node.PreviewMouseDown += (_, e) =>
+        {
+            if (e.ChangedButton != MouseButton.Middle || FindNode(e.OriginalSource as DependencyObject) != node) return;
+            active.OpenInBackgroundTab(path);
+            e.Handled = true;
+        };
+        return node;
+    }
+
+    static TreeViewItem FindNode(DependencyObject d)
+    {
+        while (d != null && d is not TreeViewItem) d = d is Visual ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
+        return d as TreeViewItem;
+    }
 
     void BuildSidebar()
     {

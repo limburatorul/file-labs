@@ -111,6 +111,14 @@ public partial class App : Application
             Run(j);
             Check(j.Phase == Phase.Cancelled, "cancel");
 
+            // Recycle Bin record ($I file, Windows 10+ layout): version 2, size, FILETIME, length, path
+            var when = new DateTime(2026, 9, 21, 7, 30, 0, DateTimeKind.Local);
+            var original = @"C:\Users\someone\Documents\report final.docx";
+            var info = Path.Combine(root, "$IABC123.docx");
+            File.WriteAllBytes(info, BitConverter.GetBytes(2L).Concat(BitConverter.GetBytes(12345L)).Concat(BitConverter.GetBytes(when.ToFileTime()))
+                .Concat(BitConverter.GetBytes(original.Length + 1)).Concat(System.Text.Encoding.Unicode.GetBytes(original + "\0")).ToArray());
+            Check(RecycleBinWindow.ParseInfo(info) is { } rec && rec.Path == original && rec.Size == 12345 && rec.Deleted == when, "recycle bin record");
+
             Console.WriteLine("selftest: all passed");
             return 0;
         }

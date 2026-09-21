@@ -102,6 +102,7 @@
           <TextBlock x:Name="QuickHint" Text="Ctrl+D pins a folder here" Foreground="#59FFFFFF" FontSize="11" Margin="8,2,0,0"/>
           <StackPanel x:Name="Favorites"/>
           <StackPanel x:Name="Drives"/>
+          <StackPanel x:Name="FolderTree"/>
         </StackPanel>
         <!-- drop position while reordering sections: drawn over the list, so it never moves anything -->
         <Canvas IsHitTestVisible="False">

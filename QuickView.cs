@@ -28,6 +28,16 @@ public partial class MainWindow
     static readonly HashSet<string> AudioExt = Set(".mp3", ".wav", ".wma", ".m4a", ".aac", ".flac", ".ogg", ".opus");
     static readonly HashSet<string> ZipExt = Set(".zip", ".jar", ".nupkg", ".apk", ".vsix", ".whl");
     static readonly HashSet<string> FontExt = Set(".ttf", ".otf");
+    // text formats better seen rendered than as source, when a preview handler exists for them
+    static readonly HashSet<string> RenderedExt = Set(".html", ".htm", ".mht", ".mhtml", ".svg", ".rtf", ".md");
+
+    // Windows' preview handler for the type (Office, HTML, mail, …), or null when there is none.
+    UIElement Handler(Entry e, int v)
+    {
+        var host = PreviewHost.For(e.Path);
+        if (host != null) host.Failed += msg => { if (v == quickVersion) quick.Content = Summary(e, msg); };
+        return host;
+    }
 
     void QuickView()
     {
@@ -80,8 +90,9 @@ public partial class MainWindow
                 ext.Equals(".pdf", StringComparison.OrdinalIgnoreCase) ? await PdfView(e.Path, v) :
                 ZipExt.Contains(ext) ? TextView(ZipListing(e.Path)) :
                 FontExt.Contains(ext) ? FontView(e.Path) :
+                RenderedExt.Contains(ext) && Handler(e, v) is { } rendered ? rendered :
                 ReadText(e.Path) is { } text ? TextView(text) :
-                TextView(HexDump(e.Path));
+                Handler(e, v) ?? TextView(HexDump(e.Path));
             if (v == quickVersion) quick.Content = content;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException

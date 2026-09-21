@@ -46,7 +46,7 @@ public partial class MainWindow : Window
             }
             Settings.Save();
         };
-        SourceInitialized += (_, _) => ApplyAcrylic(this);
+        SourceInitialized += (_, _) => { ApplyAcrylic(this); WatchShellChanges(); };
         StartUpdateChecks();
 
         foreach (var p in new[] { Left, Right })
@@ -68,6 +68,8 @@ public partial class MainWindow : Window
             ("", "Music", Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)),
             ("", "Videos", Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)) })
             if (Directory.Exists(path)) Favorites.Children.Add(SideButton(icon, name, path));
+        // the shell's parsing name for the Recycle Bin: only used here to fetch its real icon
+        Favorites.Children.Add(SideButton("", "Recycle Bin", "::{645FF040-5081-101B-9F08-00AA002F954E}", click: OpenRecycleBin));
 
         LoadQuickAccess();
         ApplyAppearance();
@@ -81,6 +83,7 @@ public partial class MainWindow : Window
 
         foreach (var d in DriveInfo.GetDrives().Where(d => d.IsReady))
             Drives.Children.Add(DriveButton(d));
+        BuildFolderTree();
         BuildSidebar();
 
 
@@ -130,6 +133,43 @@ public partial class MainWindow : Window
         DwmSetWindowAttribute(hwnd, 20, ref dark, sizeof(int));     // dark title bar
         DwmSetWindowAttribute(hwnd, 38, ref backdrop, sizeof(int)); // DWMWA_SYSTEMBACKDROP_TYPE: 1 none, 2 mica, 3 acrylic
     }
+
+    // Sync apps announce status changes through SHChangeNotify ("this item's icon changed"), which is
+    // how Explorer's badges update live. We listen for the same notices and let the panes re-ask.
+    const int WM_SHELLNOTIFY = 0x0400 + 0x51; // WM_USER-based, private to this window
+    const int SHCNE_ATTRIBUTES = 0x800, SHCNE_UPDATEDIR = 0x1000, SHCNE_UPDATEITEM = 0x2000;
+
+    void WatchShellChanges()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        HwndSource.FromHwnd(hwnd).AddHook(ShellNotify);
+        SHGetSpecialFolderLocation(IntPtr.Zero, 0 /* CSIDL_DESKTOP: everything below it */, out var desktop);
+        var entry = new SHChangeNotifyEntry { pidl = desktop, fRecursive = true };
+        SHChangeNotifyRegister(hwnd, 0x1000 | 0x8000 /* SHCNRF_ShellLevel | SHCNRF_NewDelivery */,
+            SHCNE_ATTRIBUTES | SHCNE_UPDATEDIR | SHCNE_UPDATEITEM, WM_SHELLNOTIFY, 1, ref entry);
+    }
+
+    IntPtr ShellNotify(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg != WM_SHELLNOTIFY) return IntPtr.Zero;
+        handled = true;
+        var lk = SHChangeNotification_Lock(wParam, (int)lParam, out var pidls, out _);
+        if (lk == IntPtr.Zero) return IntPtr.Zero;
+        string path = null;
+        var first = Marshal.ReadIntPtr(pidls);
+        var sb = new System.Text.StringBuilder(1024);
+        if (first != IntPtr.Zero && SHGetPathFromIDListEx(first, sb, sb.Capacity, 0)) path = sb.ToString();
+        SHChangeNotification_Unlock(lk);
+        if (!string.IsNullOrEmpty(path)) { Left.OverlayChanged(path); Right.OverlayChanged(path); }
+        return IntPtr.Zero;
+    }
+
+    [StructLayout(LayoutKind.Sequential)] struct SHChangeNotifyEntry { public IntPtr pidl; [MarshalAs(UnmanagedType.Bool)] public bool fRecursive; }
+    [DllImport("shell32.dll")] static extern uint SHChangeNotifyRegister(IntPtr hwnd, int sources, int events, int msg, int count, ref SHChangeNotifyEntry entry);
+    [DllImport("shell32.dll")] static extern IntPtr SHChangeNotification_Lock(IntPtr change, int processId, out IntPtr pidls, out int eventId);
+    [DllImport("shell32.dll")] static extern bool SHChangeNotification_Unlock(IntPtr lk);
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern bool SHGetPathFromIDListEx(IntPtr pidl, System.Text.StringBuilder path, int cch, int flags);
+    [DllImport("shell32.dll")] static extern int SHGetSpecialFolderLocation(IntPtr hwnd, int folder, out IntPtr pidl);
 
     // Appearance lives in Settings; this applies it to a window.
     public static Brush Tint() =>
@@ -234,7 +274,16 @@ public partial class MainWindow : Window
         cols[0].Width = cols[2].Width = new GridLength(1, GridUnitType.Star);
     }
 
-    Button SideButton(string icon, string text, string path, double? used = null)
+    RecycleBinWindow recycleBin;
+    void OpenRecycleBin()
+    {
+        if (recycleBin != null) { recycleBin.Activate(); return; }
+        recycleBin = new RecycleBinWindow(this, () => { Left.Refresh(); Right.Refresh(); });
+        recycleBin.Closed += (_, _) => recycleBin = null;
+        recycleBin.Show();
+    }
+
+    Button SideButton(string icon, string text, string path, double? used = null, Action click = null)
     {
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -253,8 +302,10 @@ public partial class MainWindow : Window
         }
         Grid.SetColumn(label, 1);
         grid.Children.Add(label);
-        var b = new Button { Content = grid, Style = (Style)FindResource("Side"), HorizontalContentAlignment = HorizontalAlignment.Stretch, Margin = new(0, 1, 0, 1), ToolTip = path };
+        var b = new Button { Content = grid, Style = (Style)FindResource("Side"), HorizontalContentAlignment = HorizontalAlignment.Stretch, Margin = new(0, 1, 0, 1), ToolTip = click == null ? path : text };
+        if (click != null) { b.Click += (_, _) => click(); return b; }
         b.Click += (_, _) => { active.Navigate(path); active.FocusList(); };
+        b.PreviewMouseDown += (_, e) => { if (e.ChangedButton == MouseButton.Middle) { active.OpenInBackgroundTab(path); e.Handled = true; } };
         return b;
     }
 
@@ -287,6 +338,7 @@ public partial class MainWindow : Window
         g.Children.Add(icon); g.Children.Add(name); g.Children.Add(size); g.Children.Add(bar);
         var b = new Button { Content = g, Style = (Style)FindResource("Side"), HorizontalContentAlignment = HorizontalAlignment.Stretch, Margin = new(0, 1, 0, 1), ToolTip = $"{d.Name}  {d.DriveFormat}  ·  {Fmt(d.AvailableFreeSpace)} free" };
         b.Click += (_, _) => { active.Navigate(d.Name); active.FocusList(); };
+        b.PreviewMouseDown += (_, e) => { if (e.ChangedButton == MouseButton.Middle) { active.OpenInBackgroundTab(d.Name); e.Handled = true; } };
         return b;
     }
 
@@ -393,9 +445,21 @@ public partial class MainWindow : Window
         UpdateStats();
     }
 
+    string publishedFolder;
+
     void UpdateStats()
     {
         if (active?.Dir is not { Length: > 0 } dir) return;
+        Status.Text = dir;
+        bool bareServer = dir.StartsWith(@"\\") && !dir.Trim('\\').Contains('\\'); // not a folder a dialog can open
+        if (dir != publishedFolder && !bareServer)
+        {
+            // for Ctrl+G in Open/Save dialogs (Agent.cs)
+            publishedFolder = dir;
+            using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(Agent.StateKey);
+            key.SetValue("CurrentFolder", dir);
+        }
+        if (dir.StartsWith(@"\\")) return; // DriveInfo only takes drive letters; a UNC path threw here
         var d = new DriveInfo(Path.GetPathRoot(dir));
         if (!d.IsReady) return;
         StatTotal.Text = Fmt(d.TotalSize);
@@ -414,11 +478,13 @@ public partial class MainWindow : Window
 
     void Transfer(bool move) => Submit(active.Selected.Select(e => e.Path).ToList(), Other.Dir, move);
 
-    void Submit(List<string> sources, string dest, bool move)
+    Job Submit(List<string> sources, string dest, bool move)
     {
-        if (sources.Count == 0) return;
-        jobs.Insert(0, Ferry.Submit(sources, dest, move));
+        if (sources.Count == 0) return null;
+        var job = Ferry.Submit(sources, dest, move);
+        jobs.Insert(0, job);
         jobTimer.Start();
+        return job;
     }
 
     readonly System.Windows.Threading.DispatcherTimer jobTimer = new() { Interval = TimeSpan.FromMilliseconds(100) };
@@ -431,6 +497,7 @@ public partial class MainWindow : Window
     void JobDone(Job job) => Dispatcher.BeginInvoke(() =>
     {
         job.Refresh();
+        RememberJob(job);
         Left.Refresh(); Right.Refresh();
     });
 
@@ -465,10 +532,23 @@ public partial class MainWindow : Window
         if (move) { Clipboard.Clear(); PaneView.SetCut(Array.Empty<string>(), Left, Right); } // a cut is pasted once, like Explorer
     }
 
-    void Delete()
+    // Shift+Delete skips the Recycle Bin. Always asked first: the shell only confirms when the user has
+    // switched its delete confirmation on (off by default), and this one can't be taken back.
+    void Delete(bool permanent = false)
     {
         var sel = active.Selected;
         if (sel.Count == 0) return;
+        if (permanent && MessageBox.Show(this,
+                $"Permanently delete {(sel.Count == 1 ? $"“{sel[0].Name}”" : $"these {sel.Count} items")}?\n\nThey will not go to the Recycle Bin.",
+                "Delete permanently", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        Recycle(sel.Select(e => e.Path).ToList(), UIOption.AllDialogs, permanent);
+    }
+
+    /// Deletes through the shell, to the Recycle Bin unless `permanent`. Also used by Undo, quietly.
+    void Recycle(List<string> paths, UIOption ui, bool permanent = false)
+    {
+        if (paths.Count == 0) return;
+        var how = permanent ? RecycleOption.DeletePermanently : RecycleOption.SendToRecycleBin;
         // The Windows delete/recycle dialog runs its own loop on the calling thread and doesn't return
         // until it's done, so it gets a thread of its own (STA, as the shell dialog needs); the window
         // stays responsive and refreshes when the delete finishes. The watcher shows progress meanwhile.
@@ -477,9 +557,9 @@ public partial class MainWindow : Window
             string error = null;
             try
             {
-                foreach (var e in sel)
-                    if (e.IsDir) VbFs.DeleteDirectory(e.Path, UIOption.AllDialogs, RecycleOption.SendToRecycleBin, UICancelOption.ThrowException);
-                    else VbFs.DeleteFile(e.Path, UIOption.AllDialogs, RecycleOption.SendToRecycleBin, UICancelOption.ThrowException);
+                foreach (var p in paths)
+                    if (Directory.Exists(p)) VbFs.DeleteDirectory(p, ui, how, UICancelOption.ThrowException);
+                    else if (File.Exists(p)) VbFs.DeleteFile(p, ui, how, UICancelOption.ThrowException);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { error = ex.Message; }
@@ -493,11 +573,22 @@ public partial class MainWindow : Window
         t.Start();
     }
 
+    // Num+ / Num-: select or deselect by pattern, pre-filled with the selected file's extension.
+    void SelectByPattern(bool select)
+    {
+        var ext = active.List.SelectedItem is Entry { IsDir: false } cur ? Path.GetExtension(cur.Name) : "";
+        var pattern = PromptDialog.Ask(this, select ? "Select" : "Deselect", "Files matching (several: *.jpg;*.png)", ext == "" ? "*.*" : "*" + ext, select ? "Select" : "Deselect", selectAll: true);
+        if (pattern != null) active.SelectMatching(pattern, select);
+    }
+
     void MkDir()
     {
         var name = PromptDialog.Ask(this, "New folder", "Folder name", "New folder", "Create");
         if (name == null) return;
-        Run(() => Directory.CreateDirectory(Path.Combine(active.Dir, name)));
+        var path = Path.Combine(active.Dir, name);
+        bool existed = Directory.Exists(path);
+        if (Run(() => Directory.CreateDirectory(path)) && !existed)
+            Remember($"new folder {name}", () => Directory.Delete(path)); // only while still empty: Delete refuses otherwise
         active.Navigate(active.Dir, name, record: false);
     }
 
@@ -508,23 +599,31 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() != true) return;
         string created = null;
         Run(() => created = dialog.Create(active.Dir));
-        if (created != null) active.Navigate(active.Dir, created, record: false);
+        if (created == null) return;
+        var path = Path.Combine(active.Dir, created);
+        Remember($"new file {created}", () => Recycle(new() { path }, UIOption.OnlyErrorDialogs));
+        active.Navigate(active.Dir, created, record: false);
     }
 
-    void Rename() => active.BeginRename();
+    void Rename() { if (active.Selected.Count > 1) RenameMany(); else active.BeginRename(); }
 
     void RenameCommitted(PaneView pane, Entry entry, string name)
     {
-        Run(() => { if (entry.IsDir) VbFs.RenameDirectory(entry.Path, name); else VbFs.RenameFile(entry.Path, name); });
-        pane.Navigate(pane.Dir, name, record: false);
+        var renamed = Path.Combine(Path.GetDirectoryName(entry.Path), name);
+        if (Run(() => RenamePath(entry.Path, name))) Remember($"rename to {name}", () => RenamePath(renamed, entry.Name));
+        if (pane.InSearch) pane.Refresh();
+        else pane.Navigate(pane.Dir, name, record: false);
     }
 
-    void Run(Action a)
+    /// Runs a file operation, shows its error if it fails, refreshes both panes. True when it worked.
+    bool Run(Action a)
     {
-        try { a(); }
+        bool ok = false;
+        try { a(); ok = true; }
         catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { MessageBox.Show(this, ex.Message, "Error"); }
         Left.Refresh(); Right.Refresh();
+        return ok;
     }
 
     void OpenTerminal()
@@ -573,9 +672,10 @@ public partial class MainWindow : Window
             if (ctrl && key is Key.W or Key.T) { if (key == Key.W) active.CloseTab(); else active.NewTab(); e.Handled = true; return; }
             // Filter box only: arrows/Enter/Esc hand control back to the list. The path and rename
             // boxes handle their own Enter/Esc.
-            if (((TextBox)e.OriginalSource).Name != "FilterBox") return;
-            if (key is Key.Down or Key.Enter) { active.FocusList(); e.Handled = true; }
-            else if (key == Key.Escape) { ((TextBox)e.OriginalSource).Clear(); active.FocusList(); e.Handled = true; }
+            if (e.OriginalSource is not TextBox { Name: "FilterBox" } filter) return;
+            if (key == Key.Enter && filter.Text.Trim() is { Length: > 0 } query) { active.Search(query); active.FocusList(); e.Handled = true; }
+            else if (key is Key.Down or Key.Enter) { active.FocusList(); e.Handled = true; }
+            else if (key == Key.Escape) { active.ClearFilter(); active.FocusList(); e.Handled = true; }
             return;
         }
 
@@ -607,13 +707,20 @@ public partial class MainWindow : Window
             case Key.Up when alt: case Key.Back: active.Up(); break;
             case Key.Space: QuickView(); break;
             case Key.Enter: case Key.F3: active.OpenSelected(); break;
+            case Key.F2 when shift: ComparePanes(); break;
             case Key.F2: Rename(); break;
+            case Key.Z when ctrl: Undo(); break;
             case Key.F5: Transfer(false); break;
             case Key.F6: Transfer(true); break;
             case Key.F7: MkDir(); break;
             case Key.N when ctrl && shift: MkDir(); break;
             case Key.N when ctrl: NewFile(); break;
+            case Key.Delete when shift: case Key.F8 when shift: Delete(permanent: true); break;
             case Key.F8: case Key.Delete: Delete(); break;
+            case Key.Escape when active.InSearch: active.ClearFilter(); break;
+            case Key.Add: SelectByPattern(true); break;
+            case Key.Subtract: SelectByPattern(false); break;
+            case Key.Multiply: active.InvertSelection(); break;
             default: return;
         }
         e.Handled = true;

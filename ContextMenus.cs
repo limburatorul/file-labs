@@ -4,7 +4,6 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using Microsoft.VisualBasic;
 
 namespace FileExplorer;
 
@@ -49,15 +48,21 @@ public partial class MainWindow
     {
         var first = sel[0];
         bool one = sel.Count == 1, dir = one && first.IsDir;
+        var ext = Path.GetExtension(first.Name);
         var m = new ContextMenu();
         m.Items.Add(Item("Open", "", "Enter", () => p.OpenSelected()));
         if (dir)
         {
-            m.Items.Add(Item("Open in new tab", "", "", () => { p.NewTab(); p.Navigate(first.Path); }));
+            m.Items.Add(Item("Open in new tab", "", "Middle click", () => { p.NewTab(); p.Navigate(first.Path); }));
             m.Items.Add(Item("Open in other pane", "", "", () => Other.Navigate(first.Path)));
         }
         else if (one)
+        {
             m.Items.Add(Item("Open with…", "", "", () => Process.Start("rundll32.exe", $"shell32.dll,OpenAs_RunDLL {first.Path}")));
+            if (Runnable.Contains(ext)) m.Items.Add(Item("Run as administrator", "", "", () => RunAsAdmin(first.Path)));
+        }
+        if (p.InSearch && one)
+            m.Items.Add(Item("Open file location", "", "", () => { p.Navigate(Path.GetDirectoryName(first.Path), first.Name); p.FocusList(); }));
         if (NotepadPlusPlus is { } npp && sel.Any(x => !x.IsDir))
             m.Items.Add(Item("Edit with Notepad++", "", "", () =>
                 Process.Start(npp, string.Join(" ", sel.Where(x => !x.IsDir).Select(x => $"\"{x.Path}\"")))));
@@ -71,8 +76,18 @@ public partial class MainWindow
         m.Items.Add(new Separator());
         m.Items.Add(Item("Copy path", "", "Ctrl+Shift+C", () => Clipboard.SetText(string.Join(Environment.NewLine, sel.Select(x => x.Path)))));
         m.Items.Add(Item("Copy name", "", "", () => Clipboard.SetText(string.Join(Environment.NewLine, sel.Select(x => x.Name)))));
-        m.Items.Add(Item("Rename", "", "F2", Rename, one));
-        m.Items.Add(Item("Delete", "", "Del", Delete));
+        m.Items.Add(one ? Item("Rename", "", "F2", Rename) : Item("Rename all…", "", "F2", RenameMany));
+        m.Items.Add(Item("Delete", "", "Del", () => Delete()));
+        m.Items.Add(Item("Delete permanently", "", "Shift+Del", () => Delete(permanent: true)));
+        m.Items.Add(new Separator());
+        m.Items.Add(Item("Compress to ZIP", "", "", Compress));
+        if (one && ZipExt.Contains(ext))
+        {
+            m.Items.Add(Item("Extract here", "", "", () => Extract(first, toFolder: false)));
+            m.Items.Add(Item($"Extract to {Path.GetFileNameWithoutExtension(first.Name)}\\", "", "", () => Extract(first, toFolder: true)));
+        }
+        if (one && !dir) m.Items.Add(Item("Checksum (SHA-256)", "", "", () => Checksum(first)));
+        m.Items.Add(Item("Create shortcut", "", "", CreateShortcuts));
         m.Items.Add(new Separator());
         if (sel.Any(x => x.IsDir)) m.Items.Add(Item("Pin to Quick access", "", "Ctrl+D", PinSelected));
         m.Items.Add(Item("Show in File Explorer", "", "", () => Process.Start("explorer.exe", $"/select,\"{first.Path}\"")));
@@ -84,13 +99,18 @@ public partial class MainWindow
     ContextMenu FolderMenu(PaneView p)
     {
         var m = new ContextMenu();
+        if (undo.Count > 0) m.Items.Add(Item($"Undo {undo[^1].What}", "", "Ctrl+Z", Undo));
         m.Items.Add(Item("Paste", "", "Ctrl+V", ClipboardPaste, Clipboard.ContainsFileDropList()));
         m.Items.Add(new Separator());
         m.Items.Add(Item("New folder", "", "Ctrl+Shift+N", MkDir));
         m.Items.Add(Item("New file…", "", "Ctrl+N", NewFile));
         m.Items.Add(new Separator());
+        m.Items.Add(Item("Select by pattern…", "", "Num +", () => SelectByPattern(true)));
+        m.Items.Add(Item("Invert selection", "", "Num *", p.InvertSelection));
+        m.Items.Add(Item("Compare with other pane", "", "Shift+F2", ComparePanes));
+        m.Items.Add(new Separator());
         m.Items.Add(Item("Refresh", "", "Ctrl+R", () => { SizeCache.Clear(); p.Refresh(); }));
-        m.Items.Add(Item(Settings.ShowHidden ? "Hide hidden files" : "Show hidden files", "", "Ctrl+H", ToggleHidden));
+        m.Items.Add(Item(Settings.ShowHidden ? "Hide hidden files" : "Show hidden files", "", "Ctrl+H", ToggleHidden));
         m.Items.Add(Item("Pin to Quick access", "", "Ctrl+D", PinSelected));
         m.Items.Add(Item("Open terminal here", "", "Ctrl+`", OpenTerminal));
         m.Items.Add(Item("Open in File Explorer", "", "", () => Process.Start("explorer.exe", $"\"{p.Dir}\"")));

@@ -1,0 +1,91 @@
+<Window x:Class="FileExplorer.MultiRenameDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Rename" Width="680" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Background="Transparent"
+        Foreground="#E8EEF6" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12">
+  <Window.Resources>
+    <Style x:Key="Field" TargetType="Border">
+      <Setter Property="Background" Value="#12FFFFFF"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="Padding" Value="9,6"/>
+      <Setter Property="BorderBrush" Value="#2EFFFFFF"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Margin" Value="0,0,0,10"/>
+    </Style>
+    <Style x:Key="Caption" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="#8A97AA"/>
+      <Setter Property="Margin" Value="2,0,0,5"/>
+    </Style>
+  </Window.Resources>
+  <Grid x:Name="Root" Background="#B30A0D13">
+    <StackPanel Margin="18,16,18,14">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="2*"/>
+          <ColumnDefinition Width="12"/>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="12"/>
+          <ColumnDefinition Width="80"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock Style="{StaticResource Caption}" Text="Name  ·  [N] name  [C] counter"/>
+          <Border Style="{StaticResource Field}"><TextBox x:Name="NameBox" Style="{StaticResource Bare}" FontSize="13" Text="[N]" TextChanged="Changed"/></Border>
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+          <TextBlock Style="{StaticResource Caption}" Text="Extension  ·  [E]"/>
+          <Border Style="{StaticResource Field}"><TextBox x:Name="ExtBox" Style="{StaticResource Bare}" FontSize="13" Text="[E]" TextChanged="Changed"/></Border>
+        </StackPanel>
+        <StackPanel Grid.Column="4">
+          <TextBlock Style="{StaticResource Caption}" Text="Counter from"/>
+          <Border Style="{StaticResource Field}"><TextBox x:Name="StartBox" Style="{StaticResource Bare}" FontSize="13" Text="1" TextChanged="Changed"/></Border>
+        </StackPanel>
+      </Grid>
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="12"/>
+          <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock Style="{StaticResource Caption}" Text="Find"/>
+          <Border Style="{StaticResource Field}"><TextBox x:Name="FindBox" Style="{StaticResource Bare}" FontSize="13" TextChanged="Changed"/></Border>
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+          <TextBlock Style="{StaticResource Caption}" Text="Replace with"/>
+          <Border Style="{StaticResource Field}"><TextBox x:Name="ReplaceBox" Style="{StaticResource Bare}" FontSize="13" TextChanged="Changed"/></Border>
+        </StackPanel>
+      </Grid>
+
+      <!-- before → after, live -->
+      <Border Background="#40000000" CornerRadius="6" Padding="10,6">
+        <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
+          <ItemsControl x:Name="Preview">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,2">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition Width="28"/>
+                    <ColumnDefinition/>
+                  </Grid.ColumnDefinitions>
+                  <TextBlock Text="{Binding Old}" Foreground="#8A97AA" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Grid.Column="1" Text="&#xE72A;" FontFamily="Segoe Fluent Icons" FontSize="10" Foreground="#59FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="2" Text="{Binding New}" Foreground="{Binding Brush}" TextTrimming="CharacterEllipsis"/>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Border>
+
+      <DockPanel Margin="0,14,0,0">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <Button Content="Cancel" Style="{StaticResource Tab}" Padding="14,6" Margin="0,0,6,0" Click="Cancel_Click"/>
+          <Button x:Name="OkButton" Content="Rename" Style="{StaticResource Tab}" Tag="on" Padding="16,6" Click="Ok_Click"/>
+        </StackPanel>
+        <TextBlock x:Name="Problem" Foreground="#F87171" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+      </DockPanel>
+    </StackPanel>
+  </Grid>
+</Window>

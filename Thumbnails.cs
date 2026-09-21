@@ -53,6 +53,62 @@ public static class Thumbnails
         return src;
     }
 
+    // ---- icon overlays: the sync badges of Google Drive, Nextcloud, Dropbox etc., as in Explorer ----
+    // Those apps register shell icon overlay handlers; the shell asks each one whether a file is
+    // theirs and reports the winning overlay's number. The badge picture lives in the system image list.
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<int, BitmapSource> overlays = new();
+
+    /// The overlay badge Explorer would draw on this item (a full icon-sized image, badge in the
+    /// corner), or null. Call from an STA thread: the shell runs the apps' handlers on it.
+    public static BitmapSource Overlay(string path)
+    {
+        var fi = new SHFILEINFO();
+        if (SHGetFileInfo(path, 0, ref fi, (uint)Marshal.SizeOf<SHFILEINFO>(), SHGFI_ICON | SHGFI_SMALLICON | SHGFI_OVERLAYINDEX) == IntPtr.Zero) return null;
+        if (fi.hIcon != IntPtr.Zero) DestroyIcon(fi.hIcon);
+        int overlay = (fi.iIcon >> 24) & 0xFF;
+        if (overlay == 0) return null;
+        return overlays.GetOrAdd(overlay, n =>
+        {
+            var iid = typeof(IImageList).GUID;
+            if (SHGetImageList(SHIL_EXTRALARGE, ref iid, out var list) != 0 || list.GetOverlayImage(n, out int image) != 0
+                || list.GetIcon(image, ILD_TRANSPARENT, out var icon) != 0) return null;
+            try
+            {
+                var bmp = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(icon, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                bmp.Freeze();
+                return bmp;
+            }
+            finally { DestroyIcon(icon); }
+        });
+    }
+
+    const uint SHGFI_ICON = 0x100, SHGFI_SMALLICON = 0x1, SHGFI_OVERLAYINDEX = 0x40;
+    const int SHIL_EXTRALARGE = 2, ILD_TRANSPARENT = 1; // 48 px: scaled down for rows, crisp enough on tiles
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct SHFILEINFO
+    {
+        public IntPtr hIcon; public int iIcon; public uint dwAttributes;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)] public string szDisplayName;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)] public string szTypeName;
+    }
+
+    // Only GetIcon and GetOverlayImage are called; the rest hold their places in the vtable.
+    [ComImport, Guid("46EB5926-582E-4017-9FDF-E8998DAA0950"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IImageList
+    {
+        void Add(); void ReplaceIcon(); void SetOverlayImage(); void Replace(); void AddMasked(); void Draw(); void Remove();
+        [PreserveSig] int GetIcon(int i, int flags, out IntPtr icon);
+        void GetImageInfo(); void Copy(); void Merge(); void Clone(); void GetImageRect(); void GetIconSize(); void SetIconSize();
+        void GetImageCount(); void SetImageCount(); void SetBkColor(); void GetBkColor(); void BeginDrag(); void EndDrag();
+        void DragEnter(); void DragLeave(); void DragMove(); void SetDragCursorImage(); void DragShowNolock(); void GetDragImage(); void GetItemFlags();
+        [PreserveSig] int GetOverlayImage(int overlay, out int index);
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern IntPtr SHGetFileInfo(string path, uint attrs, ref SHFILEINFO fi, uint size, uint flags);
+    [DllImport("shell32.dll")] static extern int SHGetImageList(int list, ref Guid iid, out IImageList imageList);
+    [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr h);
+
     const int SIIGBF_RESIZETOFIT = 0, SIIGBF_ICONONLY = 0x4;
 
     [StructLayout(LayoutKind.Sequential)] struct SIZE { public int cx, cy; }

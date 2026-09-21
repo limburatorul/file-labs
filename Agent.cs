@@ -67,6 +67,17 @@ public static class Agent
                 return (IntPtr)1;
             }
             if (vk == VK_E && !down && swallowUp) { swallowUp = false; return (IntPtr)1; }
+
+            // Ctrl+G in an Open/Save dialog: jump it to the folder File Labs is showing (Listary's
+            // "quick switch"). Only the cheap checks happen here; the dialog is driven afterwards.
+            if (vk == VK_G && down && Held(VK_CONTROL) && !Held(VK_MENU) && !Held(VK_SHIFT) && !WinHeld()
+                && FileNameBox(GetForegroundWindow()) is var (dialog, box) && box != IntPtr.Zero && CurrentFolder() is { } folder)
+            {
+                swallowG = true;
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(() => QuickSwitch(dialog, box, folder));
+                return (IntPtr)1;
+            }
+            if (vk == VK_G && !down && swallowG) { swallowG = false; return (IntPtr)1; }
         }
         return CallNextHookEx(hook, code, wParam, lParam);
     }
@@ -81,6 +92,46 @@ public static class Agent
         catch (System.ComponentModel.Win32Exception) { } // exe gone (e.g. mid-uninstall): nothing to open
     }
 
+    // ---- quick switch ----
+    static bool swallowG;
+    public const string StateKey = @"Software\Protagonist Labs\File Labs";
+
+    /// The folder in File Labs' active pane, which the app writes whenever it changes.
+    static string CurrentFolder()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(StateKey);
+        return key?.GetValue("CurrentFolder") is string s && s != "" ? s : null;
+    }
+
+    /// For a common Open/Save dialog: the dialog and its file-name edit box (control 1148 or inside it).
+    static (IntPtr Dialog, IntPtr Box) FileNameBox(IntPtr window)
+    {
+        var cls = new System.Text.StringBuilder(64);
+        if (window == IntPtr.Zero || GetClassName(window, cls, cls.Capacity) == 0 || cls.ToString() != "#32770") return (window, IntPtr.Zero);
+        IntPtr found = IntPtr.Zero;
+        EnumChildWindows(window, (child, _) =>
+        {
+            var c = new System.Text.StringBuilder(64);
+            GetClassName(child, c, c.Capacity);
+            if (c.ToString() != "Edit") return true;
+            for (var h = child; h != IntPtr.Zero && h != window; h = GetParent(h))
+                if (GetDlgCtrlID(h) == 1148) { found = child; return false; }
+            return true;
+        }, IntPtr.Zero);
+        return (window, found);
+    }
+
+    // Typing a folder into the file name box and pressing Open makes the dialog go there instead of
+    // opening anything. The name that was in the box (a Save dialog's file name) is put back after.
+    static void QuickSwitch(IntPtr dialog, IntPtr box, string folder)
+    {
+        var old = new System.Text.StringBuilder(1024);
+        SendMessage(box, WM_GETTEXT, (IntPtr)old.Capacity, old);
+        SendMessage(box, WM_SETTEXT, IntPtr.Zero, new System.Text.StringBuilder(folder));
+        SendMessage(dialog, WM_COMMAND, (IntPtr)1 /* IDOK */, IntPtr.Zero);
+        SendMessage(box, WM_SETTEXT, IntPtr.Zero, old);
+    }
+
     static bool WinHeld() => Held(VK_LWIN) || Held(VK_RWIN);
     static bool Held(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
 
@@ -92,6 +143,16 @@ public static class Agent
         inputs[1].ki.dwFlags = 2; // key up
         SendInput(2, inputs, Marshal.SizeOf<INPUT>());
     }
+
+    const int WM_GETTEXT = 0x0D, WM_SETTEXT = 0x0C, WM_COMMAND = 0x111, VK_G = 0x47;
+    delegate bool EnumProc(IntPtr h, IntPtr l);
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
+    [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr parent, EnumProc proc, IntPtr l);
+    [DllImport("user32.dll")] static extern IntPtr GetParent(IntPtr h);
+    [DllImport("user32.dll")] static extern int GetDlgCtrlID(IntPtr h);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr SendMessage(IntPtr h, int msg, IntPtr w, System.Text.StringBuilder l);
+    [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr h, int msg, IntPtr w, IntPtr l);
 
     const int WH_KEYBOARD_LL = 13, VK_E = 0x45, VK_LWIN = 0x5B, VK_RWIN = 0x5C, VK_CONTROL = 0x11, VK_MENU = 0x12, VK_SHIFT = 0x10;
     static readonly IntPtr WM_KEYDOWN = (IntPtr)0x100, WM_SYSKEYDOWN = (IntPtr)0x104;
