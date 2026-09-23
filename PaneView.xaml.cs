@@ -27,6 +27,7 @@ public class Entry : INotifyPropertyChanged
     ImageSource thumb;
     public ImageSource Thumb { get => thumb; set { thumb = value; Changed(nameof(Thumb)); Changed(nameof(NoThumb)); } }
     public bool NoThumb => thumb == null;
+    public int ThumbSize; // what it was fetched at, so zooming in knows when a bigger one is needed
     ImageSource smallIcon;
     public ImageSource SmallIcon { get => smallIcon; set { smallIcon = value; Changed(nameof(SmallIcon)); Changed(nameof(NoSmallIcon)); } }
     public bool NoSmallIcon => smallIcon == null;
@@ -1184,6 +1185,10 @@ public partial class PaneView : UserControl
         ViewIcon.Text = m.glyph; ViewName.Text = m.name;
         Settings.Views[Name] = mode;
         var sel = List.SelectedItem;
+        // Template, item style and panel are three separate changes, and the list would rebuild its
+        // containers after each one. Detached from its items it rebuilds once, when they come back.
+        var source = List.ItemsSource;
+        List.ItemsSource = null;
         if (mode == ViewMode.Details)
         {
             List.View = details;
@@ -1201,26 +1206,49 @@ public partial class PaneView : UserControl
             var style = new Style(typeof(ListViewItem), (Style)FindResource(list ? "ListViewItem.Plain" : "TileItem"));
             if (!list) style.Setters.Add(new Setter(WidthProperty, m.size + 28.0));
             List.ItemContainerStyle = style;
-            // List flows top→bottom then sideways; icons wrap left→right then down
-            var panel = new FrameworkElementFactory(typeof(WrapPanel));
-            panel.SetValue(WrapPanel.OrientationProperty, list ? Orientation.Vertical : Orientation.Horizontal);
+            // List flows top→bottom then sideways; icons wrap left→right then down. The panel only
+            // builds the tiles on screen — a WrapPanel built all 5 000 of them and froze the window.
+            var panel = new FrameworkElementFactory(typeof(TileVirtualizer));
+            panel.SetValue(TileVirtualizer.OrientationProperty, list ? Orientation.Vertical : Orientation.Horizontal);
+            panel.SetValue(TileVirtualizer.TileWidthProperty, list ? 246.0 : m.size + 32.0);
+            panel.SetValue(TileVirtualizer.TileHeightProperty, list ? 24.0 : m.size + 62.0);
             List.ItemsPanel = new ItemsPanelTemplate(panel);
             ScrollViewer.SetHorizontalScrollBarVisibility(List, list ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled);
             ScrollViewer.SetVerticalScrollBarVisibility(List, list ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto);
             StartThumbs();
         }
         if (mode == ViewMode.Details) ScrollViewer.SetVerticalScrollBarVisibility(List, ScrollBarVisibility.Auto);
+        List.ItemsSource = source;
         List.SelectedItem = sel;
         if (sel != null) List.ScrollIntoView(sel);
+        FadeInList(); // the rows come back in one go; the fade covers the reflow
     }
 
     // Details ← List ← M ← L ← XL: the same five modes as Ctrl+Shift+1…5, from smallest to largest.
     static readonly ViewMode[] ZoomOrder = { ViewMode.Details, ViewMode.List, ViewMode.IconsM, ViewMode.IconsL, ViewMode.IconsXL };
 
+    // A wheel spin arrives as a burst of notches. Applying each one rebuilds the whole list, which is
+    // what made zooming look like a slideshow, so the notches are added up and applied once.
+    int zoomSteps;
+    DispatcherTimer zoomTimer;
+
     public void Zoom(int step)
     {
-        int next = Math.Clamp(Array.IndexOf(ZoomOrder, Mode) + step, 0, ZoomOrder.Length - 1);
-        if (ZoomOrder[next] != Mode) SetView(ZoomOrder[next]);
+        zoomSteps += step;
+        zoomTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(90) };
+        if (zoomTimer.Tag == null)
+        {
+            zoomTimer.Tag = "hooked";
+            zoomTimer.Tick += (_, _) =>
+            {
+                zoomTimer.Stop();
+                int next = Math.Clamp(Array.IndexOf(ZoomOrder, Mode) + zoomSteps, 0, ZoomOrder.Length - 1);
+                zoomSteps = 0;
+                if (ZoomOrder[next] != Mode) SetView(ZoomOrder[next]);
+            };
+        }
+        zoomTimer.Stop();
+        zoomTimer.Start();
     }
 
     void ViewButton_Click(object s, RoutedEventArgs e)
@@ -1319,16 +1347,18 @@ public partial class PaneView : UserControl
         thumbs?.Cancel();
         if (Mode is ViewMode.Details or ViewMode.List) return;
         var cts = thumbs = new CancellationTokenSource();
-        int size = (int)Math.Min(256, Modes.First(x => x.mode == Mode).size * 1.5);
+        // Two sizes only, not one per mode: zooming between L and XL then costs no new thumbnails, and
+        // an image already fetched at a larger size is kept instead of being asked for again.
+        int size = Mode == ViewMode.IconsM ? 128 : 256;
         var todo = view?.Cast<Entry>().Where(e => !e.IsUp).Take(3000).ToList() ?? new();
         var t = new Thread(() =>
         {
             foreach (var e in todo)
             {
                 if (cts.IsCancellationRequested) return;
-                if (e.Thumb != null) continue;
+                if (e.Thumb != null && e.ThumbSize >= size) continue; // the one we have is big enough
                 var img = Thumbnails.Get(e.Path, size, stamp: e.Modified.Ticks);
-                if (img != null) Dispatcher.BeginInvoke(() => e.Thumb = img);
+                if (img != null) Dispatcher.BeginInvoke(() => { e.ThumbSize = size; e.Thumb = img; });
             }
         }) { IsBackground = true };
         t.SetApartmentState(ApartmentState.STA);
