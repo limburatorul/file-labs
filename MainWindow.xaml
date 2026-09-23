@@ -1,4 +1,4 @@
-<Window x:Class="FileExplorer.MainWindow"
+﻿<Window x:Class="FileExplorer.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FileExplorer"
@@ -22,7 +22,22 @@
     </Style>
     <!-- One Ferry job: progress, speed/ETA, pause/cancel, and the conflict decision inline -->
     <DataTemplate x:Key="JobCard">
-      <Border Background="#0DFFFFFF" BorderBrush="#16FFFFFF" BorderThickness="1" CornerRadius="10" Padding="12,9" Margin="0,0,0,6">
+      <Border Background="#0DFFFFFF" BorderBrush="#16FFFFFF" BorderThickness="1" CornerRadius="10" Padding="12,9" Margin="0,0,0,6"
+              RenderTransformOrigin="0.5,0.5">
+        <!-- a new transfer slides up into place instead of appearing under the panes -->
+        <Border.RenderTransform><TranslateTransform/></Border.RenderTransform>
+        <Border.Triggers>
+          <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+            <BeginStoryboard>
+              <Storyboard>
+                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.18"/>
+                <DoubleAnimation Storyboard.TargetProperty="RenderTransform.Y" From="10" To="0" Duration="0:0:0.18">
+                  <DoubleAnimation.EasingFunction><QuadraticEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                </DoubleAnimation>
+              </Storyboard>
+            </BeginStoryboard>
+          </EventTrigger>
+        </Border.Triggers>
         <StackPanel>
           <DockPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -92,6 +107,14 @@
           <TextBlock Text="Settings"/>
         </StackPanel>
       </Button>
+      <!-- docked after Settings, so it sits just above it -->
+      <Button x:Name="UpdateButton" DockPanel.Dock="Bottom" Style="{StaticResource Side}" Margin="8,4,8,0" Click="CheckUpdates_Click"
+              ToolTip="Check for updates now (it also checks by itself every 10 minutes)">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="&#xE895;" FontFamily="Segoe Fluent Icons" Foreground="{StaticResource Muted}" Margin="0,2,10,0"/>
+          <TextBlock x:Name="UpdateButtonText" Text="Check for updates"/>
+        </StackPanel>
+      </Button>
       <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,12">
         <!-- Sections (Quick access / Favorites / Drives) are added by SidebarSections.cs, in the
              order the user dragged them into; each one collapses and both are remembered. -->
@@ -106,7 +129,7 @@
         </StackPanel>
         <!-- drop position while reordering sections: drawn over the list, so it never moves anything -->
         <Canvas IsHitTestVisible="False">
-          <Border x:Name="DropLine" Height="3" CornerRadius="1.5" Background="{StaticResource Accent}" Visibility="Collapsed"/>
+          <Border x:Name="DropLine" Height="3" CornerRadius="1.5" Background="{DynamicResource Accent}" Visibility="Collapsed"/>
         </Canvas>
         </Grid>
       </ScrollViewer>
@@ -127,10 +150,10 @@
       <!-- Stats for the active pane -->
       <UniformGrid Rows="1" Margin="6,0,0,12">
         <StackPanel Orientation="Horizontal">
-          <TextBlock Text="&#xEDA2;" Style="{StaticResource StatIcon}" Foreground="{StaticResource Accent}"/>
+          <TextBlock Text="&#xEDA2;" Style="{StaticResource StatIcon}" Foreground="{DynamicResource Accent}"/>
           <StackPanel>
             <TextBlock x:Name="StatTotal" Style="{StaticResource StatValue}"/>
-            <TextBlock Style="{StaticResource StatSub}"><Run x:Name="StatUsed" Foreground="{StaticResource Accent}"/> used</TextBlock>
+            <TextBlock Style="{StaticResource StatSub}"><Run x:Name="StatUsed" Foreground="{DynamicResource Accent}"/> used</TextBlock>
           </StackPanel>
         </StackPanel>
         <StackPanel Orientation="Horizontal">

@@ -93,13 +93,21 @@ public partial class MainWindow
                 RenderedExt.Contains(ext) && Handler(e, v) is { } rendered ? rendered :
                 ReadText(e.Path) is { } text ? TextView(text) :
                 Handler(e, v) ?? TextView(HexDump(e.Path));
-            if (v == quickVersion) quick.Content = content;
+            if (v == quickVersion) Show(content);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException
                                    or FileFormatException or InvalidDataException or System.Runtime.InteropServices.COMException)
         {
-            if (v == quickVersion) quick.Content = Summary(e, ex.Message);
+            if (v == quickVersion) Show(Summary(e, ex.Message));
         }
+    }
+
+    // Stepping through files with the arrow keys looks like one preview dissolving into the next.
+    void Show(UIElement content)
+    {
+        quick.Content = content;
+        if (Settings.Animations)
+            content.BeginAnimation(UIElement.OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140)));
     }
 
     static UIElement ImageView(string path)

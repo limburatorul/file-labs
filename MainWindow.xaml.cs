@@ -72,7 +72,7 @@ public partial class MainWindow : Window
         Favorites.Children.Add(SideButton("", "Recycle Bin", "::{645FF040-5081-101B-9F08-00AA002F954E}", click: OpenRecycleBin));
 
         LoadQuickAccess();
-        ApplyAppearance();
+        ApplyAppearance(); // the accent and row height the user picked, before anything is drawn
         Transfers.ItemsSource = jobs;
         jobTimer.Tick += JobTick;
         Ferry.Finished += JobDone;
@@ -84,6 +84,19 @@ public partial class MainWindow : Window
         RefreshDrives();
         driveTimer.Tick += (_, _) => { RefreshDrives(); UpdateStats(); }; // free space changes without us doing anything
         driveTimer.Start();
+        // The sidebar's folders are one click away, so read them into the panes' caches while the user
+        // is still looking at the first folder.
+        var warmUp = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        warmUp.Tick += (_, _) =>
+        {
+            warmUp.Stop();
+            var paths = pinned.Concat(shownDrives.Select(d => d.Name))
+                .Concat(Favorites.Children.OfType<Button>().Select(b => b.ToolTip as string))
+                .Where(p => !string.IsNullOrEmpty(p) && Directory.Exists(p)).ToList();
+            Left.PrefetchPaths(paths);
+            Right.PrefetchPaths(paths);
+        };
+        warmUp.Start();
         BuildFolderTree();
         BuildSidebar();
 
@@ -189,7 +202,27 @@ public partial class MainWindow : Window
         Root.Background = Tint();
         SetBackdrop(this);
         if (quick != null) SetBackdrop(quick);
+        ApplyAccent();
+        Application.Current.Resources["RowPad"] = new Thickness(4, Settings.RowPad, 4, Settings.RowPad);
     }
+
+    /// Replaces the four accent brushes, at their four transparencies. WPF freezes brushes declared in
+    /// XAML, so the colour cannot be changed in place — the resource itself is swapped, and everything
+    /// that asks for it with a DynamicResource repaints. Selection, bars, the active pane's edge.
+    public static void ApplyAccent()
+    {
+        var c = AccentColor;
+        Shade("Accent", 0xFF); Shade("AccentEdge", 0x66); Shade("AccentSelect", 0x40); Shade("AccentSoft", 0x26);
+        void Shade(string key, byte alpha)
+        {
+            var brush = new SolidColorBrush(Color.FromArgb(alpha, c.R, c.G, c.B));
+            brush.Freeze();
+            Application.Current.Resources[key] = brush;
+        }
+    }
+
+    public static Color AccentColor =>
+        ((SolidColorBrush)Hex(Settings.Accent)).Color;
 
     public void RefreshPanes()
     {
@@ -198,7 +231,7 @@ public partial class MainWindow : Window
     }
 
     // Shelf's schedule: 3 s after launch, then every 30 minutes — the app stays open for days.
-    readonly System.Windows.Threading.DispatcherTimer updateTimer = new() { Interval = TimeSpan.FromMinutes(30) };
+    readonly System.Windows.Threading.DispatcherTimer updateTimer = new() { Interval = TimeSpan.FromMinutes(10) };
     UpdateDialog updateDialog;
 
     void StartUpdateChecks()
@@ -251,6 +284,23 @@ public partial class MainWindow : Window
         settingsWindow.Show();
     }
     void Settings_Click(object s, RoutedEventArgs e) => OpenSettings();
+
+    // The same check the timer runs, on demand. A new version opens the update dialog; otherwise the
+    // answer ("… is the latest version") goes to the status bar, so nothing pops up for nothing.
+    async void CheckUpdates_Click(object s, RoutedEventArgs e)
+    {
+        UpdateButton.IsEnabled = false;
+        UpdateButtonText.Text = "Checking…";
+        var answer = await CheckForUpdate(manual: true);
+        UpdateButton.IsEnabled = true;
+        // The answer goes on the button, not in the status bar: that line belongs to the folder and is
+        // rewritten on the next refresh.
+        UpdateButtonText.Text = answer == null ? "Check for updates" : $"Up to date  ·  {Updater.Current}";
+        if (answer == null) return;
+        var back = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
+        back.Tick += (_, _) => { back.Stop(); UpdateButtonText.Text = "Check for updates"; };
+        back.Start();
+    }
 
     // A second launch sent us a folder → new tab in the active pane. Sent nothing (Win+E, Start menu,
     // taskbar) → just bring the existing window to the front, like switching to it.
@@ -475,13 +525,15 @@ public partial class MainWindow : Window
         UpdateStats();
     }
 
-    string publishedFolder;
+    string publishedFolder, shownDir;
     readonly System.Windows.Threading.DispatcherTimer driveTimer = new() { Interval = TimeSpan.FromSeconds(10) };
 
     void UpdateStats()
     {
         if (active?.Dir is not { Length: > 0 } dir) return;
-        Status.Text = dir;
+        // Only when the folder actually changed: the 10 s refresh would otherwise wipe whatever message
+        // the status bar is showing ("Path copied", "Pinned …").
+        if (dir != shownDir) { Status.Text = shownDir = dir; }
         bool bareServer = dir.StartsWith(@"\\") && !dir.Trim('\\').Contains('\\'); // not a folder a dialog can open
         if (dir != publishedFolder && !bareServer)
         {
@@ -731,7 +783,7 @@ public partial class MainWindow : Window
             case Key.C when ctrl && !shift: ClipboardPut(cut: false); break;
             case Key.X when ctrl: ClipboardPut(cut: true); break;
             case Key.V when ctrl: ClipboardPaste(); break;
-            case Key.R when ctrl: SizeCache.Clear(); active.Refresh(); break;
+            case Key.R when ctrl: SizeCache.Clear(); active.Refresh(force: true); break;
             case Key.C when ctrl && shift:
                 Clipboard.SetText(string.Join(Environment.NewLine, active.Selected.Select(x => x.Path)));
                 Status.Text = "Path copied"; break;

@@ -23,6 +23,12 @@ public partial class MainWindow
     void BuildFolderTree()
     {
         var tree = new TreeView { Background = Brushes.Transparent, BorderThickness = new(0), Foreground = Hex("#E8EEF6"), Margin = new(2, 0, 0, 0) };
+        // The default TreeViewItem paints its selection with the system colours — a white block on this
+        // dark sidebar. These are the brushes its template asks for.
+        tree.Resources[SystemColors.HighlightBrushKey] = Hex("#404C8DFF");
+        tree.Resources[SystemColors.HighlightTextBrushKey] = Hex("#F2F6FB");
+        tree.Resources[SystemColors.InactiveSelectionHighlightBrushKey] = Hex("#26FFFFFF");
+        tree.Resources[SystemColors.InactiveSelectionHighlightTextBrushKey] = Hex("#E8EEF6");
         foreach (var d in DriveInfo.GetDrives().Where(d => d.IsReady))
             tree.Items.Add(TreeNode(d.Name, d.Name.TrimEnd('\\') + (d.VolumeLabel != "" ? "  " + d.VolumeLabel : "")));
         FolderTree.Children.Add(tree);
@@ -231,6 +237,8 @@ public partial class MainWindow
         bool collapsed = !Settings.SidebarCollapsed.Remove(key);
         if (collapsed) Settings.SidebarCollapsed.Add(key);
         content.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        if (!collapsed) // unfolding: fade the contents in rather than having them appear mid-list
+            content.BeginAnimation(OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
         if (key == "quick") QuickHint.Visibility = collapsed || pinned.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
         chevron.Text = collapsed ? "" : "";
         Settings.Save();

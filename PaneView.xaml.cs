@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 namespace FileExplorer;
@@ -226,14 +227,26 @@ public partial class PaneView : UserControl
     public bool SizesPending => Items.Any(e => e.Size == -1);
 
     // Active pane: lighter surface and accent edge. Inactive: darker and slightly faded, so it recedes.
+    // The three changes are animated together, or switching panes reads as a flash.
+    readonly SolidColorBrush cardFill = new(), cardEdge = new();
+
     public void SetActive(bool on)
     {
-        Card.Background = MainWindow.Hex(on ? "#12FFFFFF" : "#0A000000");
-        Card.BorderBrush = MainWindow.Hex(on ? "#664C8DFF" : "#0FFFFFFF");
-        List.Opacity = on ? 1 : 0.88;
+        if (Card.Background != cardFill) { Card.Background = cardFill; Card.BorderBrush = cardEdge; }
+        var accent = MainWindow.AccentColor;
+        Animate(cardFill, ((SolidColorBrush)MainWindow.Hex(on ? "#12FFFFFF" : "#0A000000")).Color);
+        Animate(cardEdge, on ? Color.FromArgb(0x66, accent.R, accent.G, accent.B) : Color.FromArgb(0x0F, 255, 255, 255));
+        listOpacity = on ? 1 : 0.88;
+        if (Settings.Animations) List.BeginAnimation(OpacityProperty, new DoubleAnimation(listOpacity, Quick) { EasingFunction = Ease });
+        else { List.BeginAnimation(OpacityProperty, null); List.Opacity = listOpacity; }
     }
 
-    readonly Dictionary<string, List<Entry>> listCache = new(StringComparer.OrdinalIgnoreCase);
+    static void Animate(SolidColorBrush brush, Color to)
+    {
+        if (Settings.Animations) brush.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(to, Quick) { EasingFunction = Ease });
+        else { brush.BeginAnimation(SolidColorBrush.ColorProperty, null); brush.Color = to; }
+    }
+
     int navVersion; // a newer Navigate wins; a slow share must not overwrite the folder you moved on to
 
     public void Navigate(string dir, string select = null, bool record = true)
@@ -255,57 +268,35 @@ public partial class PaneView : UserControl
 
         // Show the folder as we last saw it, immediately; the read below replaces it a moment later.
         // Without this, every tab switch waits on the disk — measured at 1.2 s for a cold folder.
-        if (listCache.TryGetValue(di.FullName, out var cached)) ShowItems(cached, select);
+        var cached = Cached(di.FullName);
+        if (cached != null) { ShowItems(cached.Items, select, animate: false); StartPasses(); }
 
         // Reading the folder and asking the drive for free space both block — on a network share for
         // the best part of a second — so they happen off the UI thread and the list is handed over
         // when it's ready. The window never freezes on a folder change.
         Task.Run(() =>
         {
-            var list = new List<Entry>();
-            string error = null;
-            try
-            {
-                foreach (var fsi in di.EnumerateFileSystemInfos())
-                {
-                    if (!ShowHidden && fsi.Attributes.HasFlag(FileAttributes.Hidden)) continue;
-                    bool isDir = fsi is DirectoryInfo;
-                    var e = new Entry { Name = fsi.Name, Path = fsi.FullName, IsDir = isDir, Modified = fsi.LastWriteTime, IsCut = CutPaths.Contains(fsi.FullName) };
-                    e.Size = isDir ? SizeCache.Get(fsi.FullName, fsi.LastWriteTimeUtc) : ((FileInfo)fsi).Length;
-                    list.Add(e);
-                }
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or System.Security.SecurityException)
-            {
-                error = ex.Message;
-            }
+            var (used, driveText) = DriveUsage(di.FullName);
 
-            double used = -1; string driveText = null;
-            try
-            {
-                var drive = new DriveInfo(System.IO.Path.GetPathRoot(di.FullName));
-                if (drive.IsReady)
-                {
-                    used = 1 - (double)drive.AvailableFreeSpace / drive.TotalSize;
-                    driveText = $"{MainWindow.Fmt(drive.AvailableFreeSpace)} free of {MainWindow.Fmt(drive.TotalSize)}";
-                }
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { }
+            // A folder's own timestamp changes whenever a child is added, removed or renamed, so an
+            // unchanged folder needs no re-read at all: what is on screen stays, and with it the scroll
+            // position, the icons, the sizes — and no flicker of the list being replaced by itself.
+            long stamp = Stamp(di.FullName);
+            List<Entry> list = null;
+            string error = null;
+            if (cached == null || cached.Stamp != stamp || stamp == 0) list = ReadFolder(di, ShowHidden, out error);
 
             Dispatcher.BeginInvoke(() =>
             {
                 if (v != navVersion) return; // the user has already moved on
                 if (error != null) { Error?.Invoke(error); return; }
-                listCache[di.FullName] = list;
-                if (listCache.Count > 24) listCache.Remove(listCache.Keys.First()); // a few folders is plenty
-                ShowItems(list, select);
-
+                if (list != null)
+                {
+                    Remember(di.FullName, list, stamp);
+                    ShowItems(list, select, animate: cached == null);
+                    StartPasses();
+                }
                 Watch();
-                StartSizing();
-                StartVersions();
-                StartThumbs();
-                StartIcons();
-
                 if (driveText != null)
                 {
                     UsedBar.SetBinding(WidthProperty, new Binding("ActualWidth") { Source = UsedBar.Parent, Converter = new Scale(used) });
@@ -313,9 +304,119 @@ public partial class PaneView : UserControl
                 }
                 UpdateFooter();
                 StatsChanged?.Invoke();
+                StartPrefetch();
             });
         });
     }
+
+    static (double Used, string Text) DriveUsage(string path)
+    {
+        try
+        {
+            var drive = new DriveInfo(System.IO.Path.GetPathRoot(path));
+            if (drive.IsReady)
+                return (1 - (double)drive.AvailableFreeSpace / drive.TotalSize,
+                        $"{MainWindow.Fmt(drive.AvailableFreeSpace)} free of {MainWindow.Fmt(drive.TotalSize)}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { }
+        return (-1, null);
+    }
+
+    void StartPasses()
+    {
+        StartSizing();
+        StartVersions();
+        StartThumbs();
+        StartIcons();
+    }
+
+    // ---- the folder cache: what makes tab switching and re-opening a folder instant ----
+    sealed class Listing { public List<Entry> Items; public long Stamp; public long UsedAt; }
+
+    // Per pane, so a rename in one pane can't dim rows in the other. 200 folders is a few MB.
+    readonly Dictionary<string, Listing> listCache = new(StringComparer.OrdinalIgnoreCase);
+    const int MaxFolders = 200, MaxEntries = 60_000;
+
+    static long Stamp(string path)
+    {
+        try { return Directory.GetLastWriteTimeUtc(path).Ticks; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { return 0; }
+    }
+
+    Listing Cached(string path)
+    {
+        lock (listCache)
+        {
+            if (!listCache.TryGetValue(path, out var hit)) return null;
+            hit.UsedAt = DateTime.UtcNow.Ticks;
+            return hit;
+        }
+    }
+
+    void Remember(string path, List<Entry> list, long stamp)
+    {
+        lock (listCache)
+        {
+            listCache[path] = new Listing { Items = list, Stamp = stamp, UsedAt = DateTime.UtcNow.Ticks };
+            while (listCache.Count > MaxFolders || listCache.Values.Sum(l => l.Items.Count) > MaxEntries)
+            {
+                var oldest = listCache.OrderBy(kv => kv.Value.UsedAt).First().Key;
+                if (oldest.Equals(path, StringComparison.OrdinalIgnoreCase)) break; // never drop what we just read
+                listCache.Remove(oldest);
+            }
+        }
+    }
+
+    static List<Entry> ReadFolder(DirectoryInfo di, bool hidden, out string error)
+    {
+        var list = new List<Entry>();
+        error = null;
+        try
+        {
+            foreach (var fsi in di.EnumerateFileSystemInfos())
+            {
+                if (!hidden && fsi.Attributes.HasFlag(FileAttributes.Hidden)) continue;
+                bool isDir = fsi is DirectoryInfo;
+                var e = new Entry { Name = fsi.Name, Path = fsi.FullName, IsDir = isDir, Modified = fsi.LastWriteTime, IsCut = CutPaths.Contains(fsi.FullName) };
+                e.Size = isDir ? SizeCache.Get(fsi.FullName, fsi.LastWriteTimeUtc) : ((FileInfo)fsi).Length;
+                list.Add(e);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or System.Security.SecurityException)
+        {
+            error = ex.Message;
+        }
+        return list;
+    }
+
+    /// Reads folders into the cache in the background, so opening one of them costs nothing: the other
+    /// tabs first (those are one click away), then the subfolders of the one being shown.
+    CancellationTokenSource prefetching;
+
+    void StartPrefetch(IEnumerable<string> extra = null)
+    {
+        prefetching?.Cancel();
+        var cts = prefetching = new CancellationTokenSource();
+        var todo = (extra ?? Enumerable.Empty<string>())
+            .Concat(tabs.Where(t => t != "" && !t.Equals(Dir, StringComparison.OrdinalIgnoreCase)))
+            .Concat(items.Where(e => e.IsDir && !e.IsUp).Select(e => e.Path).Take(40))
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        bool hidden = ShowHidden;
+        Task.Run(() =>
+        {
+            foreach (var path in todo)
+            {
+                if (cts.IsCancellationRequested) return;
+                long stamp = Stamp(path);
+                if (stamp == 0 || Cached(path) is { } hit && hit.Stamp == stamp) continue; // already fresh
+                var list = ReadFolder(new DirectoryInfo(path), hidden, out var error);
+                if (error == null && !cts.IsCancellationRequested) Dispatcher.BeginInvoke(() => Remember(path, list, stamp));
+            }
+        }, cts.Token);
+    }
+
+    /// The sidebar's folders are one click away too; MainWindow hands them over once at startup.
+    public void PrefetchPaths(IEnumerable<string> paths) => StartPrefetch(paths);
 
     /// Makes `path` the current tab's folder (history, crumbs, tabs) and leaves any search.
     /// Returns the navigation number that later results must still match.
@@ -329,7 +430,7 @@ public partial class PaneView : UserControl
         return ++navVersion;
     }
 
-    void ShowItems(IList<Entry> list, string select)
+    void ShowItems(IList<Entry> list, string select, bool animate = true)
     {
         items = list;
         view = new ListCollectionView((IList)items) { CustomSort = new EntrySort(sortKey, sortDesc) };
@@ -337,8 +438,22 @@ public partial class PaneView : UserControl
         List.ItemsSource = view;
         List.SelectedItem = items.FirstOrDefault(e => e.Name.Equals(select, StringComparison.OrdinalIgnoreCase)) ?? view.Cast<Entry>().FirstOrDefault();
         if (select != null && List.SelectedItem != null) List.ScrollIntoView(List.SelectedItem);
+        if (animate) FadeInList();
         UpdateFooter();
         StatsChanged?.Invoke();
+    }
+
+    // ---- motion: short, and only where something actually changed ----
+    static readonly Duration Quick = TimeSpan.FromMilliseconds(140);
+    static readonly IEasingFunction Ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+    double listOpacity = 1; // what the pane's active/inactive state wants; animations end here
+
+    /// A folder that was read from disk fades in. A folder served from the cache does not — it is
+    /// already on screen and fading it would turn "instant" into "blinking".
+    void FadeInList()
+    {
+        if (!Settings.Animations) return;
+        List.BeginAnimation(OpacityProperty, new DoubleAnimation(listOpacity * 0.45, listOpacity, Quick) { EasingFunction = Ease });
     }
 
     // ---- \\server: its shares, as folders (DirectoryInfo can't open a bare server name) ----
@@ -466,8 +581,10 @@ public partial class PaneView : UserControl
         public object ConvertBack(object v, Type t, object p, System.Globalization.CultureInfo c) => throw new NotSupportedException();
     }
 
-    public void Refresh()
+    /// `force` re-reads even if the folder's timestamp says nothing changed (Ctrl+R).
+    public void Refresh(bool force = false)
     {
+        if (force) lock (listCache) listCache.Remove(Dir);
         if (searchQuery != null) Search(searchQuery);
         else Navigate(Dir, (List.SelectedItem as Entry)?.Name, record: false);
     }
@@ -1124,6 +1241,7 @@ public partial class PaneView : UserControl
             foreach (var e in todo)
             {
                 if (cts.IsCancellationRequested) return;
+                if (e.SmallIcon != null) continue; // kept from the last time this folder was shown
                 var ext = System.IO.Path.GetExtension(e.Name);
                 bool shared = !e.IsDir && !OwnIcon.Contains(ext);
                 ImageSource img = shared && IconByExt.TryGetValue(ext, out var cached) ? cached : Thumbnails.Get(e.Path, 32, iconOnly: true);
@@ -1167,6 +1285,7 @@ public partial class PaneView : UserControl
                 overlayTimer.Stop();
                 var todo = items.Where(e => overlayQueue.Contains("*") || overlayQueue.Contains(e.Path)).ToList();
                 overlayQueue.Clear();
+                foreach (var e in todo) Thumbnails.ForgetOverlay(e.Path); // the point of the notice is that it changed
                 var token = (icons ??= new()).Token;
                 var t = new Thread(() => FetchOverlays(todo, token)) { IsBackground = true };
                 t.SetApartmentState(ApartmentState.STA);
@@ -1191,7 +1310,8 @@ public partial class PaneView : UserControl
             foreach (var e in todo)
             {
                 if (cts.IsCancellationRequested) return;
-                var img = Thumbnails.Get(e.Path, size);
+                if (e.Thumb != null) continue;
+                var img = Thumbnails.Get(e.Path, size, stamp: e.Modified.Ticks);
                 if (img != null) Dispatcher.BeginInvoke(() => e.Thumb = img);
             }
         }) { IsBackground = true };

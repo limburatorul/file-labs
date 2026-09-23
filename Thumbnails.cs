@@ -9,8 +9,26 @@ namespace FileExplorer;
 // proper icon for everything else — one call, same cache Explorer uses.
 public static class Thumbnails
 {
+    // Asking the shell costs milliseconds per file, and folders get revisited constantly (tabs, back,
+    // the sidebar), so every answer is kept. The key carries the file's timestamp: an edited photo
+    // gets a new thumbnail instead of the old one.
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (BitmapSource Image, long UsedAt)> cache = new(StringComparer.OrdinalIgnoreCase);
+    const int MaxCached = 4000;
+
     /// Returns a frozen image (safe to hand to the UI thread) or null. Call from an STA thread.
-    public static BitmapSource Get(string path, int size, bool iconOnly = false)
+    public static BitmapSource Get(string path, int size, bool iconOnly = false, long stamp = 0)
+    {
+        var key = $"{path}|{size}|{iconOnly}|{stamp}";
+        if (cache.TryGetValue(key, out var hit)) { cache[key] = (hit.Image, DateTime.UtcNow.Ticks); return hit.Image; }
+        var image = Fetch(path, size, iconOnly);
+        if (image == null) return null;
+        cache[key] = (image, DateTime.UtcNow.Ticks);
+        if (cache.Count > MaxCached)
+            foreach (var old in cache.OrderBy(kv => kv.Value.UsedAt).Take(cache.Count / 4).ToList()) cache.TryRemove(old.Key, out _);
+        return image;
+    }
+
+    static BitmapSource Fetch(string path, int size, bool iconOnly)
     {
         if (SHCreateItemFromParsingName(path, IntPtr.Zero, typeof(IShellItemImageFactory).GUID, out var obj) != 0) return null;
         var factory = (IShellItemImageFactory)obj;
@@ -57,10 +75,24 @@ public static class Thumbnails
     // Those apps register shell icon overlay handlers; the shell asks each one whether a file is
     // theirs and reports the winning overlay's number. The badge picture lives in the system image list.
     static readonly System.Collections.Concurrent.ConcurrentDictionary<int, BitmapSource> overlays = new();
+    // Which badge a file carries, remembered per path: asking costs ~4 ms because every sync app's
+    // handler is consulted. Dropped again when the shell says that item changed.
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, BitmapSource> badgeOf = new(StringComparer.OrdinalIgnoreCase);
+
+    public static void ForgetOverlay(string path) => badgeOf.TryRemove(path, out _);
 
     /// The overlay badge Explorer would draw on this item (a full icon-sized image, badge in the
     /// corner), or null. Call from an STA thread: the shell runs the apps' handlers on it.
     public static BitmapSource Overlay(string path)
+    {
+        if (badgeOf.TryGetValue(path, out var known)) return known;
+        var badge = ReadOverlay(path);
+        if (badgeOf.Count > MaxCached) badgeOf.Clear(); // they are cheap to build again
+        badgeOf[path] = badge;
+        return badge;
+    }
+
+    static BitmapSource ReadOverlay(string path)
     {
         var fi = new SHFILEINFO();
         if (SHGetFileInfo(path, 0, ref fi, (uint)Marshal.SizeOf<SHFILEINFO>(), SHGFI_ICON | SHGFI_SMALLICON | SHGFI_OVERLAYINDEX) == IntPtr.Zero) return null;

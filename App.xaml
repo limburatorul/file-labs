@@ -2,6 +2,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Application.Resources>
     <SolidColorBrush x:Key="Accent" Color="#4C8DFF"/>
+    <!-- the accent at the three transparencies the UI needs; all four follow the colour chosen in Settings -->
+    <SolidColorBrush x:Key="AccentEdge" Color="#664C8DFF"/>
+    <SolidColorBrush x:Key="AccentSelect" Color="#404C8DFF"/>
+    <SolidColorBrush x:Key="AccentSoft" Color="#264C8DFF"/>
     <SolidColorBrush x:Key="Muted" Color="#8CFFFFFF"/>
     <!-- the darker band tabs sit on -->
     <SolidColorBrush x:Key="TabStripBg" Color="#2E000000"/>
@@ -55,7 +59,7 @@
     <Style TargetType="ListViewItem">
       <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
       <Setter Property="Foreground" Value="#E8EEF6"/>
-      <Setter Property="Padding" Value="4,3"/>
+      <Setter Property="Padding" Value="{DynamicResource RowPad}"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ListViewItem">
@@ -69,7 +73,7 @@
             <ControlTemplate.Triggers>
               <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
-              <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#404C8DFF"/></Trigger>
+              <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -93,8 +97,8 @@
                       <Border x:Name="G" Width="1" Margin="0,6" Background="#2EFFFFFF" HorizontalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
-                      <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="G" Property="Background" Value="{StaticResource Accent}"/><Setter TargetName="G" Property="Width" Value="2"/></Trigger>
-                      <Trigger Property="IsDragging" Value="True"><Setter TargetName="G" Property="Background" Value="{StaticResource Accent}"/><Setter TargetName="G" Property="Width" Value="2"/></Trigger>
+                      <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="G" Property="Background" Value="{DynamicResource Accent}"/><Setter TargetName="G" Property="Width" Value="2"/></Trigger>
+                      <Trigger Property="IsDragging" Value="True"><Setter TargetName="G" Property="Background" Value="{DynamicResource Accent}"/><Setter TargetName="G" Property="Width" Value="2"/></Trigger>
                     </ControlTemplate.Triggers>
                   </ControlTemplate>
                 </Thumb.Template>
@@ -136,7 +140,7 @@
             <ControlTemplate.Triggers>
               <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
-              <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#404C8DFF"/></Trigger>
+              <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -155,7 +159,7 @@
             <ControlTemplate.Triggers>
               <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
-              <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#404C8DFF"/></Trigger>
+              <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -285,7 +289,7 @@
     <Style TargetType="ProgressBar">
       <Setter Property="Height" Value="4"/>
       <Setter Property="Maximum" Value="1"/>
-      <Setter Property="Foreground" Value="{StaticResource Accent}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ProgressBar">
@@ -308,7 +312,7 @@
               <Track x:Name="PART_Track">
                 <Track.DecreaseRepeatButton>
                   <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
-                    <RepeatButton.Template><ControlTemplate><Border Height="3" CornerRadius="1.5" Background="{StaticResource Accent}"/></ControlTemplate></RepeatButton.Template>
+                    <RepeatButton.Template><ControlTemplate><Border Height="3" CornerRadius="1.5" Background="{DynamicResource Accent}"/></ControlTemplate></RepeatButton.Template>
                   </RepeatButton>
                 </Track.DecreaseRepeatButton>
                 <Track.IncreaseRepeatButton>
@@ -342,7 +346,7 @@
             </DockPanel>
             <ControlTemplate.Triggers>
               <Trigger Property="IsChecked" Value="True">
-                <Setter TargetName="Track" Property="Background" Value="{StaticResource Accent}"/>
+                <Setter TargetName="Track" Property="Background" Value="{DynamicResource Accent}"/>
                 <Setter TargetName="Knob" Property="Fill" Value="White"/>
                 <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right"/>
               </Trigger>
@@ -403,7 +407,7 @@
             </Grid>
             <ControlTemplate.Triggers>
               <Trigger Property="IsHighlighted" Value="True">
-                <Setter TargetName="Bd" Property="Background" Value="#334C8DFF"/>
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>

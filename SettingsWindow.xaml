@@ -45,6 +45,26 @@
               <Slider x:Name="OpacitySlider" Minimum="30" Maximum="100" VerticalAlignment="Center" ValueChanged="Opacity_Changed"/>
             </DockPanel>
             <TextBlock Style="{StaticResource Hint}" Text="How dark the layer over the backdrop is. Stops at 30% so text stays readable on bright wallpapers."/>
+
+            <TextBlock Text="Accent colour"/>
+            <DockPanel Margin="0,6,0,2">
+              <Border DockPanel.Dock="Right" Background="#12FFFFFF" CornerRadius="5" Padding="8,4" BorderBrush="#2EFFFFFF" BorderThickness="1" Margin="8,0,0,0">
+                <TextBox x:Name="AccentHex" Style="{StaticResource Bare}" Width="72" KeyDown="AccentHex_KeyDown" ToolTip="Any colour as #RRGGBB, then Enter"/>
+              </Border>
+              <WrapPanel x:Name="Swatches"/>
+            </DockPanel>
+            <TextBlock Style="{StaticResource Hint}" Text="Used for the selection, the drive bars, the progress bars and the active pane's edge."/>
+
+            <TextBlock Text="Row height"/>
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+              <Button x:Name="RowCompact" Content="Compact" Style="{StaticResource Tab}" Click="RowHeight_Click"/>
+              <Button x:Name="RowNormal" Content="Normal" Style="{StaticResource Tab}" Click="RowHeight_Click"/>
+              <Button x:Name="RowRoomy" Content="Roomy" Style="{StaticResource Tab}" Click="RowHeight_Click"/>
+            </StackPanel>
+            <TextBlock Style="{StaticResource Hint}" Text="How much room each row takes in Details and List. Compact fits more on screen."/>
+
+            <CheckBox x:Name="AnimationsBox" Content="Animations" Click="Animations_Click" Margin="0,4,0,0"/>
+            <TextBlock Style="{StaticResource Hint}" Text="Short fades when a folder is read, when panes change and when a transfer appears. Off means everything switches instantly."/>
           </StackPanel>
         </Border>
 

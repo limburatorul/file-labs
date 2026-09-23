@@ -29,10 +29,10 @@
         <Grid>
           <!-- not hit-testable: a right-click landing on one of its Runs made the list drop a multi-selection -->
           <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility><Run Text="{Binding Name, Mode=OneWay}"/><Run Text="{Binding Where, Mode=OneWay}" Foreground="#70FFFFFF" FontSize="11"/></TextBlock>
-          <Border Background="#F2151A22" BorderBrush="{StaticResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
+          <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
             <Border.Visibility><Binding Path="Renaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></Border.Visibility>
             <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
-                     SelectionBrush="{StaticResource Accent}" SelectionOpacity="0.85" SelectionTextBrush="White" IsInactiveSelectionHighlightEnabled="True"
+                     SelectionBrush="{DynamicResource Accent}" SelectionOpacity="0.85" SelectionTextBrush="White" IsInactiveSelectionHighlightEnabled="True"
                      Loaded="Rename_Loaded" KeyDown="Rename_KeyDown" LostKeyboardFocus="Rename_Done" Tag="{Binding}"/>
           </Border>
         </Grid>
@@ -67,10 +67,10 @@
         <Border Height="3" Width="26" CornerRadius="1.5" Background="{Binding AgeBrush}" Margin="0,4,0,3" HorizontalAlignment="Center"/>
         <Grid>
           <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="34" FontSize="11.5"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility></TextBlock>
-          <Border Background="#F2151A22" BorderBrush="{StaticResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
+          <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
             <Border.Visibility><Binding Path="Renaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></Border.Visibility>
             <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
-                     SelectionBrush="{StaticResource Accent}" SelectionOpacity="0.85" SelectionTextBrush="White" IsInactiveSelectionHighlightEnabled="True"
+                     SelectionBrush="{DynamicResource Accent}" SelectionOpacity="0.85" SelectionTextBrush="White" IsInactiveSelectionHighlightEnabled="True"
                      Loaded="Rename_Loaded" KeyDown="Rename_KeyDown" LostKeyboardFocus="Rename_Done" Tag="{Binding}"/>
           </Border>
         </Grid>
@@ -88,10 +88,10 @@
         </Grid>
         <Grid>
           <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility></TextBlock>
-          <Border Background="#F2151A22" BorderBrush="{StaticResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
+          <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
             <Border.Visibility><Binding Path="Renaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></Border.Visibility>
             <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
-                     SelectionBrush="{StaticResource Accent}" SelectionOpacity="0.85" SelectionTextBrush="White" IsInactiveSelectionHighlightEnabled="True"
+                     SelectionBrush="{DynamicResource Accent}" SelectionOpacity="0.85" SelectionTextBrush="White" IsInactiveSelectionHighlightEnabled="True"
                      Loaded="Rename_Loaded" KeyDown="Rename_KeyDown" LostKeyboardFocus="Rename_Done" Tag="{Binding}"/>
           </Border>
         </Grid>
@@ -122,7 +122,7 @@
       </DockPanel>
       <!-- where a dragged tab would land; an overlay, so the tabs never move under the pointer -->
       <Canvas IsHitTestVisible="False">
-        <Border x:Name="TabDropLine" Width="3" CornerRadius="1.5" Background="{StaticResource Accent}" Visibility="Collapsed"/>
+        <Border x:Name="TabDropLine" Width="3" CornerRadius="1.5" Background="{DynamicResource Accent}" Visibility="Collapsed"/>
       </Canvas>
       </Grid>
 
@@ -159,7 +159,7 @@
                           <Border x:Name="Bd" Padding="8,4" CornerRadius="4" Background="Transparent"><ContentPresenter/></Border>
                           <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#1AFFFFFF"/></Trigger>
-                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#404C8DFF"/></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/></Trigger>
                           </ControlTemplate.Triggers>
                         </ControlTemplate>
                       </Setter.Value>
@@ -178,7 +178,7 @@
                    Typography.NumeralAlignment="Tabular"/>
         <Grid VerticalAlignment="Center" Height="3">
           <Border Background="#1AFFFFFF" CornerRadius="1.5"/>
-          <Border x:Name="UsedBar" Background="{StaticResource Accent}" CornerRadius="1.5" HorizontalAlignment="Left"/>
+          <Border x:Name="UsedBar" Background="{DynamicResource Accent}" CornerRadius="1.5" HorizontalAlignment="Left"/>
         </Grid>
       </DockPanel>
 
@@ -202,10 +202,12 @@
       <Grid>
       <!-- drag-to-select rectangle, drawn over the list so the rows never move under it -->
       <Canvas Panel.ZIndex="1" IsHitTestVisible="False" Margin="4,0" ClipToBounds="True">
-        <Border x:Name="Marquee" Background="#264C8DFF" BorderBrush="#B34C8DFF" BorderThickness="1" CornerRadius="2" Visibility="Collapsed"/>
+        <Border x:Name="Marquee" Background="{DynamicResource AccentSoft}" BorderBrush="{DynamicResource AccentEdge}" BorderThickness="1" CornerRadius="2" Visibility="Collapsed"/>
       </Canvas>
+      <!-- ScrollUnit=Pixel keeps virtualization but scrolls smoothly instead of jumping a row at a time -->
       <ListView x:Name="List" Background="Transparent" BorderThickness="0" Margin="4,0"
                 TextSearch.TextPath="Name" VirtualizingPanel.IsVirtualizing="True"
+                VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel"
                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListView.View>
           <GridView>
