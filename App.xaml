@@ -378,24 +378,38 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="MenuItem">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="5" Margin="4,0" Padding="8,5">
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="26"/>
-                  <ColumnDefinition/>
-                  <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <ContentPresenter ContentSource="Icon" VerticalAlignment="Center" TextElement.Foreground="#8A97AA"/>
-                <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}" Foreground="#6E7A8C" Margin="28,0,0,0" VerticalAlignment="Center"/>
-              </Grid>
-            </Border>
+            <Grid>
+              <Border x:Name="Bd" Background="Transparent" CornerRadius="5" Margin="4,0" Padding="8,5">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="26"/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition Width="Auto"/>
+                  </Grid.ColumnDefinitions>
+                  <ContentPresenter ContentSource="Icon" VerticalAlignment="Center" TextElement.Foreground="#8A97AA"/>
+                  <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}" Foreground="#6E7A8C" Margin="28,0,0,0" VerticalAlignment="Center"/>
+                  <!-- an item with children shows the usual arrow instead of a shortcut -->
+                  <Path x:Name="Arrow" Grid.Column="2" Data="M0,0 L4,4 L0,8 Z" Fill="#8A97AA" Margin="28,0,2,0" VerticalAlignment="Center" Visibility="Collapsed"/>
+                </Grid>
+              </Border>
+              <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsSubmenuOpen}" Placement="Right" HorizontalOffset="-6"
+                     AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                <Border Background="#1C2029" BorderBrush="#2EFFFFFF" BorderThickness="1" CornerRadius="8" Padding="0,4" MinWidth="160" Margin="0,0,6,6">
+                  <Border.Effect><DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.45"/></Border.Effect>
+                  <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                </Border>
+              </Popup>
+            </Grid>
             <ControlTemplate.Triggers>
               <Trigger Property="IsHighlighted" Value="True">
                 <Setter TargetName="Bd" Property="Background" Value="#334C8DFF"/>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>
+              </Trigger>
+              <Trigger Property="HasItems" Value="True">
+                <Setter TargetName="Arrow" Property="Visibility" Value="Visible"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>

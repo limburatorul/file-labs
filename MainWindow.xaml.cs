@@ -81,8 +81,9 @@ public partial class MainWindow : Window
             HookContextMenu(p);
         }
 
-        foreach (var d in DriveInfo.GetDrives().Where(d => d.IsReady))
-            Drives.Children.Add(DriveButton(d));
+        RefreshDrives();
+        driveTimer.Tick += (_, _) => { RefreshDrives(); UpdateStats(); }; // free space changes without us doing anything
+        driveTimer.Start();
         BuildFolderTree();
         BuildSidebar();
 
@@ -309,25 +310,54 @@ public partial class MainWindow : Window
         return b;
     }
 
-    // OneCommander-style drive row: "C:  Label        used / total GB" with a usage bar under it.
-    Button DriveButton(DriveInfo d)
+    // Drive rows are rebuilt from figures read off the UI thread: asking a network drive for its size
+    // blocks for the best part of a second, and the numbers have to keep up with copies and deletes.
+    record DriveRow(string Name, string Label, string Format, long Total, long Free, bool Network);
+
+    static List<DriveRow> ReadDrives()
     {
-        double used = d.TotalSize - d.AvailableFreeSpace, frac = used / d.TotalSize;
-        var label = d.VolumeLabel;
-        if (d.DriveType == DriveType.Network && GetNetworkPath(d.Name) is { } unc) label = $"({unc})";
+        var rows = new List<DriveRow>();
+        foreach (var d in DriveInfo.GetDrives())
+            try
+            {
+                if (!d.IsReady) continue;
+                bool net = d.DriveType == DriveType.Network;
+                var label = net && GetNetworkPath(d.Name) is { } unc ? $"({unc})" : d.VolumeLabel;
+                rows.Add(new DriveRow(d.Name, label, d.DriveFormat, d.TotalSize, d.AvailableFreeSpace, net));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // drive went away mid-read
+        return rows;
+    }
+
+    List<DriveRow> shownDrives = new();
+
+    void RefreshDrives() => Task.Run(ReadDrives).ContinueWith(t =>
+    {
+        var rows = t.Result;
+        if (rows.SequenceEqual(shownDrives)) return; // nothing moved: leave the buttons alone
+        shownDrives = rows;
+        Drives.Children.Clear();
+        foreach (var d in rows) Drives.Children.Add(DriveButton(d));
+    }, TaskScheduler.FromCurrentSynchronizationContext());
+
+    // OneCommander-style drive row: "C:  Label        used / total GB" with a usage bar under it.
+    Button DriveButton(DriveRow d)
+    {
+        double used = d.Total - d.Free, frac = used / d.Total;
+        var label = d.Label;
         var g = new Grid();
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         g.ColumnDefinitions.Add(new ColumnDefinition());
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         g.RowDefinitions.Add(new RowDefinition());
         g.RowDefinitions.Add(new RowDefinition());
-        var icon = ShellIcon(d.Name, d.DriveType == DriveType.Network ? "\uE968" : "\uEDA2", 16, new(0, 0, 8, 0));
+        var icon = ShellIcon(d.Name, d.Network ? "\uE968" : "\uEDA2", 16, new(0, 0, 8, 0));
         var name = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis };
         name.Inlines.Add(new System.Windows.Documents.Run(d.Name.TrimEnd((char)92) + "  ") { FontWeight = FontWeights.SemiBold });
         name.Inlines.Add(new System.Windows.Documents.Run(label) { Foreground = (Brush)FindResource("Muted") });
         var size = new TextBlock { Margin = new(6, 0, 0, 0), Typography = { NumeralAlignment = FontNumeralAlignment.Tabular } };
         size.Inlines.Add(new System.Windows.Documents.Run($"{used / 1e9:N0}"));
-        size.Inlines.Add(new System.Windows.Documents.Run($" / {d.TotalSize / 1e9:N0} GB") { Foreground = (Brush)FindResource("Muted") });
+        size.Inlines.Add(new System.Windows.Documents.Run($" / {d.Total / 1e9:N0} GB") { Foreground = (Brush)FindResource("Muted") });
         var bar = new Grid { Height = 2, Margin = new(0, 4, 0, 1) };
         bar.Children.Add(new Border { Background = Hex("#1AFFFFFF") });
         var fill = new Border { Background = frac > 0.9 ? Hex("#F87171") : (Brush)FindResource("Accent"), HorizontalAlignment = HorizontalAlignment.Left };
@@ -336,7 +366,7 @@ public partial class MainWindow : Window
         Grid.SetColumn(name, 1); Grid.SetColumn(size, 2);
         Grid.SetRow(bar, 1); Grid.SetColumn(bar, 1); Grid.SetColumnSpan(bar, 2);
         g.Children.Add(icon); g.Children.Add(name); g.Children.Add(size); g.Children.Add(bar);
-        var b = new Button { Content = g, Style = (Style)FindResource("Side"), HorizontalContentAlignment = HorizontalAlignment.Stretch, Margin = new(0, 1, 0, 1), ToolTip = $"{d.Name}  {d.DriveFormat}  ·  {Fmt(d.AvailableFreeSpace)} free" };
+        var b = new Button { Content = g, Style = (Style)FindResource("Side"), HorizontalContentAlignment = HorizontalAlignment.Stretch, Margin = new(0, 1, 0, 1), ToolTip = $"{d.Name}  {d.Format}  ·  {Fmt(d.Free)} free" };
         b.Click += (_, _) => { active.Navigate(d.Name); active.FocusList(); };
         b.PreviewMouseDown += (_, e) => { if (e.ChangedButton == MouseButton.Middle) { active.OpenInBackgroundTab(d.Name); e.Handled = true; } };
         return b;
@@ -446,6 +476,7 @@ public partial class MainWindow : Window
     }
 
     string publishedFolder;
+    readonly System.Windows.Threading.DispatcherTimer driveTimer = new() { Interval = TimeSpan.FromSeconds(10) };
 
     void UpdateStats()
     {
@@ -499,6 +530,7 @@ public partial class MainWindow : Window
         job.Refresh();
         RememberJob(job);
         Left.Refresh(); Right.Refresh();
+        RefreshDrives(); UpdateStats(); // a finished copy or move changes what's free
     });
 
     static Job JobOf(object sender) => (Job)((FrameworkElement)sender).DataContext;
@@ -567,6 +599,7 @@ public partial class MainWindow : Window
             {
                 if (error != null) MessageBox.Show(this, error, "Delete");
                 Left.Refresh(); Right.Refresh();
+                RefreshDrives(); UpdateStats();
             });
         }) { IsBackground = false }; // finishing a delete beats closing fast
         t.SetApartmentState(ApartmentState.STA);
@@ -623,6 +656,7 @@ public partial class MainWindow : Window
         catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { MessageBox.Show(this, ex.Message, "Error"); }
         Left.Refresh(); Right.Refresh();
+        RefreshDrives();
         return ok;
     }
 
@@ -692,7 +726,7 @@ public partial class MainWindow : Window
             case >= Key.D1 and <= Key.D5 when ctrl && shift:
                 active.SetView(new[] { PaneView.ViewMode.Details, PaneView.ViewMode.List, PaneView.ViewMode.IconsM, PaneView.ViewMode.IconsL, PaneView.ViewMode.IconsXL }[key - Key.D1]); break;
             case Key.D when ctrl: PinSelected(); break;
-            case Key.Enter when alt: if (active.Selected.FirstOrDefault() is { } pe) Properties(pe.Path); else Properties(active.Dir); break;
+            case Key.Enter when alt: Properties(active.Selected is { Count: > 0 } sel ? sel.Select(x => x.Path).ToList() : new List<string> { active.Dir }); break;
             case Key.OemComma when ctrl: OpenSettings(); break;
             case Key.C when ctrl && !shift: ClipboardPut(cut: false); break;
             case Key.X when ctrl: ClipboardPut(cut: true); break;

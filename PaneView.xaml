@@ -27,7 +27,8 @@
           <Image Source="{Binding Overlay}" RenderOptions.BitmapScalingMode="HighQuality"/> <!-- sync badge (Google Drive, Nextcloud, ...) -->
         </Grid>
         <Grid>
-          <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility><Run Text="{Binding Name, Mode=OneWay}"/><Run Text="{Binding Where, Mode=OneWay}" Foreground="#70FFFFFF" FontSize="11"/></TextBlock>
+          <!-- not hit-testable: a right-click landing on one of its Runs made the list drop a multi-selection -->
+          <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility><Run Text="{Binding Name, Mode=OneWay}"/><Run Text="{Binding Where, Mode=OneWay}" Foreground="#70FFFFFF" FontSize="11"/></TextBlock>
           <Border Background="#F2151A22" BorderBrush="{StaticResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
             <Border.Visibility><Binding Path="Renaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></Border.Visibility>
             <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
@@ -182,6 +183,13 @@
       </DockPanel>
 
       <DockPanel DockPanel.Dock="Bottom" Margin="14,2,8,5">
+        <!-- sorting, reachable in every view mode (the column headers only exist in Details) -->
+        <Button x:Name="SortButton" DockPanel.Dock="Right" Style="{StaticResource Ghost}" FontSize="11" Click="SortButton_Click" ToolTip="Sort">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock x:Name="SortIcon" FontFamily="Segoe Fluent Icons" FontSize="12" Margin="0,1,6,0"/>
+            <TextBlock x:Name="SortName"/>
+          </StackPanel>
+        </Button>
         <Button x:Name="ViewButton" DockPanel.Dock="Right" Style="{StaticResource Ghost}" FontSize="11" Click="ViewButton_Click" ToolTip="View (Ctrl+Shift+1…5)">
           <StackPanel Orientation="Horizontal">
             <TextBlock x:Name="ViewIcon" FontFamily="Segoe Fluent Icons" FontSize="12" Margin="0,1,6,0"/>

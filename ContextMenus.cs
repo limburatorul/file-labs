@@ -92,7 +92,7 @@ public partial class MainWindow
         if (sel.Any(x => x.IsDir)) m.Items.Add(Item("Pin to Quick access", "", "Ctrl+D", PinSelected));
         m.Items.Add(Item("Show in File Explorer", "", "", () => Process.Start("explorer.exe", $"/select,\"{first.Path}\"")));
         m.Items.Add(Item("Windows menu…", "", "", () => { if (ShellMenu.Show(this, p.Dir, sel.Select(x => x.Path).ToList()) == "rename") Rename(); }));
-        m.Items.Add(Item("Properties", "", "Alt+Enter", () => Properties(first.Path)));
+        m.Items.Add(Item("Properties", "", "Alt+Enter", () => Properties(sel.Select(x => x.Path).ToList())));
         return m;
     }
 
@@ -105,6 +105,13 @@ public partial class MainWindow
         m.Items.Add(Item("New folder", "", "Ctrl+Shift+N", MkDir));
         m.Items.Add(Item("New file…", "", "Ctrl+N", NewFile));
         m.Items.Add(new Separator());
+        var sort = new MenuItem
+        {
+            Header = $"Sort by  ·  {p.SortKey}",
+            Icon = new TextBlock { Text = p.SortDescending ? "" : "", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 13 },
+        };
+        foreach (var item in p.SortMenuItems()) sort.Items.Add(item);
+        m.Items.Add(sort);
         m.Items.Add(Item("Select by pattern…", "", "Num +", () => SelectByPattern(true)));
         m.Items.Add(Item("Invert selection", "", "Num *", p.InvertSelection));
         m.Items.Add(Item("Compare with other pane", "", "Shift+F2", ComparePanes));
@@ -135,5 +142,43 @@ public partial class MainWindow
     static string NotepadPlusPlus => nppPath.Value;
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern bool SHObjectProperties(IntPtr hwnd, int type, string name, string page);
-    void Properties(string path) => SHObjectProperties(new System.Windows.Interop.WindowInteropHelper(this).Handle, 2 /* SHOP_FILEPATH */, path, null);
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern int SHParseDisplayName(string name, IntPtr bindCtx, out IntPtr pidl, uint sfgaoIn, out uint sfgaoOut);
+    [DllImport("shell32.dll")] static extern int SHCreateDataObject(IntPtr folder, uint count, IntPtr[] pidls, IntPtr inner, ref Guid iid, [MarshalAs(UnmanagedType.Interface)] out object dataObject);
+    [DllImport("shell32.dll")] static extern int SHMultiFileProperties([MarshalAs(UnmanagedType.Interface)] object dataObject, int flags);
+
+    void Properties(string path) => Properties(new[] { path });
+
+    [DllImport("shell32.dll")] static extern IntPtr ILFindChild(IntPtr parent, IntPtr child);
+
+    // Several items get Explorer's combined dialog (total size, counts). The shell wants them as IDs
+    // relative to one folder (relative to the desktop it answers "properties not available"), so
+    // that folder is the deepest one they share — search results from several subfolders work too.
+    void Properties(IReadOnlyList<string> paths)
+    {
+        if (paths.Count == 1) { SHObjectProperties(new System.Windows.Interop.WindowInteropHelper(this).Handle, 2 /* SHOP_FILEPATH */, paths[0], null); return; }
+        var common = paths.Select(p => Path.GetDirectoryName(p.TrimEnd('\\')) ?? p).Aggregate(SharedFolder);
+        if (common == null) { Status.Text = "Properties of items on different drives can't be shown together"; return; }
+        var pidls = new List<IntPtr>();
+        try
+        {
+            if (SHParseDisplayName(common, IntPtr.Zero, out var folder, 0, out _) != 0) return;
+            pidls.Add(folder);
+            var children = new List<IntPtr>();
+            foreach (var p in paths)
+                if (SHParseDisplayName(p, IntPtr.Zero, out var pidl, 0, out _) == 0) { pidls.Add(pidl); children.Add(ILFindChild(folder, pidl)); }
+            var iid = new Guid("0000010e-0000-0000-C000-000000000046"); // IDataObject
+            if (children.Count > 0 && SHCreateDataObject(folder, (uint)children.Count, children.ToArray(), IntPtr.Zero, ref iid, out var data) == 0)
+                SHMultiFileProperties(data, 0);
+        }
+        finally { foreach (var p in pidls) Marshal.FreeCoTaskMem(p); }
+    }
+
+    /// The deepest folder containing both, or null when they're on different drives.
+    static string SharedFolder(string a, string b)
+    {
+        if (a == null || b == null) return null;
+        for (var d = a; d != null; d = Path.GetDirectoryName(d))
+            if (b.Equals(d, StringComparison.OrdinalIgnoreCase) || b.StartsWith(d.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)) return d;
+        return null;
+    }
 }

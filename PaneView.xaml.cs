@@ -123,6 +123,7 @@ class EntrySort(string key, bool desc) : IComparer
             "Size" => x.Size.CompareTo(y.Size),
             "Type" => StringComparer.OrdinalIgnoreCase.Compare(x.Ext, y.Ext) is var t && t != 0 ? t : StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name),
             "Modified" => x.Modified.CompareTo(y.Modified),
+            "Version" => StringComparer.OrdinalIgnoreCase.Compare(x.Version, y.Version) is var v && v != 0 ? v : StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name),
             _ => StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name),
         };
         return desc ? -r : r;
@@ -162,7 +163,7 @@ public partial class PaneView : UserControl
     {
         InitializeComponent();
         details = List.View;
-        ShowSortArrow();
+        SetSort(sortKey, sortDesc);
         Loaded += (_, _) => SetView(Settings.Views.TryGetValue(Name, out var v) ? v : ViewMode.Details);
         List.GotKeyboardFocus += (_, _) => Activated?.Invoke();
         PreviewMouseDown += (_, _) => Activated?.Invoke(); // anywhere in the pane: tabs, path, list
@@ -991,10 +992,48 @@ public partial class PaneView : UserControl
     void Header_Click(object s, RoutedEventArgs e)
     {
         if (e.OriginalSource is not GridViewColumnHeader { Column: { } col } || !colKey.TryGetValue(col, out var key)) return;
-        sortDesc = key == sortKey ? !sortDesc : key != "Name"; // size/date: biggest/newest first
-        sortKey = key;
-        view.CustomSort = new EntrySort(sortKey, sortDesc);
+        SetSort(key, key == sortKey ? !sortDesc : key != "Name"); // size/date: biggest/newest first
+    }
+
+    public static readonly string[] SortKeys = { "Name", "Size", "Type", "Modified", "Version" };
+    public string SortKey => sortKey;
+    public bool SortDescending => sortDesc;
+
+    public void SetSort(string key, bool desc)
+    {
+        sortKey = key; sortDesc = desc;
+        if (view != null) view.CustomSort = new EntrySort(key, desc);
         ShowSortArrow();
+        SortIcon.Text = desc ? "" : ""; // down / up arrow
+        SortName.Text = key;
+    }
+
+    // The column headers are only there in Details, so every mode gets this menu.
+    void SortButton_Click(object s, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = SortButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Top };
+        foreach (var item in SortMenuItems()) menu.Items.Add(item);
+        menu.IsOpen = true;
+    }
+
+    /// The sort choices, shared by the Sort button and the right-click menu.
+    public IEnumerable<object> SortMenuItems()
+    {
+        foreach (var key in SortKeys)
+        {
+            var k = key;
+            var mi = new MenuItem { Header = key, IsChecked = key == sortKey, FontWeight = key == sortKey ? FontWeights.SemiBold : FontWeights.Normal };
+            mi.Click += (_, _) => SetSort(k, k == sortKey ? sortDesc : k != "Name"); // size/date: biggest/newest first
+            yield return mi;
+        }
+        yield return new Separator();
+        var reverse = new MenuItem
+        {
+            Header = sortDesc ? "Ascending" : "Descending",
+            Icon = new TextBlock { Text = sortDesc ? "" : "", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 12 },
+        };
+        reverse.Click += (_, _) => SetSort(sortKey, !sortDesc);
+        yield return reverse;
     }
 
     void FitName()
@@ -1165,7 +1204,8 @@ public partial class PaneView : UserControl
 
     void ShowSortArrow()
     {
-        foreach (var c in ((GridView)List.View).Columns)
+        if (details is not GridView grid) return; // the other views have no headers to mark
+        foreach (var c in grid.Columns)
         {
             if (!colKey.TryGetValue(c, out var key)) colKey[c] = key = (string)c.Header;
             var row = new DockPanel { LastChildFill = true };
