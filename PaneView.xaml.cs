@@ -171,6 +171,13 @@ public partial class PaneView : UserControl
         // FindRow, not "OriginalSource is FrameworkElement": a double-click on the name lands on a Run
         List.MouseDoubleClick += (_, e) => { if (FindRow(e.OriginalSource as DependencyObject) != null) OpenSelected(); };
         List.SelectionChanged += (_, _) => { if (bulkSelect) return; UpdateFooter(); StatsChanged?.Invoke(); };
+        // Ctrl+wheel steps through the view modes, smallest to largest, the way Explorer resizes icons.
+        PreviewMouseWheel += (_, e) =>
+        {
+            if (Keyboard.Modifiers != ModifierKeys.Control) return;
+            e.Handled = true; // otherwise the list scrolls as well
+            Zoom(e.Delta > 0 ? 1 : -1);
+        };
         // Middle click, as in a browser: a folder opens in a tab behind this one, a tab closes.
         List.PreviewMouseDown += (_, e) =>
         {
@@ -1205,6 +1212,15 @@ public partial class PaneView : UserControl
         if (mode == ViewMode.Details) ScrollViewer.SetVerticalScrollBarVisibility(List, ScrollBarVisibility.Auto);
         List.SelectedItem = sel;
         if (sel != null) List.ScrollIntoView(sel);
+    }
+
+    // Details ← List ← M ← L ← XL: the same five modes as Ctrl+Shift+1…5, from smallest to largest.
+    static readonly ViewMode[] ZoomOrder = { ViewMode.Details, ViewMode.List, ViewMode.IconsM, ViewMode.IconsL, ViewMode.IconsXL };
+
+    public void Zoom(int step)
+    {
+        int next = Math.Clamp(Array.IndexOf(ZoomOrder, Mode) + step, 0, ZoomOrder.Length - 1);
+        if (ZoomOrder[next] != Mode) SetView(ZoomOrder[next]);
     }
 
     void ViewButton_Click(object s, RoutedEventArgs e)
