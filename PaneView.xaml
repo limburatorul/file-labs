@@ -20,7 +20,7 @@
     <DataTemplate x:Key="NameCell">
       <StackPanel Orientation="Horizontal">
         <Grid Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource CutDim}">
-          <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.5">
+          <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.9">
             <TextBlock.Visibility><Binding Path="NoSmallIcon"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility>
           </TextBlock>
           <Image Source="{Binding SmallIcon}" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -80,7 +80,7 @@
       <DockPanel Width="230" ToolTip="{Binding FullDate}">
         <Border DockPanel.Dock="Left" Width="3" Margin="0,1,6,1" CornerRadius="1.5" Background="{Binding AgeBrush}"/>
         <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource CutDim}">
-          <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.5">
+          <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.9">
             <TextBlock.Visibility><Binding Path="NoSmallIcon"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility>
           </TextBlock>
           <Image Source="{Binding SmallIcon}" RenderOptions.BitmapScalingMode="HighQuality"/>

@@ -241,9 +241,9 @@ public partial class PaneView : UserControl
     public void SetActive(bool on)
     {
         if (Card.Background != cardFill) { Card.Background = cardFill; Card.BorderBrush = cardEdge; }
-        var accent = MainWindow.AccentColor;
+        var accent = ((SolidColorBrush)Application.Current.Resources["AccentEdge"]).Color;
         Animate(cardFill, ((SolidColorBrush)MainWindow.Hex(on ? "#12FFFFFF" : "#0A000000")).Color);
-        Animate(cardEdge, on ? Color.FromArgb(0x66, accent.R, accent.G, accent.B) : Color.FromArgb(0x0F, 255, 255, 255));
+        Animate(cardEdge, on ? accent : Color.FromArgb(0x0F, 255, 255, 255));
         listOpacity = on ? 1 : 0.88;
         if (Settings.Animations) List.BeginAnimation(OpacityProperty, new DoubleAnimation(listOpacity, Quick) { EasingFunction = Ease });
         else { List.BeginAnimation(OpacityProperty, null); List.Opacity = listOpacity; }

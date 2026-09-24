@@ -204,6 +204,8 @@ public partial class MainWindow : Window
         if (quick != null) SetBackdrop(quick);
         ApplyAccent();
         Application.Current.Resources["RowPad"] = new Thickness(4, Settings.RowPad, 4, Settings.RowPad);
+        // the pane edge is painted by hand, so a new accent has to be painted on by hand
+        Left.SetActive(active == Left); Right.SetActive(active == Right);
     }
 
     /// Replaces the four accent brushes, at their four transparencies. WPF freezes brushes declared in
@@ -212,9 +214,11 @@ public partial class MainWindow : Window
     public static void ApplyAccent()
     {
         var c = AccentColor;
-        Shade("Accent", 0xFF); Shade("AccentEdge", 0x66); Shade("AccentSelect", 0x40); Shade("AccentSoft", 0x26);
+        Shade("Accent", 0xFF); Shade("AccentEdge", 0xA6); Shade("AccentSelect", 0x73); Shade("AccentSoft", 0x45);
         void Shade(string key, byte alpha)
         {
+            // "Accent" itself is the solid fill for bars and must stay opaque; the tints follow the slider.
+            if (key != "Accent") alpha = (byte)Math.Clamp(alpha * Settings.AccentStrength, 12, 255);
             var brush = new SolidColorBrush(Color.FromArgb(alpha, c.R, c.G, c.B));
             brush.Freeze();
             Application.Current.Resources[key] = brush;

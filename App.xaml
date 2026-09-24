@@ -3,9 +3,9 @@
   <Application.Resources>
     <SolidColorBrush x:Key="Accent" Color="#4C8DFF"/>
     <!-- the accent at the three transparencies the UI needs; all four follow the colour chosen in Settings -->
-    <SolidColorBrush x:Key="AccentEdge" Color="#664C8DFF"/>
-    <SolidColorBrush x:Key="AccentSelect" Color="#404C8DFF"/>
-    <SolidColorBrush x:Key="AccentSoft" Color="#264C8DFF"/>
+    <SolidColorBrush x:Key="AccentEdge" Color="#A64C8DFF"/>
+    <SolidColorBrush x:Key="AccentSelect" Color="#734C8DFF"/>
+    <SolidColorBrush x:Key="AccentSoft" Color="#454C8DFF"/>
     <SolidColorBrush x:Key="Muted" Color="#8CFFFFFF"/>
     <!-- the darker band tabs sit on -->
     <SolidColorBrush x:Key="TabStripBg" Color="#2E000000"/>

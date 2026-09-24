@@ -16,6 +16,7 @@ public static class Settings
     public static string Accent = "#4C8DFF"; // Protagonist Labs blue by default
     public static double RowPad = 3;         // row height: 1 compact, 3 normal, 6 roomy
     public static bool Animations = true;
+    public static double AccentStrength = 1.0; // how opaque the accent tints are, 1 = as designed
     public static bool Verify;               // xxHash3 check after copying
     public static bool ShowHidden;
     public static string LastSeenVersion = "";   // What's new is shown once per version
@@ -44,6 +45,7 @@ public static class Settings
                 case "accent" when System.Text.RegularExpressions.Regex.IsMatch(v, "^#[0-9a-fA-F]{6}$"): Accent = v; break;
                 case "rowpad" when double.TryParse(v, CultureInfo.InvariantCulture, out var rp) && double.IsFinite(rp): RowPad = Math.Clamp(rp, 0, 10); break;
                 case "animations": Animations = v == "1"; break;
+                case "accentstrength" when double.TryParse(v, CultureInfo.InvariantCulture, out var ast) && double.IsFinite(ast): AccentStrength = Math.Clamp(ast, 0.3, 2.5); break;
                 case "verify": Verify = v == "1"; break;
                 case "hidden": ShowHidden = v == "1"; break;
                 case "nativemenu": NativeMenu = v == "1"; break;
@@ -72,6 +74,7 @@ public static class Settings
             $"accent={Accent}",
             $"rowpad={RowPad.ToString(CultureInfo.InvariantCulture)}",
             $"animations={(Animations ? 1 : 0)}",
+            $"accentstrength={AccentStrength.ToString(CultureInfo.InvariantCulture)}",
             $"verify={(Verify ? 1 : 0)}",
             $"hidden={(ShowHidden ? 1 : 0)}",
             $"nativemenu={(NativeMenu ? 1 : 0)}",

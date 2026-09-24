@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 
 namespace FileExplorer;
 
@@ -16,6 +16,7 @@ public partial class SettingsWindow : Window
         VerifyBox.IsChecked = Settings.Verify;
         DefaultBox.IsChecked = Settings.IsDefaultFileManager;
         AnimationsBox.IsChecked = Settings.Animations;
+        StrengthSlider.Value = Settings.AccentStrength * 100;
         BuildSwatches();
         AboutText.Text = $"File Labs {typeof(App).Assembly.GetName().Version?.ToString(3)} · Protagonist Labs\n" +
                          "Transfers run on the Ferry engine. Settings live in " + Settings.Dir;
@@ -55,6 +56,13 @@ public partial class SettingsWindow : Window
         else AccentHex.Text = Settings.Accent; // not a colour: put back what is in use
     }
 
+    void Strength_Changed(object s, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (!IsLoaded) return;
+        Settings.AccentStrength = e.NewValue / 100;
+        Changed();
+    }
+
     void RowHeight_Click(object s, RoutedEventArgs e)
     {
         Settings.RowPad = s == RowCompact ? 1 : s == RowRoomy ? 6 : 3;
@@ -76,6 +84,7 @@ public partial class SettingsWindow : Window
         RowNormal.Tag = Settings.RowPad is > 1 and < 6 ? "on" : null;
         RowRoomy.Tag = Settings.RowPad >= 6 ? "on" : null;
         AccentHex.Text = Settings.Accent;
+        StrengthText.Text = $"{Settings.AccentStrength * 100:0}%";
         foreach (System.Windows.Controls.Border dot in Swatches.Children)
             dot.BorderBrush = (string)dot.ToolTip == Settings.Accent ? MainWindow.Hex("#FFFFFF") : System.Windows.Media.Brushes.Transparent;
         Root.Background = MainWindow.Tint();
