@@ -38,8 +38,11 @@ public partial class App : Application
         }
         else _ = Listen();
         Settings.Load(); // before any window: the panes read column widths while being built
-        SizeCache.Load(); // folder sizes from previous sessions: a full 12 TB drive is minutes of walking
+        SizeCache.StartLoading(); // folder sizes from previous sessions: a full 12 TB drive is minutes of walking
         Exit += (_, _) => SizeCache.Save();
+        var sizeSaver = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMinutes(2) };
+        sizeSaver.Tick += (_, _) => Task.Run(SizeCache.SaveIfChanged); // off the UI thread: up to 50 000 lines
+        sizeSaver.Start();
         base.OnStartup(e);
         new MainWindow().Show(); // opened here, not via StartupUri, so --agent etc. never build it
     }
@@ -137,6 +140,21 @@ public partial class App : Application
                 Check(Directory.Exists(link), "the junction itself stays where it was");
                 Directory.Delete(link); // the link only, so the clean-up below has plain folders to remove
             }
+
+            // folder sizes: every folder a scan passes through is remembered, and a change drops the
+            // totals above it
+            var sizes = Path.Combine(root, "sizes");
+            var deep = Directory.CreateDirectory(Path.Combine(sizes, "a", "b")).FullName;
+            File.WriteAllBytes(Path.Combine(deep, "x.bin"), new byte[1000]);
+            // what a listing compares against: the folder's entry in its parent
+            DateTime Stamp(string p) => new DirectoryInfo(Path.GetDirectoryName(p)).EnumerateDirectories(Path.GetFileName(p)).First().LastWriteTimeUtc;
+            Check(PaneView.Measure(new DirectoryInfo(sizes), default) == 1000, "folder size");
+            Check(SizeCache.Get(deep, Stamp(deep)) == 1000, "subfolders remembered");
+            Check(SizeCache.Get(deep, DateTime.UtcNow) == -1, "a changed folder is forgotten");
+            var mid = Path.Combine(sizes, "a");
+            Check(SizeCache.Get(mid, Stamp(mid)) == -1, "and so is every total above it");
+            File.WriteAllBytes(Path.Combine(deep, "y.bin"), new byte[500]);
+            Check(PaneView.Measure(new DirectoryInfo(sizes), default) == 1500, "measured again after the change");
 
             // copy with verification on
             Settings.Verify = true;

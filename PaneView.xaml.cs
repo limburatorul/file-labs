@@ -69,6 +69,7 @@ public class Entry : INotifyPropertyChanged
     (string icon, string color) Kind => IsUp ? ("", "#9CA3AF") : IsDir ? ("", "#60A5FA")
         : Kinds.TryGetValue(System.IO.Path.GetExtension(Name), out var k) ? k : ("", "#9CA3AF");
     public string Icon => Kind.icon;
+    public string KindColor => Kind.color;
     public Brush IconBrush => MainWindow.Hex(Kind.color);
 
     // Recency at a glance, OneCommander-style: hot red for minutes, fading through
@@ -263,13 +264,18 @@ public partial class PaneView : UserControl
     // Active pane: lighter surface and accent edge. Inactive: darker and slightly faded, so it recedes.
     // The three changes are animated together, or switching panes reads as a flash.
     readonly SolidColorBrush cardFill = new(), cardEdge = new();
+    readonly SolidColorBrush glowColor = new();
 
     public void SetActive(bool on)
     {
-        if (Card.Background != cardFill) { Card.Background = cardFill; Card.BorderBrush = cardEdge; }
+        if (Card.Background != cardFill) { Card.Background = cardFill; Card.BorderBrush = cardEdge; Glow.BorderBrush = glowColor; }
         var accent = ((SolidColorBrush)Application.Current.Resources["AccentEdge"]).Color;
         Animate(cardFill, ((SolidColorBrush)MainWindow.Hex(on ? "#12FFFFFF" : "#0A000000")).Color);
         Animate(cardEdge, on ? accent : Color.FromArgb(0x0F, 255, 255, 255));
+        glowColor.Color = Color.FromRgb(accent.R, accent.G, accent.B); // a discreet glow around the active pane only
+        var glowTo = on ? 0.7 : 0;
+        if (Settings.Animations) Glow.BeginAnimation(OpacityProperty, new DoubleAnimation(glowTo, Quick) { EasingFunction = Ease });
+        else { Glow.BeginAnimation(OpacityProperty, null); Glow.Opacity = glowTo; }
         listOpacity = on ? 1 : 0.88;
         if (Settings.Animations) List.BeginAnimation(OpacityProperty, new DoubleAnimation(listOpacity, Quick) { EasingFunction = Ease });
         else { List.BeginAnimation(OpacityProperty, null); List.Opacity = listOpacity; }
@@ -715,18 +721,41 @@ public partial class PaneView : UserControl
         var cts = sizing = new CancellationTokenSource();
         var todo = items.Where(e => e.IsDir && !e.IsUp && e.Size == -1).ToList();
         if (todo.Count == 0) return;
-        var opts = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint };
         Task.Run(() =>
         {
             Parallel.ForEach(todo, new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = cts.Token }, e =>
             {
-                long total = 0;
-                try { foreach (var f in new DirectoryInfo(e.Path).EnumerateFiles("*", opts)) { total += f.Length; cts.Token.ThrowIfCancellationRequested(); } }
-                catch (IOException) { } catch (UnauthorizedAccessException) { }
-                SizeCache.Set(e.Path, Directory.GetLastWriteTimeUtc(e.Path), total);
+                long total;
+                try { total = Measure(new DirectoryInfo(e.Path), cts.Token); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; } // gone or unreadable: leave it at "…"
                 Dispatcher.BeginInvoke(() => { e.Size = total; UpdateFooter(); StatsChanged?.Invoke(); });
             });
         }, cts.Token).ContinueWith(_ => { }); // swallow cancellation
+    }
+
+    static readonly EnumerationOptions OneLevel = new() { IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint };
+
+    /// A folder's size, walked one level at a time so that every folder on the way is remembered too:
+    /// measuring D:\ used to cache D:\ alone, and opening any folder under it walked that whole subtree
+    /// again. A remembered subfolder is not walked, so a scan that was cut short (you moved on) picks
+    /// up from everything it had finished.
+    internal static long Measure(DirectoryInfo dir, CancellationToken token)
+    {
+        long bytes = 0;
+        foreach (var fsi in dir.EnumerateFileSystemInfos("*", OneLevel))
+        {
+            token.ThrowIfCancellationRequested();
+            if (fsi is FileInfo f) { bytes += f.Length; continue; }
+            var sub = (DirectoryInfo)fsi;
+            long known = SizeCache.Get(sub.FullName, sub.LastWriteTimeUtc);
+            bytes += known >= 0 ? known : Measure(sub, token);
+        }
+        // The timestamp as it is now, after the walk: NTFS keeps a copy of it in the parent's index
+        // (what a listing reads), and opening the folder to walk it is what brings that copy up to
+        // date. Stored from before the walk, it looked changed at the next visit and was walked again.
+        dir.Refresh();
+        SizeCache.Set(dir.FullName, dir.LastWriteTimeUtc, bytes);
+        return bytes;
     }
 
     // File versions for exe/dll (OneCommander-style column), off the UI thread: network drives can be slow.

@@ -344,7 +344,7 @@ public partial class MainWindow : Window
         recycleBin.Show();
     }
 
-    Button SideButton(string icon, string text, string path, double? used = null, Action click = null)
+    Button SideButton(string icon, string text, string path, Action click = null)
     {
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -352,15 +352,6 @@ public partial class MainWindow : Window
         grid.Children.Add(ShellIcon(path, icon, 16, new(0, 0, 10, 0)));
         var label = new StackPanel();
         label.Children.Add(new TextBlock { Text = text, TextTrimming = TextTrimming.CharacterEllipsis });
-        if (used is double u)
-        {
-            var bar = new Grid { Height = 2, Margin = new(0, 4, 0, 1) };
-            bar.Children.Add(new Border { Background = Hex("#1AFFFFFF") });
-            var fill = new Border { Background = u > 0.9 ? Hex("#F87171") : (Brush)FindResource("Accent"), HorizontalAlignment = HorizontalAlignment.Left };
-            bar.SizeChanged += (_, e) => fill.Width = e.NewSize.Width * u;
-            bar.Children.Add(fill);
-            label.Children.Add(bar);
-        }
         Grid.SetColumn(label, 1);
         grid.Children.Add(label);
         var b = new Button { Content = grid, Style = (Style)FindResource("Side"), HorizontalContentAlignment = HorizontalAlignment.Stretch, Margin = new(0, 1, 0, 1), ToolTip = click == null ? path : text };
@@ -423,7 +414,12 @@ public partial class MainWindow : Window
         size.Inlines.Add(new System.Windows.Documents.Run($" / {d.Total / 1e9:N0} GB") { Foreground = (Brush)FindResource("Muted") });
         var bar = new Grid { Height = 2, Margin = new(0, 4, 0, 1) };
         bar.Children.Add(new Border { Background = Hex("#1AFFFFFF") });
-        var fill = new Border { Background = frac > 0.9 ? Hex("#F87171") : (Brush)FindResource("Accent"), HorizontalAlignment = HorizontalAlignment.Left };
+        var fill = new Border { Background = (Brush)FindResource("Accent"), HorizontalAlignment = HorizontalAlignment.Left };
+        if (frac > 0.9) // almost full: a bright red that glows a little, so it reads as a warning at a glance
+        {
+            fill.Background = Hex("#FF3347");
+            fill.Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Color.FromRgb(0xFF, 0x33, 0x47), BlurRadius = 7, ShadowDepth = 0, Opacity = 0.75 };
+        }
         bar.SizeChanged += (_, e) => fill.Width = e.NewSize.Width * frac;
         bar.Children.Add(fill);
         Grid.SetColumn(name, 1); Grid.SetColumn(size, 2);
@@ -555,18 +551,100 @@ public partial class MainWindow : Window
             using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(Agent.StateKey);
             key.SetValue("CurrentFolder", dir);
         }
+        ShowFolderStats();
+        ShowSelectionStats();
+
         // The figures come from the drive rows, read off the UI thread every 10 s and after every copy or
         // delete: asking a network drive here cost up to 177 ms, once per folder whose size came in.
         var root = dir.StartsWith(@"\\") ? null : Path.GetPathRoot(dir);
-        if (shownDrives.FirstOrDefault(r => r.Name.Equals(root, StringComparison.OrdinalIgnoreCase)) is not { } d) return;
-        StatTotal.Text = Fmt(d.Total);
-        StatUsed.Text = Fmt(d.Total - d.Free);
+        if (shownDrives.FirstOrDefault(r => r.Name.Equals(root, StringComparison.OrdinalIgnoreCase)) is not { } d)
+        {
+            DriveCard.Visibility = Visibility.Hidden; // a share has no drive figures
+            return;
+        }
+        DriveCard.Visibility = Visibility.Visible;
+        double used = d.Total > 0 ? (double)(d.Total - d.Free) / d.Total : 0;
+        StatDrive.Text = d.Name.TrimEnd('\\') + (d.VolumeLabel != "" ? "  " + d.VolumeLabel : "");
+        StatFs.Text = $"  ·  {d.Format}{(d.Network ? " · network" : "")}";
         StatFree.Text = Fmt(d.Free);
-        StatFreePct.Text = $"free · {100.0 * d.Free / d.Total:0}% of the disk";
+        StatUsed.Text = $"   ·   {Fmt(d.Total - d.Free)} of {Fmt(d.Total)} used";
+        DrivePct.Text = $"{used * 100:0}% full";
+        DriveBar.ColumnDefinitions[0].Width = new GridLength(used, GridUnitType.Star);
+        DriveBar.ColumnDefinitions[1].Width = new GridLength(1 - used, GridUnitType.Star);
+        bool full = used > 0.9; // the same warning as the sidebar's drive bars
+        var colour = full ? Hex("#FF3347") : (Brush)FindResource("Accent");
+        DriveFill.Background = DriveIcon.Foreground = colour;
+        DrivePct.Foreground = full ? colour : (Brush)FindResource("Muted");
+        DriveFill.Effect = full ? FullGlow : null;
+    }
+
+    readonly System.Windows.Media.Effects.DropShadowEffect FullGlow = new() { Color = Color.FromRgb(0xFF, 0x33, 0x47), BlurRadius = 7, ShadowDepth = 0, Opacity = 0.75 };
+
+    // The folder: its size, what it holds, and a bar of what that is by kind — the same colours as the
+    // file icons in the list. Rebuilt only when the mix changes, not at every selection change.
+    static readonly Dictionary<string, string> KindNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["#60A5FA"] = "Folders", ["#F472B6"] = "Images", ["#FB923C"] = "Video", ["#A78BFA"] = "Audio", ["#FACC15"] = "Archives",
+        ["#34D399"] = "Programs", ["#38BDF8"] = "Code", ["#F87171"] = "PDF", ["#9CA3AF"] = "Other",
+    };
+    string kindsShown;
+
+    void ShowFolderStats()
+    {
+        var all = active.Items.ToList();
+        int folders = all.Count(e => e.IsDir);
         StatFolder.Text = Fmt(active.FolderTotal);
-        StatFolderSub.Text = active.SizesPending ? "this folder · calculating…" : $"this folder · {active.Items.Count()} items";
-        StatLabel.Text = d.Name.TrimEnd('\\');
-        StatFs.Text = $"{d.Format} · {(d.VolumeLabel == "" ? d.Type.ToString() : d.VolumeLabel)}";
+        StatFolderSub.Text = $"{folders} folder{(folders == 1 ? "" : "s")} · {all.Count - folders} file{(all.Count - folders == 1 ? "" : "s")}"
+                             + (active.SizesPending ? " · measuring…" : "");
+        var kinds = all.Where(e => e.Size > 0).GroupBy(e => e.KindColor).Select(g => (Color: g.Key, Bytes: g.Sum(e => e.Size)))
+                       .OrderByDescending(k => k.Bytes).ToList();
+        long total = kinds.Sum(k => k.Bytes);
+        var signature = string.Join("|", kinds.Select(k => $"{k.Color}:{k.Bytes * 200 / Math.Max(1, total)}"));
+        if (signature == kindsShown) return;
+        kindsShown = signature;
+        KindBar.Children.Clear();
+        KindBar.ColumnDefinitions.Clear();
+        foreach (var (color, bytes) in kinds.Where(k => k.Bytes * 100 >= total)) // slivers under 1% would be noise
+        {
+            KindBar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(bytes, GridUnitType.Star) });
+            var part = new Border { Background = Hex(color), Margin = new(0, 0, 1, 0) };
+            Grid.SetColumn(part, KindBar.ColumnDefinitions.Count - 1);
+            KindBar.Children.Add(part);
+        }
+        KindBar.ToolTip = total == 0 ? null : string.Join("\n", kinds.Select(k =>
+            $"{(KindNames.TryGetValue(k.Color, out var n) ? n : "Other")}   {100.0 * k.Bytes / total:0}%   {Fmt(k.Bytes)}"));
+    }
+
+    // The selection when there is one; otherwise the most recent change in the folder — what you are
+    // usually looking for in Downloads or a project folder.
+    void ShowSelectionStats()
+    {
+        var sel = active.Selected;
+        if (sel.Count > 0)
+        {
+            long bytes = sel.Sum(e => Math.Max(0, e.Size)), folder = active.FolderTotal;
+            SelIcon.Text = "\uE8B3";
+            SelTitle.Text = sel.Count == 1 ? "Selected" : $"{sel.Count} selected";
+            SelValue.Text = sel.Any(e => e.Size == -1) ? (sel.Count == 1 ? "measuring…" : Fmt(bytes) + "+") : Fmt(bytes); // a folder still being measured
+            SelSub.Text = sel.Count == 1 ? sel[0].Name : folder > 0 ? $"{100.0 * bytes / folder:0.#}% of this folder" : "";
+            return;
+        }
+        var newest = active.Items.Where(e => e.Modified != default).MaxBy(e => e.Modified);
+        SelIcon.Text = "\uE823"; // clock
+        SelTitle.Text = "Latest change";
+        SelValue.Text = newest == null ? "—" : Ago(newest.Modified);
+        SelSub.Text = newest?.Name ?? "";
+    }
+
+    static string Ago(DateTime t)
+    {
+        var d = DateTime.Now - t;
+        return d.TotalMinutes < 1 ? "just now"
+            : d.TotalHours < 1 ? $"{(int)d.TotalMinutes} min ago"
+            : d.TotalDays < 1 ? $"{(int)d.TotalHours} h ago"
+            : d.TotalDays < 2 ? "yesterday"
+            : d.TotalDays < 60 ? $"{(int)d.TotalDays} days ago"
+            : t.ToString("d MMM yyyy");
     }
 
     // Copy/move through the Ferry engine; delete still goes to the Recycle Bin via the VB API.

@@ -20,6 +20,13 @@
       <Setter Property="Foreground" Value="{StaticResource Muted}"/>
       <Setter Property="Margin" Value="0,5,12,0"/>
     </Style>
+    <Style x:Key="StatCard" TargetType="Border">
+      <Setter Property="Background" Value="#08FFFFFF"/>
+      <Setter Property="BorderBrush" Value="#14FFFFFF"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="Padding" Value="12,9,14,9"/>
+    </Style>
     <!-- One Ferry job: progress, speed/ETA, pause/cancel, and the conflict decision inline -->
     <DataTemplate x:Key="JobCard">
       <Border Background="#0DFFFFFF" BorderBrush="#16FFFFFF" BorderThickness="1" CornerRadius="10" Padding="12,9" Margin="0,0,0,6"
@@ -147,37 +154,59 @@
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
 
-      <!-- Stats for the active pane -->
-      <UniformGrid Rows="1" Margin="6,0,0,12">
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="&#xEDA2;" Style="{StaticResource StatIcon}" Foreground="{DynamicResource Accent}"/>
-          <StackPanel>
-            <TextBlock x:Name="StatTotal" Style="{StaticResource StatValue}"/>
-            <TextBlock Style="{StaticResource StatSub}"><Run x:Name="StatUsed" Foreground="{DynamicResource Accent}"/> used</TextBlock>
-          </StackPanel>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="&#xEA3A;" Style="{StaticResource StatIcon}"/>
-          <StackPanel>
-            <TextBlock x:Name="StatFree" Style="{StaticResource StatValue}"/>
-            <TextBlock x:Name="StatFreePct" Style="{StaticResource StatSub}"/>
-          </StackPanel>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="&#xE8B7;" Style="{StaticResource StatIcon}"/>
-          <StackPanel>
-            <TextBlock x:Name="StatFolder" Style="{StaticResource StatValue}"/>
-            <TextBlock x:Name="StatFolderSub" Style="{StaticResource StatSub}"/>
-          </StackPanel>
-        </StackPanel>
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="&#xE81E;" Style="{StaticResource StatIcon}"/>
-          <StackPanel>
-            <TextBlock x:Name="StatLabel" Style="{StaticResource StatValue}"/>
-            <TextBlock x:Name="StatFs" Style="{StaticResource StatSub}"/>
-          </StackPanel>
-        </StackPanel>
-      </UniformGrid>
+      <!-- Stats for the active pane: the drive, the folder, and the selection (or the latest change) -->
+      <Grid Margin="0,0,0,12">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="1.25*"/>
+          <ColumnDefinition Width="10"/>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="10"/>
+          <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+
+        <Border Style="{StaticResource StatCard}" x:Name="DriveCard">
+          <DockPanel>
+            <TextBlock x:Name="DriveIcon" Text="&#xEDA2;" Style="{StaticResource StatIcon}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <StackPanel VerticalAlignment="Center">
+              <DockPanel>
+                <TextBlock x:Name="DrivePct" DockPanel.Dock="Right" Style="{StaticResource StatSub}" Typography.NumeralAlignment="Tabular"/>
+                <TextBlock Style="{StaticResource StatSub}"><Run x:Name="StatDrive" FontWeight="SemiBold" Foreground="#E8EEF6"/><Run x:Name="StatFs"/></TextBlock>
+              </DockPanel>
+              <TextBlock TextTrimming="CharacterEllipsis"><Run x:Name="StatFree" FontSize="20" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular"/><Run Text="  free" Foreground="{StaticResource Muted}" FontSize="11"/><Run x:Name="StatUsed" Foreground="{StaticResource Muted}" FontSize="11"/></TextBlock>
+              <!-- how full the drive is: the sidebar's bar, across the card; red with a glow past 90% -->
+              <Grid x:Name="DriveBar" Height="4" Margin="0,5,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                <Border Grid.ColumnSpan="2" Background="#12FFFFFF" CornerRadius="2"/>
+                <Border x:Name="DriveFill" CornerRadius="2" Background="{DynamicResource Accent}"/>
+              </Grid>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <Border Grid.Column="2" Style="{StaticResource StatCard}">
+          <DockPanel>
+            <TextBlock Text="&#xE8B7;" Style="{StaticResource StatIcon}" Foreground="#60A5FA" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="This folder" Style="{StaticResource StatSub}"/>
+              <TextBlock x:Name="StatFolder" Style="{StaticResource StatValue}"/>
+              <TextBlock x:Name="StatFolderSub" Style="{StaticResource StatSub}" Typography.NumeralAlignment="Tabular"/>
+              <!-- what the folder is made of, by size: images, video, archives, programs, code… -->
+              <Grid x:Name="KindBar" Height="4" Margin="0,5,0,0" Background="#12FFFFFF"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <Border Grid.Column="4" Style="{StaticResource StatCard}">
+          <DockPanel>
+            <TextBlock x:Name="SelIcon" Text="&#xE8B3;" Style="{StaticResource StatIcon}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock x:Name="SelTitle" Style="{StaticResource StatSub}"/>
+              <TextBlock x:Name="SelValue" Style="{StaticResource StatValue}" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Name="SelSub" Style="{StaticResource StatSub}" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+      </Grid>
 
       <Grid Grid.Row="1" x:Name="PaneGrid">
         <Grid.ColumnDefinitions>

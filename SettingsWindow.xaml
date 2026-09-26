@@ -53,6 +53,24 @@
               </Border>
               <WrapPanel x:Name="Swatches"/>
             </DockPanel>
+            <!-- any colour: hue around the wheel, saturation from the centre out, brightness beside it -->
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
+              <Grid Width="132" Height="132" Cursor="Cross" Background="Transparent"
+                    MouseLeftButtonDown="Wheel_Down" MouseMove="Wheel_Move" MouseLeftButtonUp="Wheel_Up">
+                <Image x:Name="Wheel"/>
+                <Ellipse x:Name="WheelShade" Fill="Black" IsHitTestVisible="False"/>
+                <Canvas IsHitTestVisible="False">
+                  <Ellipse x:Name="WheelMark" Width="14" Height="14" Stroke="White" StrokeThickness="2">
+                    <Ellipse.Effect><DropShadowEffect ShadowDepth="0" BlurRadius="4" Opacity="0.9"/></Ellipse.Effect>
+                  </Ellipse>
+                </Canvas>
+              </Grid>
+              <StackPanel Margin="18,0,0,0" Width="170" VerticalAlignment="Center">
+                <TextBlock Text="Brightness" FontSize="11"/>
+                <Slider x:Name="ValueSlider" Minimum="25" Maximum="100" Margin="0,4,0,0" ValueChanged="Value_Changed"/>
+                <Border x:Name="AccentPreview" Height="28" CornerRadius="7" Margin="0,12,0,0"/>
+              </StackPanel>
+            </StackPanel>
             <TextBlock Style="{StaticResource Hint}" Text="Used for the selection, the drive bars, the progress bars and the active pane's edge."/>
 
             <DockPanel Margin="0,10,0,2">
@@ -120,8 +138,8 @@
             <TextBlock Foreground="#8A97AA" TextWrapping="Wrap" Margin="0,10,0,0">
               <TextBlock.Resources><Style TargetType="Hyperlink"><Setter Property="Foreground" Value="#E8EEF6"/></Style></TextBlock.Resources>
               Feedback: <Hyperlink NavigateUri="mailto:feedback@protagonistlabs.app?subject=File%20Labs%20feedback" RequestNavigate="Link_Navigate">feedback@protagonistlabs.app</Hyperlink>
-              · <Hyperlink NavigateUri="https://protagonistlabs.app/filelabs/?utm_source=app&amp;utm_medium=filelabs" RequestNavigate="Link_Navigate">Website</Hyperlink>
-              · <Hyperlink NavigateUri="https://protagonistlabs.app/?utm_source=app&amp;utm_medium=filelabs" RequestNavigate="Link_Navigate">More apps from Protagonist Labs</Hyperlink>
+              · <Hyperlink NavigateUri="https://protagonistlabs.app/filelabs/?utm_source=filelabs&amp;utm_medium=app&amp;utm_campaign=about" RequestNavigate="Link_Navigate">Website</Hyperlink>
+              · <Hyperlink NavigateUri="https://protagonistlabs.app/?utm_source=filelabs&amp;utm_medium=app&amp;utm_campaign=more-apps" RequestNavigate="Link_Navigate">More apps from Protagonist Labs</Hyperlink>
             </TextBlock>
           </StackPanel>
         </Border>

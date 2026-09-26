@@ -100,6 +100,13 @@
     </DataTemplate>
   </UserControl.Resources>
 
+  <Grid>
+  <!-- The active pane's glow: its edge again, thicker and blurred, under the card. Kept apart from the
+       card so the blur touches only this line — an effect on the card would render the whole list
+       through it, on every scroll. -->
+  <Border x:Name="Glow" CornerRadius="10" BorderThickness="2.5" Opacity="0" IsHitTestVisible="False">
+    <Border.Effect><BlurEffect Radius="12"/></Border.Effect>
+  </Border>
   <Border x:Name="Card" Background="#0DFFFFFF" CornerRadius="10" BorderThickness="1" BorderBrush="#1AFFFFFF">
     <DockPanel>
       <!-- Tabs -->
@@ -231,4 +238,5 @@
       </Grid>
     </DockPanel>
   </Border>
+  </Grid>
 </UserControl>
