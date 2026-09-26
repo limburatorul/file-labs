@@ -29,9 +29,19 @@ public partial class MainWindow
         tree.Resources[SystemColors.HighlightTextBrushKey] = Hex("#F2F6FB");
         tree.Resources[SystemColors.InactiveSelectionHighlightBrushKey] = Hex("#26FFFFFF");
         tree.Resources[SystemColors.InactiveSelectionHighlightTextBrushKey] = Hex("#E8EEF6");
-        foreach (var d in DriveInfo.GetDrives().Where(d => d.IsReady))
-            tree.Items.Add(TreeNode(d.Name, d.Name.TrimEnd('\\') + (d.VolumeLabel != "" ? "  " + d.VolumeLabel : "")));
         FolderTree.Children.Add(tree);
+        folderTree = tree; // its drives arrive with the first drive read (ShowDriveNodes)
+    }
+
+    TreeView folderTree;
+
+    // Asking every drive whether it's ready, on the UI thread, held up startup by up to 1.3 s (seven NAS
+    // shares and a USB disk, measured); the drive rows are read in the background anyway.
+    void ShowDriveNodes()
+    {
+        folderTree.Items.Clear();
+        foreach (var d in shownDrives)
+            folderTree.Items.Add(TreeNode(d.Name, d.Name.TrimEnd('\\') + (d.VolumeLabel != "" ? "  " + d.VolumeLabel : "")));
     }
 
     TreeViewItem TreeNode(string path, string label)

@@ -64,10 +64,19 @@ public static class Settings
         }
     }
 
+    /// Written beside the real file, then moved over it: a shutdown in the middle of a plain write left
+    /// an empty file behind (the folder-size cache was found at 0 bytes) and everything in it was lost.
+    public static void WriteAllLines(string path, IEnumerable<string> lines)
+    {
+        var tmp = path + ".tmp";
+        File.WriteAllLines(tmp, lines);
+        File.Move(tmp, path, overwrite: true);
+    }
+
     public static void Save()
     {
         Directory.CreateDirectory(Dir);
-        File.WriteAllLines(FilePath, new[]
+        WriteAllLines(FilePath, new[]
         {
             $"backdrop={Backdrop}",
             $"opacity={Opacity.ToString(CultureInfo.InvariantCulture)}",

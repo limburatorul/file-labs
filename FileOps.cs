@@ -13,9 +13,9 @@ public partial class MainWindow
 {
     // ---- Undo (Ctrl+Z) ----
     // Renames, new folders/files, zips, shortcuts, and copies/moves that met no conflicts. A job that
-    // had conflicts is not undoable: its targets are not simply "what it created" (replaced files,
-    // "keep both" copies), so undoing could remove files that were there before. Deletes need no
-    // entry here — the Recycle Bin is their undo.
+    // had conflicts, or poured a folder into one of the same name, is not undoable: its targets are not
+    // simply "what it created", so undoing would take files that were there before along with it.
+    // Deletes need no entry here — the Recycle Bin is their undo.
     readonly List<(string What, Action Undo)> undo = new();
 
     void Remember(string what, Action undoIt)
@@ -37,7 +37,7 @@ public partial class MainWindow
     // Called when a Ferry job ends.
     void RememberJob(Job job)
     {
-        if (undoJobs.Remove(job) || job.Phase != Phase.Done || job.Conflicts.Count > 0 || !job.Errors.IsEmpty) return;
+        if (undoJobs.Remove(job) || job.Phase != Phase.Done || job.Conflicts.Count > 0 || job.Merged || !job.Errors.IsEmpty) return;
         var made = job.Sources.Select(s => (Source: s, Target: Path.Combine(job.Destination, Path.GetFileName(s.TrimEnd('\\')))))
                               .Where(x => Path.GetFileName(x.Target) != "").ToList();
         if (made.Count == 0) return;

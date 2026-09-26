@@ -39,6 +39,7 @@ public class Job : INotifyPropertyChanged
     public int TotalFiles, DoneFiles;
     public string Current = "";
     public List<Conflict> Conflicts { get; internal set; } = new();
+    public bool Merged { get; internal set; } // a folder went into a folder of the same name that was already there
     public readonly System.Collections.Concurrent.ConcurrentQueue<string> Errors = new(); // written by the worker, read by the UI
     public readonly System.Collections.Concurrent.ConcurrentQueue<string> Notes = new();
 
@@ -208,6 +209,7 @@ public static class Ferry
             { job.Errors.Enqueue($"{fsi.Name}: already in this folder"); continue; }
             if (fsi is DirectoryInfo && (job.Destination + "\\").StartsWith(fsi.FullName.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase))
             { job.Errors.Enqueue($"{fsi.Name}: can't copy a folder into itself"); continue; }
+            if (fsi is DirectoryInfo && Directory.Exists(Path.Combine(job.Destination, fsi.Name))) job.Merged = true;
             Add(fsi, fsi.Name);
         }
         for (int i = 0; i < plan.Files.Count; i++)
@@ -225,7 +227,7 @@ public static class Ferry
     static void Transfer(Job job, Plan plan, Choice choice)
     {
         // A move inside one volume is a rename: no bytes travel.
-        if (job.IsMove && plan.Conflicts.Count == 0 && job.Sources.All(s => SameVolume(s, job.Destination)))
+        if (job.IsMove && plan.Conflicts.Count == 0 && !job.Merged && job.Sources.All(s => SameVolume(s, job.Destination)))
         {
             foreach (var s in job.Sources)
             {
@@ -332,6 +334,10 @@ public static class Ferry
     {
         try
         {
+            // A junction or folder link was left alone by the copy. Walking into it would delete empty
+            // folders in whatever it points to, and deleting it would lose the link: it stays, and so
+            // does the folder holding it.
+            if (File.GetAttributes(root).HasFlag(FileAttributes.ReparsePoint)) return;
             foreach (var d in Directory.GetDirectories(root)) RemoveEmptyTree(d);
             Directory.Delete(root); // throws if something was left (skipped/failed files) — then it stays
         }

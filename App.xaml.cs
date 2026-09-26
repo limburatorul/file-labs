@@ -33,15 +33,8 @@ public partial class App : Application
         if (!first)
         {
             AllowSetForegroundWindow(-1); // we were just launched by the user, so we may pass focus on
-            try
-            {
-                using var pipe = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
-                pipe.Connect(3000);
-                using var w = new StreamWriter(pipe);
-                w.WriteLine(e.Args.FirstOrDefault(a => !a.StartsWith("--")) ?? "");
-                Shutdown(); return;
-            }
-            catch (Exception ex) when (ex is TimeoutException or IOException) { } // first instance hung/closing: just start normally
+            if (HandOff(e.Args.FirstOrDefault(a => !a.StartsWith("--")) ?? "")) { Shutdown(); return; }
+            // first instance hung or closing: just start normally
         }
         else _ = Listen();
         Settings.Load(); // before any window: the panes read column widths while being built
@@ -52,6 +45,31 @@ public partial class App : Application
     }
 
     static readonly string PipeName = "FileLabs-" + Environment.UserName;
+
+    /// True while a File Labs window is open for this user (it holds the single-instance mutex).
+    internal static bool Running
+    {
+        get
+        {
+            if (!Mutex.TryOpenExisting(PipeName, out var m)) return false;
+            m.Dispose();
+            return true;
+        }
+    }
+
+    /// Passes a folder to the running window ("" = just come to the front). False if it didn't answer.
+    internal static bool HandOff(string path)
+    {
+        try
+        {
+            using var pipe = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
+            pipe.Connect(3000);
+            using var w = new StreamWriter(pipe);
+            w.WriteLine(path);
+            return true;
+        }
+        catch (Exception ex) when (ex is TimeoutException or IOException) { return false; }
+    }
     Mutex instance;
     [System.Runtime.InteropServices.DllImport("user32.dll")] static extern bool AllowSetForegroundWindow(int pid);
 
@@ -98,6 +116,28 @@ public partial class App : Application
             Check(j.Phase == Phase.Done && !Directory.Exists(Path.Combine(src, "tree")) && File.Exists(Path.Combine(mv, "tree", "a.txt")), "same-volume move");
             Check(j.Notes.Contains("Moved within the same drive"), "move took the rename path");
 
+            // move a folder onto a folder of the same name: merged file by file, never renamed over it,
+            // and not undoable (undo would take the files that were already there with it)
+            var merge = Directory.CreateDirectory(Path.Combine(root, "merge")).FullName;
+            Directory.CreateDirectory(Path.Combine(merge, "tree"));
+            File.WriteAllText(Path.Combine(merge, "tree", "kept.txt"), "was here");
+            var incoming = Directory.CreateDirectory(Path.Combine(root, "incoming", "tree")).FullName;
+            File.WriteAllText(Path.Combine(incoming, "new.txt"), "arrived");
+            // a junction inside the moved folder, pointing at a folder with an empty subfolder
+            var outside = Directory.CreateDirectory(Path.Combine(root, "outside", "empty")).Parent.FullName;
+            var link = Path.Combine(incoming, "link");
+            bool junction = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/c mklink /J \"{link}\" \"{outside}\"")
+                { CreateNoWindow = true, UseShellExecute = false })!.WaitForExit(5000) && Directory.Exists(link);
+            j = Run(Ferry.Submit(new[] { incoming }, merge, move: true));
+            Check(j.Phase == Phase.Done && j.Merged && j.Errors.IsEmpty, "merge move finished");
+            Check(File.Exists(Path.Combine(merge, "tree", "kept.txt")) && File.Exists(Path.Combine(merge, "tree", "new.txt")), "merge keeps both folders' files");
+            if (junction)
+            {
+                Check(Directory.Exists(Path.Combine(outside, "empty")), "a junction's target is never emptied");
+                Check(Directory.Exists(link), "the junction itself stays where it was");
+                Directory.Delete(link); // the link only, so the clean-up below has plain folders to remove
+            }
+
             // copy with verification on
             Settings.Verify = true;
             var vdst = Directory.CreateDirectory(Path.Combine(root, "verified")).FullName;
@@ -127,7 +167,7 @@ public partial class App : Application
             File.WriteAllText(Path.Combine(Path.GetTempPath(), "filelabs-selftest.txt"), ex.ToString());
             return 1;
         }
-        finally { try { Directory.Delete(root, true); } catch (IOException) { } }
+        finally { try { Directory.Delete(root, true); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } }
     }
 
     static Job Run(Job j) { Wait(() => !j.Active); return j; }

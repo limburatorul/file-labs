@@ -92,7 +92,7 @@ public partial class MainWindow : Window
             warmUp.Stop();
             var paths = pinned.Concat(shownDrives.Select(d => d.Name))
                 .Concat(Favorites.Children.OfType<Button>().Select(b => b.ToolTip as string))
-                .Where(p => !string.IsNullOrEmpty(p) && Directory.Exists(p)).ToList();
+                .Where(p => !string.IsNullOrEmpty(p)).ToList();
             Left.PrefetchPaths(paths);
             Right.PrefetchPaths(paths);
         };
@@ -103,11 +103,9 @@ public partial class MainWindow : Window
 
         active = Left;
         // last session's tabs, then the folder asked for on the command line as a new tab
-        Left.Navigate(user);
-        Right.Navigate(DriveInfo.GetDrives().First(d => d.IsReady).Name);
-        foreach (var p in new[] { Left, Right })
-            if (Settings.Tabs.TryGetValue(p.Name, out var paths))
-                p.Restore(paths, Settings.ActiveTab.TryGetValue(p.Name, out var a) ? a : 0);
+        foreach (var (p, fallback) in new[] { (Left, user), (Right, Path.GetPathRoot(Environment.SystemDirectory)) })
+            if (!Settings.Tabs.TryGetValue(p.Name, out var paths) || !p.Restore(paths, Settings.ActiveTab.TryGetValue(p.Name, out var a) ? a : 0))
+                p.Navigate(fallback);
         var arg = Environment.GetCommandLineArgs().Skip(1).FirstOrDefault(a => !a.StartsWith("--"));
         if (arg != null && Directory.Exists(arg)) { Left.NewTab(); Left.Navigate(arg); }
         SetActive(Left);
@@ -117,14 +115,8 @@ public partial class MainWindow : Window
         ContentRendered += (_, _) =>
         {
             // Started by the Win+E agent (--front): Windows' foreground lock keeps a freshly started
-            // background-launched window behind the current one. A synthetic Alt tap counts as user
-            // input, which lifts the lock for the SetForegroundWindow that follows.
-            if (Environment.GetCommandLineArgs().Contains("--front"))
-            {
-                keybd_event(0x12, 0, 0, UIntPtr.Zero);
-                keybd_event(0x12, 0, 2, UIntPtr.Zero);
-                SetForegroundWindow(new WindowInteropHelper(this).Handle);
-            }
+            // background-launched window behind the current one.
+            if (Environment.GetCommandLineArgs().Contains("--front")) TakeForeground();
             Topmost = true; Topmost = false; Activate(); Left.FocusList();
         };
     }
@@ -133,7 +125,18 @@ public partial class MainWindow : Window
     [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
     [DllImport("dwmapi.dll")] static extern int DwmExtendFrameIntoClientArea(IntPtr h, ref Margins m);
     struct Margins { public int L, R, T, B; }
-    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+    [DllImport("user32.dll")] static extern uint SendInput(uint count, byte[] inputs, int size);
+
+    // Windows only lets a window it didn't see clicked come to the front if its process has just had
+    // input. An empty mouse event is input and does nothing else (PowerToys does the same). The Alt tap
+    // used before could reach this window once it was already in front, and the next Space then opened
+    // its system menu instead of Quick View.
+    void TakeForeground()
+    {
+        int size = IntPtr.Size == 8 ? 40 : 28; // one INPUT; all zero = a mouse event that moves nothing
+        SendInput(1, new byte[size], size);
+        SetForegroundWindow(new WindowInteropHelper(this).Handle);
+    }
     [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hwnd);
 
     public static void ApplyAcrylic(Window w)
@@ -310,8 +313,11 @@ public partial class MainWindow : Window
     // taskbar) → just bring the existing window to the front, like switching to it.
     public void OpenFromOutside(string path)
     {
-        if (!string.IsNullOrEmpty(path) && Directory.Exists(path)) { active.NewTab(); active.Navigate(path); }
+        if (!string.IsNullOrEmpty(path) && (PaneView.IsRemote(path) || Directory.Exists(path))) { active.NewTab(); active.Navigate(path); }
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        // Win+E arrives straight from the agent now, which can't pass on the right to take focus (a
+        // process started only to relay it could, at ~175 ms a press).
+        TakeForeground();
         // a brief Topmost flip gets the window above others even when Windows refuses a plain Activate
         Topmost = true; Topmost = false;
         Activate();
@@ -366,7 +372,7 @@ public partial class MainWindow : Window
 
     // Drive rows are rebuilt from figures read off the UI thread: asking a network drive for its size
     // blocks for the best part of a second, and the numbers have to keep up with copies and deletes.
-    record DriveRow(string Name, string Label, string Format, long Total, long Free, bool Network);
+    record DriveRow(string Name, string Label, string Format, long Total, long Free, bool Network, string VolumeLabel, DriveType Type);
 
     static List<DriveRow> ReadDrives()
     {
@@ -377,7 +383,7 @@ public partial class MainWindow : Window
                 if (!d.IsReady) continue;
                 bool net = d.DriveType == DriveType.Network;
                 var label = net && GetNetworkPath(d.Name) is { } unc ? $"({unc})" : d.VolumeLabel;
-                rows.Add(new DriveRow(d.Name, label, d.DriveFormat, d.TotalSize, d.AvailableFreeSpace, net));
+                rows.Add(new DriveRow(d.Name, label, d.DriveFormat, d.TotalSize, d.AvailableFreeSpace, net, d.VolumeLabel, d.DriveType));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // drive went away mid-read
         return rows;
@@ -389,9 +395,12 @@ public partial class MainWindow : Window
     {
         var rows = t.Result;
         if (rows.SequenceEqual(shownDrives)) return; // nothing moved: leave the buttons alone
+        bool plugged = !rows.Select(d => (d.Name, d.VolumeLabel)).SequenceEqual(shownDrives.Select(d => (d.Name, d.VolumeLabel)));
         shownDrives = rows;
         Drives.Children.Clear();
         foreach (var d in rows) Drives.Children.Add(DriveButton(d));
+        if (plugged) ShowDriveNodes(); // only when drives came or went: rebuilding closes opened branches
+        UpdateStats();
     }, TaskScheduler.FromCurrentSynchronizationContext());
 
     // OneCommander-style drive row: "C:  Label        used / total GB" with a usage bar under it.
@@ -449,7 +458,7 @@ public partial class MainWindow : Window
         foreach (var path in pinned)
         {
             var name = Path.GetFileName(path.TrimEnd('\\'));
-            var b = SideButton(Directory.Exists(path) ? "\uE718" : "\uE7BA", name == "" ? path : name, path); // pin / warning if gone
+            var b = SideButton(PaneView.IsRemote(path) || Directory.Exists(path) ? "\uE718" : "\uE7BA", name == "" ? path : name, path); // pin / warning if gone
             var up = new MenuItem { Header = "Move up" };
             var remove = new MenuItem { Header = "Remove from Quick access" };
             up.Click += (_, _) => { int i = pinned.IndexOf(path); if (i > 0) { pinned.RemoveAt(i); pinned.Insert(i - 1, path); SaveQuickAccess(); } };
@@ -463,7 +472,7 @@ public partial class MainWindow : Window
     void SaveQuickAccess()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(QuickFile));
-        File.WriteAllLines(QuickFile, pinned);
+        Settings.WriteAllLines(QuickFile, pinned);
         BuildQuickAccess();
     }
 
@@ -546,18 +555,18 @@ public partial class MainWindow : Window
             using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(Agent.StateKey);
             key.SetValue("CurrentFolder", dir);
         }
-        if (dir.StartsWith(@"\\")) return; // DriveInfo only takes drive letters; a UNC path threw here
-        var d = new DriveInfo(Path.GetPathRoot(dir));
-        if (!d.IsReady) return;
-        StatTotal.Text = Fmt(d.TotalSize);
-        StatUsed.Text = Fmt(d.TotalSize - d.AvailableFreeSpace);
-        StatFree.Text = Fmt(d.AvailableFreeSpace);
-        StatFreePct.Text = $"free · {100.0 * d.AvailableFreeSpace / d.TotalSize:0}% of the disk";
+        // The figures come from the drive rows, read off the UI thread every 10 s and after every copy or
+        // delete: asking a network drive here cost up to 177 ms, once per folder whose size came in.
+        var root = dir.StartsWith(@"\\") ? null : Path.GetPathRoot(dir);
+        if (shownDrives.FirstOrDefault(r => r.Name.Equals(root, StringComparison.OrdinalIgnoreCase)) is not { } d) return;
+        StatTotal.Text = Fmt(d.Total);
+        StatUsed.Text = Fmt(d.Total - d.Free);
+        StatFree.Text = Fmt(d.Free);
+        StatFreePct.Text = $"free · {100.0 * d.Free / d.Total:0}% of the disk";
         StatFolder.Text = Fmt(active.FolderTotal);
         StatFolderSub.Text = active.SizesPending ? "this folder · calculating…" : $"this folder · {active.Items.Count()} items";
         StatLabel.Text = d.Name.TrimEnd('\\');
-        StatFs.Text = $"{d.DriveFormat} · {(d.VolumeLabel == "" ? d.DriveType.ToString() : d.VolumeLabel)}";
-        Status.Text = dir;
+        StatFs.Text = $"{d.Format} · {(d.VolumeLabel == "" ? d.Type.ToString() : d.VolumeLabel)}";
     }
 
     // Copy/move through the Ferry engine; delete still goes to the Recycle Bin via the VB API.

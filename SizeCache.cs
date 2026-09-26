@@ -50,7 +50,7 @@ public static class SizeCache
         {
             Directory.CreateDirectory(Settings.Dir);
             var keep = map.OrderByDescending(kv => kv.Value.UsedAt).Take(MaxEntries);
-            File.WriteAllLines(FilePath, keep.Select(kv =>
+            Settings.WriteAllLines(FilePath, keep.Select(kv =>
                 string.Create(CultureInfo.InvariantCulture, $"{kv.Value.Size}|{kv.Value.Stamp}|{kv.Value.UsedAt}|{kv.Key}")));
         }
         catch (IOException) { }

@@ -88,8 +88,14 @@ public static class Agent
         // We just handled the user's key press, so Windows lets us hand the right to take focus on;
         // without this File Labs opens (or is asked to come forward) behind the current window.
         AllowSetForegroundWindow(-1);
-        try { Process.Start(new ProcessStartInfo(Environment.ProcessPath, "--front") { UseShellExecute = false }); }
-        catch (System.ComponentModel.Win32Exception) { } // exe gone (e.g. mid-uninstall): nothing to open
+        // Off this thread: it also runs the keyboard hook, and Windows drops a hook that stops answering.
+        ThreadPool.QueueUserWorkItem(_ =>
+        {
+            // Already open: tell it directly. Starting a process only to pass that on cost ~175 ms a press.
+            if (App.Running && App.HandOff("")) return;
+            try { Process.Start(new ProcessStartInfo(Environment.ProcessPath, "--front") { UseShellExecute = false }); }
+            catch (System.ComponentModel.Win32Exception) { } // exe gone (e.g. mid-uninstall): nothing to open
+        });
     }
 
     // ---- quick switch ----

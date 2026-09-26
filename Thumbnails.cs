@@ -10,10 +10,15 @@ namespace FileExplorer;
 public static class Thumbnails
 {
     // Asking the shell costs milliseconds per file, and folders get revisited constantly (tabs, back,
-    // the sidebar), so every answer is kept. The key carries the file's timestamp: an edited photo
-    // gets a new thumbnail instead of the old one.
+    // the sidebar), so answers are kept — up to a budget of pixels, not a count: four photo folders in
+    // XL icons held 230 MB under the old 4 000-image limit, and the limit allowed three times that.
+    // The key carries the file's timestamp: an edited photo gets a new thumbnail instead of the old one.
     static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (BitmapSource Image, long UsedAt)> cache = new(StringComparer.OrdinalIgnoreCase);
-    const int MaxCached = 4000;
+    const int MaxCached = 4000; // sync badges, below
+    const long MaxBytes = 128L << 20; // ~700 photos at 256 px, or tens of thousands of icons; Windows keeps its own on disk
+    static long bytes;
+
+    static long Bytes(BitmapSource b) => (long)b.PixelWidth * b.PixelHeight * 4;
 
     /// Returns a frozen image (safe to hand to the UI thread) or null. Call from an STA thread.
     public static BitmapSource Get(string path, int size, bool iconOnly = false, long stamp = 0)
@@ -22,10 +27,19 @@ public static class Thumbnails
         if (cache.TryGetValue(key, out var hit)) { cache[key] = (hit.Image, DateTime.UtcNow.Ticks); return hit.Image; }
         var image = Fetch(path, size, iconOnly);
         if (image == null) return null;
-        cache[key] = (image, DateTime.UtcNow.Ticks);
-        if (cache.Count > MaxCached)
-            foreach (var old in cache.OrderBy(kv => kv.Value.UsedAt).Take(cache.Count / 4).ToList()) cache.TryRemove(old.Key, out _);
+        if (cache.TryAdd(key, (image, DateTime.UtcNow.Ticks)) && Interlocked.Add(ref bytes, Bytes(image)) > MaxBytes) Trim();
         return image;
+    }
+
+    /// Drops the least recently used images until a quarter of the budget is free again.
+    static void Trim()
+    {
+        lock (cache)
+            foreach (var old in cache.OrderBy(kv => kv.Value.UsedAt).ToList())
+            {
+                if (Interlocked.Read(ref bytes) <= MaxBytes * 3 / 4) return;
+                if (cache.TryRemove(old.Key, out var gone)) Interlocked.Add(ref bytes, -Bytes(gone.Image));
+            }
     }
 
     static BitmapSource Fetch(string path, int size, bool iconOnly)

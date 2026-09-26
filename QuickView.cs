@@ -84,7 +84,7 @@ public partial class MainWindow
         {
             UIElement content =
                 e.IsDir ? TextView(FolderListing(e.Path)) :
-                ImageExt.Contains(ext) ? ImageView(e.Path) :
+                ImageExt.Contains(ext) ? await ImageView(e.Path) :
                 VideoExt.Contains(ext) ? MediaView(e, video: true) :
                 AudioExt.Contains(ext) ? MediaView(e, video: false) :
                 ext.Equals(".pdf", StringComparison.OrdinalIgnoreCase) ? await PdfView(e.Path, v) :
@@ -110,14 +110,21 @@ public partial class MainWindow
             content.BeginAnimation(UIElement.OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140)));
     }
 
-    static UIElement ImageView(string path)
+    // Decoded off the UI thread: a 24 MP photo took 170 ms, and stepping through photos with the arrow
+    // keys froze the window for that long at every press.
+    static async Task<UIElement> ImageView(string path)
     {
-        var bmp = new BitmapImage();
-        bmp.BeginInit();
-        bmp.CacheOption = BitmapCacheOption.OnLoad; // don't keep the file locked
-        bmp.DecodePixelWidth = 2000;
-        bmp.UriSource = new Uri(path);
-        bmp.EndInit();
+        var bmp = await Task.Run(() =>
+        {
+            var b = new BitmapImage();
+            b.BeginInit();
+            b.CacheOption = BitmapCacheOption.OnLoad; // don't keep the file locked
+            b.DecodePixelWidth = 2000;
+            b.UriSource = new Uri(path);
+            b.EndInit();
+            b.Freeze(); // so the UI thread may use it
+            return b;
+        });
         return new Image { Source = bmp, Stretch = Stretch.Uniform, StretchDirection = StretchDirection.DownOnly, Margin = new(16) };
     }
 

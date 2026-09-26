@@ -18,7 +18,7 @@ public static class Updater
 {
     public const string Repo = "limburatorul/file-labs";
 
-    public record Release(Version Version, string Tag, string Notes, string AssetUrl, long AssetSize);
+    public record Release(Version Version, string Tag, string Notes, string AssetUrl, long AssetSize, string Sha256);
 
     public static Version Current => typeof(Updater).Assembly.GetName().Version is { } v ? new Version(v.Major, v.Minor, v.Build) : new Version(0, 0, 0);
     static string dismissed; // tag the user said "Later" to; deliberately not persisted
@@ -52,8 +52,11 @@ public static class Updater
             var asset = root.GetProperty("assets").EnumerateArray()
                 .FirstOrDefault(a => (a.GetProperty("name").GetString() ?? "").EndsWith("setup.exe", StringComparison.OrdinalIgnoreCase));
             if (asset.ValueKind != JsonValueKind.Object) return null;
+            // GitHub publishes each asset's SHA-256 as "sha256:<hex>"; older assets have none
+            var digest = asset.TryGetProperty("digest", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString() : null;
             release = new Release(version, tag, root.GetProperty("body").GetString() ?? "",
-                                  asset.GetProperty("browser_download_url").GetString(), asset.GetProperty("size").GetInt64());
+                                  asset.GetProperty("browser_download_url").GetString(), asset.GetProperty("size").GetInt64(),
+                                  digest?.StartsWith("sha256:") == true ? digest[7..] : null);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or KeyNotFoundException)
         {
@@ -91,6 +94,18 @@ public static class Updater
         {
             File.Delete(path);
             throw new IOException($"Download is {MainWindow.Fmt(length)}, expected {MainWindow.Fmt(release.AssetSize)}");
+        }
+        // The size catches a cut-off download; the checksum catches everything else. This file is about
+        // to be run as an installer, so one that differs from what was published never is.
+        if (release.Sha256 != null)
+        {
+            string actual;
+            using (var file = File.OpenRead(path)) actual = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(file));
+            if (!actual.Equals(release.Sha256, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Delete(path);
+                throw new IOException("The download doesn't match the checksum GitHub published for it");
+            }
         }
         return path;
     }

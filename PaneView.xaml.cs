@@ -17,7 +17,12 @@ public class Entry : INotifyPropertyChanged
     public string Name { get; init; }
     public string Path { get; init; }
     public bool IsDir { get; init; }
-    public DateTime Modified { get; init; }
+    DateTime modified;
+    public DateTime Modified
+    {
+        get => modified;
+        set { modified = value; Changed(nameof(Modified)); Changed(nameof(DateText)); Changed(nameof(FullDate)); Changed(nameof(Age)); Changed(nameof(AgeBrush)); Changed(nameof(AgeTextBrush)); }
+    }
     public bool IsUp => Name == "..";
     public string Location { get; init; } = ""; // search results: the folder it was found in, relative to where the search started
     public string Where => Location == "" ? "" : "   in " + Location;
@@ -129,6 +134,27 @@ class EntrySort(string key, bool desc) : IComparer
             _ => StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name),
         };
         return desc ? -r : r;
+    }
+}
+
+// While any UI Automation client runs — a password manager, a screen reader, Logitech Options, ShareX,
+// ChatGPT's "work with apps" — WPF re-examines the automation tree after every layout, and each row
+// exposed ~10 elements (icon, badge, name, the hidden rename box, the date badge…). Measured on a
+// machine with such clients: 370 ms of every folder change went there. A row is now one item,
+// named after its file, which is also what a screen reader should announce.
+public class FileList : ListView
+{
+    protected override System.Windows.Automation.Peers.AutomationPeer OnCreateAutomationPeer() => new ListPeer(this);
+
+    class ListPeer(FileList owner) : System.Windows.Automation.Peers.ListViewAutomationPeer(owner)
+    {
+        protected override System.Windows.Automation.Peers.ItemAutomationPeer CreateItemAutomationPeer(object item) => new RowPeer(item, this);
+    }
+
+    class RowPeer(object item, System.Windows.Automation.Peers.SelectorAutomationPeer list) : System.Windows.Automation.Peers.ListBoxItemAutomationPeer(item, list)
+    {
+        protected override List<System.Windows.Automation.Peers.AutomationPeer> GetChildrenCore() => null;
+        protected override string GetNameCore() => Item is Entry e ? e.Name : base.GetNameCore();
     }
 }
 
@@ -264,7 +290,9 @@ public partial class PaneView : UserControl
         try
         {
             di = new DirectoryInfo(dir);
-            if (!di.Exists) throw new DirectoryNotFoundException($"{dir} does not exist");
+            // A network folder is checked by the read below instead: a server that is off answers only
+            // after the SMB timeout, 21 s (measured), and this is the UI thread.
+            if (!IsRemote(di.FullName) && !di.Exists) throw new DirectoryNotFoundException($"{dir} does not exist");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or System.Security.SecurityException)
         {
@@ -277,7 +305,10 @@ public partial class PaneView : UserControl
         // Show the folder as we last saw it, immediately; the read below replaces it a moment later.
         // Without this, every tab switch waits on the disk — measured at 1.2 s for a cold folder.
         var cached = Cached(di.FullName);
-        if (cached != null) { ShowItems(cached.Items, select, animate: false); StartPasses(); }
+        // A refresh of the folder on screen: its rows are the cached ones, and showing them again would
+        // rebuild the list, drop the selection and jump the scroll — every 400 ms in a busy folder.
+        bool onScreen = cached != null && cached.Items == items;
+        if (cached != null && !onScreen) { ShowItems(cached.Items, select, animate: false); StartPasses(); }
 
         // Reading the folder and asking the drive for free space both block — on a network share for
         // the best part of a second — so they happen off the UI thread and the list is handed over
@@ -286,25 +317,39 @@ public partial class PaneView : UserControl
         {
             var (used, driveText) = DriveUsage(di.FullName);
 
-            // A folder's own timestamp changes whenever a child is added, removed or renamed, so an
-            // unchanged folder needs no re-read at all: what is on screen stays, and with it the scroll
-            // position, the icons, the sizes — and no flicker of the list being replaced by itself.
+            // Always read: a folder's timestamp moves when a child is added, removed or renamed, but not
+            // when a file inside is rewritten — a growing download or log kept its old size forever.
             long stamp = Stamp(di.FullName);
-            List<Entry> list = null;
-            string error = null;
-            if (cached == null || cached.Stamp != stamp || stamp == 0) list = ReadFolder(di, ShowHidden, out error);
+            var list = ReadFolder(di, ShowHidden, out var error);
 
             Dispatcher.BeginInvoke(() =>
             {
                 if (v != navVersion) return; // the user has already moved on
-                if (error != null) { Error?.Invoke(error); return; }
-                if (list != null)
+                if (error != null)
+                {
+                    Error?.Invoke(error);
+                    if (cached == null) ShowItems(new List<Entry>(), null); // not the last folder's files under this one's name
+                    return;
+                }
+                // Same files as the rows on screen: only sizes and dates are brought up to date, so the
+                // scroll position, the selection and the icons stay. Otherwise the list is replaced.
+                bool shown = cached != null && cached.Items == items;
+                if (shown && Patch(list))
+                {
+                    Remember(di.FullName, cached.Items, stamp);
+                    if (select != null && items.FirstOrDefault(e => e.Name.Equals(select, StringComparison.OrdinalIgnoreCase)) is { } row)
+                    {
+                        List.SelectedItem = row;
+                        List.ScrollIntoView(row);
+                    }
+                }
+                else
                 {
                     Remember(di.FullName, list, stamp);
-                    ShowItems(list, select, animate: cached == null);
+                    ShowItems(list, select, animate: cached == null, keep: shown);
                     StartPasses();
                 }
-                Watch();
+                if (watcher?.Path != di.FullName) Watch();
                 if (driveText != null)
                 {
                     UsedBar.SetBinding(WidthProperty, new Binding("ActualWidth") { Source = UsedBar.Parent, Converter = new Scale(used) });
@@ -438,17 +483,72 @@ public partial class PaneView : UserControl
         return ++navVersion;
     }
 
-    void ShowItems(IList<Entry> list, string select, bool animate = true)
+    /// `keep`: the same folder, read again — the selection (by name) and the scroll position survive,
+    /// unless `select` names a row to show instead (a rename, a new folder).
+    void ShowItems(IList<Entry> list, string select, bool animate = true, bool keep = false)
     {
+        var scroller = keep ? FindScroller(List) : null;
+        double offset = scroller?.VerticalOffset ?? 0, across = scroller?.HorizontalOffset ?? 0;
+        var wasSelected = keep ? List.SelectedItems.Cast<Entry>().Select(e => e.Name).ToHashSet(StringComparer.OrdinalIgnoreCase) : null;
+        var left = items;
         items = list;
         view = new ListCollectionView((IList)items) { CustomSort = new EntrySort(sortKey, sortDesc) };
         ApplyFilter();
         List.ItemsSource = view;
-        List.SelectedItem = items.FirstOrDefault(e => e.Name.Equals(select, StringComparison.OrdinalIgnoreCase)) ?? view.Cast<Entry>().FirstOrDefault();
-        if (select != null && List.SelectedItem != null) List.ScrollIntoView(List.SelectedItem);
+        // The rows just left stay in the folder cache; their thumbnails don't. Kept there, every photo
+        // folder ever opened stayed in memory; coming back takes them from the thumbnail cache instead.
+        if (left != list) foreach (var e in left) if (e.Thumb != null) { e.Thumb = null; e.ThumbSize = 0; }
+        if (keep && select == null)
+        {
+            SetSelection(e => wasSelected.Contains(e.Name));
+            scroller.ScrollToVerticalOffset(offset);
+            scroller.ScrollToHorizontalOffset(across);
+        }
+        else
+        {
+            List.SelectedItem = items.FirstOrDefault(e => e.Name.Equals(select, StringComparison.OrdinalIgnoreCase)) ?? view.Cast<Entry>().FirstOrDefault();
+            if (select != null && List.SelectedItem != null) List.ScrollIntoView(List.SelectedItem);
+        }
         if (animate) FadeInList();
         UpdateFooter();
         StatsChanged?.Invoke();
+    }
+
+    /// Brings the rows on screen up to date with a fresh read of the same folder, in place. False when
+    /// files were added, removed or renamed — then the list has to be replaced.
+    bool Patch(List<Entry> fresh)
+    {
+        if (fresh.Count != items.Count) return false;
+        var rows = new Dictionary<string, Entry>(items.Count, StringComparer.OrdinalIgnoreCase);
+        foreach (var e in items) rows[e.Name] = e;
+        foreach (var f in fresh)
+            if (!rows.TryGetValue(f.Name, out var e) || e.IsDir != f.IsDir) return false;
+        bool resize = false, rethumb = false;
+        foreach (var f in fresh)
+        {
+            var e = rows[f.Name];
+            if (e.Modified != f.Modified)
+            {
+                e.Modified = f.Modified;
+                if (e.IsDir) { e.Size = f.Size; resize |= f.Size == -1; } // -1: its contents changed, measure again
+                else if (e.Thumb != null) { e.Thumb = null; e.ThumbSize = 0; rethumb = true; } // an edited photo
+            }
+            if (!e.IsDir && e.Size != f.Size) e.Size = f.Size;
+        }
+        if (resize) StartSizing();
+        if (rethumb) StartThumbs();
+        return true;
+    }
+
+    static ScrollViewer FindScroller(DependencyObject d)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(d); i++)
+        {
+            var child = VisualTreeHelper.GetChild(d, i);
+            if (child is ScrollViewer sv) return sv;
+            if (FindScroller(child) is { } found) return found;
+        }
+        return null;
     }
 
     // ---- motion: short, and only where something actually changed ----
@@ -466,6 +566,15 @@ public partial class PaneView : UserControl
 
     // ---- \\server: its shares, as folders (DirectoryInfo can't open a bare server name) ----
     static bool IsServer(string p) => p.StartsWith(@"\\") && p.Trim('\\').Length > 0 && !p.Trim('\\').Contains('\\');
+
+    /// A share or a mapped network drive: anything asked of it may wait for the network. Telling which
+    /// it is doesn't (the drive type comes from the mapping, not from the server).
+    public static bool IsRemote(string p)
+    {
+        if (p.StartsWith(@"\\")) return true;
+        try { return new DriveInfo(System.IO.Path.GetPathRoot(p)).DriveType == DriveType.Network; }
+        catch (ArgumentException) { return false; }
+    }
     static string ServerOf(string unc) => @"\\" + unc.TrimStart('\\').Split('\\')[0];
 
     void NavigateServer(string server, string select, bool record)
@@ -592,9 +701,11 @@ public partial class PaneView : UserControl
     /// `force` re-reads even if the folder's timestamp says nothing changed (Ctrl+R).
     public void Refresh(bool force = false)
     {
-        if (force) lock (listCache) listCache.Remove(Dir);
+        if (force) lock (listCache) listCache.Remove(Dir); // rebuilt from scratch: folder sizes are measured again
         if (searchQuery != null) Search(searchQuery);
-        else Navigate(Dir, (List.SelectedItem as Entry)?.Name, record: false);
+        // Without force the rows on screen keep their own selection and scroll; rebuilt, the list is told
+        // which row to put the cursor back on.
+        else Navigate(Dir, force ? (List.SelectedItem as Entry)?.Name : null, record: false);
     }
 
     // Folder sizes: walk each subfolder in the background, fill cells as they finish.
@@ -859,14 +970,16 @@ public partial class PaneView : UserControl
     public IReadOnlyList<string> OpenTabs => tabs;
     public int ActiveTab => tab;
 
-    public void Restore(List<string> paths, int active)
+    /// False when none of the saved folders exists any more.
+    public bool Restore(List<string> paths, int active)
     {
-        var usable = paths.Where(Directory.Exists).ToList();
-        if (usable.Count == 0) return;
+        var usable = paths.Where(p => IsRemote(p) || Directory.Exists(p)).ToList(); // a NAS that is off: 21 s per tab
+        if (usable.Count == 0) return false;
         tabs.Clear();
         tabs.AddRange(usable);
         tab = Math.Clamp(active, 0, tabs.Count - 1);
         Navigate(Dir, record: false);
+        return true;
     }
 
     // Each tab gets up to 170 px; when they don't all fit, they shrink evenly so the + stays visible.
