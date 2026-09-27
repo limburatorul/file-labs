@@ -66,11 +66,15 @@
             <Border x:Name="Bd" Background="Transparent" CornerRadius="2" Padding="{TemplateBinding Padding}">
               <Grid>
                 <GridViewRowPresenter/>
-                <!-- age bar sits in the row padding so columns stay aligned with the headers -->
-                <Border Width="3" CornerRadius="1.5" Background="{Binding AgeBrush}" HorizontalAlignment="Left" Margin="-3,1,0,1"/>
+                <!-- the age bar: a block in the row's age colour, wide enough to spot recent files down a
+                     long list. It sits in the row padding and the name cell's margin, so the columns
+                     stay aligned with the headers. -->
+                <Border Width="6" CornerRadius="2" Background="{Binding AgeBrush}" HorizontalAlignment="Left" Margin="-4,0,0,0"/>
               </Grid>
             </Border>
             <ControlTemplate.Triggers>
+              <!-- every other row a touch lighter, so a long row is easy to follow across -->
+              <Trigger Property="ItemsControl.AlternationIndex" Value="1"><Setter TargetName="Bd" Property="Background" Value="#08FFFFFF"/></Trigger>
               <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/></Trigger>
@@ -138,6 +142,8 @@
               <ContentPresenter/>
             </Border>
             <ControlTemplate.Triggers>
+              <!-- every other row a touch lighter, so a long row is easy to follow across -->
+              <Trigger Property="ItemsControl.AlternationIndex" Value="1"><Setter TargetName="Bd" Property="Background" Value="#08FFFFFF"/></Trigger>
               <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
               <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/></Trigger>

@@ -108,7 +108,7 @@ public class Entry : INotifyPropertyChanged
             if (NoDate) return "";
             var d = DateTime.Now - Modified;
             return d.TotalHours < 1 ? $"{Math.Max(0, (int)d.TotalMinutes)}'"
-                : d.TotalDays < 1 ? $"{(int)d.TotalHours}h"
+                : d.TotalDays < 1 ? $"{(int)d.TotalHours}h {d.Minutes}'"
                 : d.TotalDays < 60 ? $"{(int)d.TotalDays}d"
                 : d.TotalDays < 730 ? $"{(int)(d.TotalDays / 30)}mo"
                 : $"{(int)(d.TotalDays / 365)}y";

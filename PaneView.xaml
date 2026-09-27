@@ -44,7 +44,7 @@
     </DataTemplate>
     <DataTemplate x:Key="DateCell">
       <StackPanel Orientation="Horizontal" ToolTip="{Binding FullDate}">
-        <Border Background="{Binding AgeBrush}" CornerRadius="3" Width="36" Margin="0,0,8,0">
+        <Border Background="{Binding AgeBrush}" CornerRadius="3" Width="46" Margin="0,0,8,0">
           <TextBlock Text="{Binding Age}" Foreground="{Binding AgeTextBrush}" FontSize="11" FontWeight="SemiBold"
                      HorizontalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
         </Border>
@@ -65,7 +65,7 @@
           <Image Source="{Binding Thumb}" Stretch="Uniform" StretchDirection="DownOnly" RenderOptions.BitmapScalingMode="HighQuality"/>
           <Image Source="{Binding Overlay}" Width="32" Height="32" HorizontalAlignment="Left" VerticalAlignment="Bottom" RenderOptions.BitmapScalingMode="HighQuality"/>
         </Grid>
-        <Border Height="3" Width="26" CornerRadius="1.5" Background="{Binding AgeBrush}" Margin="0,4,0,3" HorizontalAlignment="Center"/>
+        <Border Height="5" Width="34" CornerRadius="2.5" Background="{Binding AgeBrush}" Margin="0,4,0,3" HorizontalAlignment="Center"/>
         <Grid>
           <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="34" FontSize="11.5"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility></TextBlock>
           <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
@@ -79,7 +79,7 @@
     </DataTemplate>
     <DataTemplate x:Key="ListCell">
       <DockPanel Width="230" ToolTip="{Binding FullDate}">
-        <Border DockPanel.Dock="Left" Width="3" Margin="0,1,6,1" CornerRadius="1.5" Background="{Binding AgeBrush}"/>
+        <Border DockPanel.Dock="Left" Width="6" Margin="0,0,6,0" CornerRadius="2" Background="{Binding AgeBrush}"/>
         <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource CutDim}">
           <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.9">
             <TextBlock.Visibility><Binding Path="NoSmallIcon"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility>
@@ -213,7 +213,7 @@
         <Border x:Name="Marquee" Background="{DynamicResource AccentSoft}" BorderBrush="{DynamicResource AccentEdge}" BorderThickness="1" CornerRadius="2" Visibility="Collapsed"/>
       </Canvas>
       <!-- ScrollUnit=Pixel keeps virtualization but scrolls smoothly instead of jumping a row at a time -->
-      <local:FileList x:Name="List" Background="Transparent" BorderThickness="0" Margin="4,0"
+      <local:FileList x:Name="List" AlternationCount="2" Background="Transparent" BorderThickness="0" Margin="4,0"
                 TextSearch.TextPath="Name" VirtualizingPanel.IsVirtualizing="True"
                 VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel"
                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
