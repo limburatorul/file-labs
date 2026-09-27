@@ -118,6 +118,16 @@ public class Entry : INotifyPropertyChanged
     public string FullDate => NoDate ? null : Modified.ToString("dddd, yyyy-MM-dd HH:mm:ss");
 }
 
+// Names in Explorer's order. Sorting by character code put "_drafts" and "~temp" after every letter
+// ('_' comes after 'Z'); the shell's own comparison puts them first, and "file2" before "file10".
+public sealed class ExplorerOrder : IComparer<string>
+{
+    public static readonly ExplorerOrder Instance = new();
+    [System.Runtime.InteropServices.DllImport("shlwapi.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    static extern int StrCmpLogicalW(string a, string b);
+    public int Compare(string a, string b) => StrCmpLogicalW(a ?? "", b ?? "");
+}
+
 // Folders first, ".." always on top, then by the chosen column.
 class EntrySort(string key, bool desc) : IComparer
 {
@@ -129,10 +139,10 @@ class EntrySort(string key, bool desc) : IComparer
         int r = key switch
         {
             "Size" => x.Size.CompareTo(y.Size),
-            "Type" => StringComparer.OrdinalIgnoreCase.Compare(x.Ext, y.Ext) is var t && t != 0 ? t : StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name),
+            "Type" => ExplorerOrder.Instance.Compare(x.Ext, y.Ext) is var t && t != 0 ? t : ExplorerOrder.Instance.Compare(x.Name, y.Name),
             "Modified" => x.Modified.CompareTo(y.Modified),
-            "Version" => StringComparer.OrdinalIgnoreCase.Compare(x.Version, y.Version) is var v && v != 0 ? v : StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name),
-            _ => StringComparer.OrdinalIgnoreCase.Compare(x.Name, y.Name),
+            "Version" => ExplorerOrder.Instance.Compare(x.Version, y.Version) is var v && v != 0 ? v : ExplorerOrder.Instance.Compare(x.Name, y.Name),
+            _ => ExplorerOrder.Instance.Compare(x.Name, y.Name),
         };
         return desc ? -r : r;
     }
@@ -852,7 +862,7 @@ public partial class PaneView : UserControl
         });
         if (dirs.Count == 0) return;
         var menu = new ContextMenu { PlacementTarget = anchor, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom, MaxHeight = 480 };
-        foreach (var d in dirs.OrderBy(d => d, StringComparer.OrdinalIgnoreCase))
+        foreach (var d in dirs.OrderBy(d => d, ExplorerOrder.Instance))
         {
             var path = d;
             var mi = new MenuItem

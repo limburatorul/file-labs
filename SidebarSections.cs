@@ -58,7 +58,7 @@ public partial class MainWindow
             var skip = Settings.ShowHidden ? FileAttributes.System : FileAttributes.Hidden | FileAttributes.System;
             var subs = await Task.Run(() =>
             {
-                try { return Directory.EnumerateDirectories(path, "*", new EnumerationOptions { IgnoreInaccessible = true, AttributesToSkip = skip }).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).Take(2000).ToList(); }
+                try { return Directory.EnumerateDirectories(path, "*", new EnumerationOptions { IgnoreInaccessible = true, AttributesToSkip = skip }).OrderBy(p => p, ExplorerOrder.Instance).Take(2000).ToList(); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return new List<string>(); }
             });
             node.Items.Clear();

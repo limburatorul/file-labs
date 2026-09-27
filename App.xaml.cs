@@ -156,6 +156,10 @@ public partial class App : Application
             File.WriteAllBytes(Path.Combine(deep, "y.bin"), new byte[500]);
             Check(PaneView.Measure(new DirectoryInfo(sizes), default) == 1500, "measured again after the change");
 
+            // names sort the way Explorer sorts them: symbols first, numbers by value
+            var order = string.Join(",", new[] { "b", "file10", "_drafts", "file2", "A", "(old)" }.OrderBy(x => x, ExplorerOrder.Instance));
+            Check(order == "(old),_drafts,A,b,file2,file10", "Explorer name order, got " + order);
+
             // copy with verification on
             Settings.Verify = true;
             var vdst = Directory.CreateDirectory(Path.Combine(root, "verified")).FullName;
