@@ -98,6 +98,8 @@
             <TextBlock Text="Files" Style="{StaticResource H}"/>
             <CheckBox x:Name="HiddenBox" Content="Show hidden files" Click="Hidden_Click"/>
             <TextBlock Style="{StaticResource Hint}" Text="Also Ctrl+H."/>
+            <CheckBox x:Name="EditorBox" Content="Open code and text files in the File Labs editor" Click="Editor_Click"/>
+            <TextBlock Style="{StaticResource Hint}" Text="Enter or double-click on a .txt, .json, .py, .php, .html, .ps1 and every other code or text file opens it in the built-in editor. Off: it opens in the app Windows has for it. F4 always opens the built-in editor."/>
             <TextBlock Text="Right-click menu"/>
             <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
               <Button x:Name="MenuOwn" Content="File Labs" Style="{StaticResource Tab}" Click="Menu_Click"/>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>File Labs editor</title>
+<style>
+  html, body, #editor { margin: 0; height: 100%; overflow: hidden; background: #0f131b; }
+</style>
+</head>
+<body>
+<div id="editor"></div>
+<script src="vs/loader.js"></script>
+<script>
+  // Monaco (the editor inside VS Code), served from the app folder by EditorWindow. The page only
+  // edits: EditorWindow reads and writes the file and sends the text over web messages.
+  const host = window.chrome.webview;
+  require.config({ paths: { vs: 'vs' } });
+  require(['vs/editor/editor.main'], () => {
+    monaco.editor.defineTheme('filelabs', {
+      base: 'vs-dark', inherit: true, rules: [],
+      colors: { 'editor.background': '#0f131b', 'editorGutter.background': '#0f131b', 'minimap.background': '#0f131b' },
+    });
+    const editor = monaco.editor.create(document.getElementById('editor'), {
+      theme: 'filelabs', automaticLayout: true, fontFamily: 'Cascadia Code, Cascadia Mono, Consolas', fontSize: 13,
+      fontLigatures: true, smoothScrolling: true, bracketPairColorization: { enabled: true },
+      formatOnPaste: true, renderWhitespace: 'selection', stickyScroll: { enabled: true },
+    });
+    window.currentText = () => editor.getValue(); // EditorWindow saves with this when closing
+    let saved = 0;
+    const dirty = () => editor.getModel().getAlternativeVersionId() !== saved;
+
+    // The language comes from the file name, the way VS Code picks it: extension, then exact names
+    // (Dockerfile, Makefile...).
+    function language(name) {
+      const lower = name.toLowerCase();
+      const all = monaco.languages.getLanguages();
+      const hit = all.find(l => (l.filenames || []).some(f => f.toLowerCase() === lower))
+        || all.find(l => (l.extensions || []).some(e => lower.endsWith(e.toLowerCase())));
+      return hit ? hit.id : 'plaintext';
+    }
+
+    host.addEventListener('message', e => {
+      const m = e.data;
+      if (m.type === 'open') {
+        const model = monaco.editor.createModel(m.text, language(m.name));
+        editor.setModel(model);
+        saved = model.getAlternativeVersionId();
+        editor.focus();
+        host.postMessage({ type: 'language', value: model.getLanguageId() });
+      } else if (m.type === 'saved') {
+        saved = m.version;
+        host.postMessage({ type: 'dirty', value: dirty() });
+      }
+    });
+
+    editor.onDidChangeModelContent(() => host.postMessage({ type: 'dirty', value: dirty() }));
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () =>
+      host.postMessage({ type: 'save', text: editor.getValue(), version: editor.getModel().getAlternativeVersionId() }));
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, () => host.postMessage({ type: 'close' }));
+    host.postMessage({ type: 'ready' });
+  });
+</script>
+</body>
+</html>

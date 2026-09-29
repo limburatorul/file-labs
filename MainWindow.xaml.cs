@@ -797,6 +797,11 @@ public partial class MainWindow : Window
         active.Navigate(active.Dir, created, record: false);
     }
 
+    void EditSelected()
+    {
+        foreach (var e in active.Selected.Where(x => !x.IsDir && !x.IsUp).Take(10)) EditorWindow.Open(this, e.Path);
+    }
+
     void Rename() { if (active.Selected.Count > 1) RenameMany(); else active.BeginRename(); }
 
     void RenameCommitted(PaneView pane, Entry entry, string name)
@@ -902,6 +907,7 @@ public partial class MainWindow : Window
             case Key.Enter: case Key.F3: active.OpenSelected(); break;
             case Key.F2 when shift: ComparePanes(); break;
             case Key.F2: Rename(); break;
+            case Key.F4: EditSelected(); break;
             case Key.Z when ctrl: Undo(); break;
             case Key.F5: Transfer(false); break;
             case Key.F6: Transfer(true); break;

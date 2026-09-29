@@ -17,6 +17,7 @@ public static class Settings
     public static double RowPad = 3;         // row height: 1 compact, 3 normal, 6 roomy
     public static bool Animations = true;
     public static double AccentStrength = 1.0; // how opaque the accent tints are, 1 = as designed
+    public static bool InternalEditor = true; // Enter on a code/text file opens the F4 editor, not its app
     public static bool Verify;               // xxHash3 check after copying
     public static bool ShowHidden;
     public static string LastSeenVersion = "";   // What's new is shown once per version
@@ -47,6 +48,7 @@ public static class Settings
                 case "animations": Animations = v == "1"; break;
                 case "accentstrength" when double.TryParse(v, CultureInfo.InvariantCulture, out var ast) && double.IsFinite(ast): AccentStrength = Math.Clamp(ast, 0.3, 2.5); break;
                 case "verify": Verify = v == "1"; break;
+                case "internaleditor": InternalEditor = v == "1"; break;
                 case "hidden": ShowHidden = v == "1"; break;
                 case "nativemenu": NativeMenu = v == "1"; break;
                 case "lastseen": LastSeenVersion = v; break;
@@ -85,6 +87,7 @@ public static class Settings
             $"animations={(Animations ? 1 : 0)}",
             $"accentstrength={AccentStrength.ToString(CultureInfo.InvariantCulture)}",
             $"verify={(Verify ? 1 : 0)}",
+            $"internaleditor={(InternalEditor ? 1 : 0)}",
             $"hidden={(ShowHidden ? 1 : 0)}",
             $"nativemenu={(NativeMenu ? 1 : 0)}",
             $"lastseen={LastSeenVersion}",
