@@ -181,6 +181,11 @@ public partial class App : Application
                 .Concat(BitConverter.GetBytes(original.Length + 1)).Concat(System.Text.Encoding.Unicode.GetBytes(original + "\0")).ToArray());
             Check(RecycleBinWindow.ParseInfo(info) is { } rec && rec.Path == original && rec.Size == 12345 && rec.Deleted == when, "recycle bin record");
 
+            // a sister app is found through its uninstall entry, which names the exe and an icon index
+            var self = Environment.ProcessPath;
+            Check(FileExplorer.MainWindow.ExeOf(self + ",0") == self && FileExplorer.MainWindow.ExeOf($"\"{self}\",0") == self
+                && FileExplorer.MainWindow.ExeOf(Path.Combine(root, "gone.exe") + ",0") == null && FileExplorer.MainWindow.ExeOf(null) == null, "installed app from its uninstall entry");
+
             Console.WriteLine("selftest: all passed");
             return 0;
         }

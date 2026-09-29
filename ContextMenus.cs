@@ -53,6 +53,32 @@ public partial class MainWindow
             : new ProcessStartInfo(exe, $"\"{path}\"") { UseShellExecute = true });
     }
 
+    // Shelf and Reel (sister apps) take folders and files on the command line and offer to add them,
+    // already running or not (Shelf 3.59.0, Reel 1.9.11). Each is found through the uninstall entry
+    // its installer writes; without one the menu item sends the user to the app's page.
+    const string ShelfKey = "93869666-a03d-5775-ba3a-19dde48e73bc", ReelKey = "95693626-e8c4-5132-9e4f-6f4a12169be6";
+    const string ShelfPage = "https://protagonistlabs.app/shelf/?utm_source=filelabs&utm_medium=app&utm_campaign=add-to-shelf";
+    const string ReelPage = "https://protagonistlabs.app/reel/?utm_source=filelabs&utm_medium=app&utm_campaign=add-to-reel";
+    // the extensions Reel takes as a film
+    static readonly HashSet<string> ReelVideo = Set(".mkv", ".mp4", ".avi", ".mov", ".wmv", ".m4v", ".ts", ".m2ts", ".mpg", ".mpeg", ".webm");
+
+    /// The exe an uninstall entry's DisplayIcon names ("C:\...\Shelf.exe,0"), or null when it is not on disk.
+    internal static string ExeOf(string displayIcon)
+    {
+        var exe = displayIcon?.Split(',')[0].Trim('"');
+        return exe != null && File.Exists(exe) ? exe : null;
+    }
+
+    static void AddTo(string uninstallKey, string page, IEnumerable<string> paths)
+    {
+        var exe = ExeOf(Microsoft.Win32.Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\" + uninstallKey, "DisplayIcon", null) as string);
+        if (exe == null) { Process.Start(new ProcessStartInfo(page) { UseShellExecute = true }); return; }
+        // ArgumentList, not a quoted string: a drive root ends in a backslash, which would escape the closing quote
+        var start = new ProcessStartInfo(exe);
+        foreach (var p in paths) start.ArgumentList.Add(p);
+        Process.Start(start);
+    }
+
     static MenuItem Item(string header, string glyph, string gesture, Action run, bool enabled = true)
     {
         var mi = new MenuItem
@@ -112,6 +138,10 @@ public partial class MainWindow
         if (sel.Any(x => x.IsDir)) m.Items.Add(Item("Pin to Quick access", "", "Ctrl+D", PinSelected));
         m.Items.Add(Item("Show in File Explorer", "", "", () => OpenInExplorer($"/select,\"{first.Path}\"")));
         m.Items.Add(Item("Scan with SpaceScan", "", "", () => ScanWithSpaceScan(first.IsDir ? first.Path : Path.GetDirectoryName(first.Path)!)));
+        if (sel.All(x => x.IsDir || Path.GetExtension(x.Name).Equals(".exe", StringComparison.OrdinalIgnoreCase)))
+            m.Items.Add(Item("Add to Shelf", "\uE7FC", "", () => AddTo(ShelfKey, ShelfPage, sel.Select(x => x.Path))));
+        if (sel.All(x => x.IsDir || ReelVideo.Contains(Path.GetExtension(x.Name))))
+            m.Items.Add(Item("Add to Reel", "\uE8B2", "", () => AddTo(ReelKey, ReelPage, sel.Select(x => x.Path))));
         m.Items.Add(Item("Windows menu…", "", "", () => { if (ShellMenu.Show(this, p.Dir, sel.Select(x => x.Path).ToList()) == "rename") Rename(); }));
         m.Items.Add(Item("Properties", "", "Alt+Enter", () => Properties(sel.Select(x => x.Path).ToList())));
         return m;
