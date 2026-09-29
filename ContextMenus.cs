@@ -113,6 +113,7 @@ public partial class MainWindow
         if (p.InSearch && one)
             m.Items.Add(Item("Open file location", "", "", () => { p.Navigate(Path.GetDirectoryName(first.Path), first.Name); p.FocusList(); }));
         if (sel.Any(x => !x.IsDir)) m.Items.Add(Item("Edit", "", "F4", EditSelected));
+        if (sel.Count == 2 && sel.All(x => !x.IsDir)) m.Items.Add(Item("Compare in editor", "", "", () => EditorWindow.Compare(sel[0].Path, sel[1].Path)));
         if (NotepadPlusPlus is { } npp && sel.Any(x => !x.IsDir))
             m.Items.Add(Item("Edit with Notepad++", "", "", () =>
                 Process.Start(npp, string.Join(" ", sel.Where(x => !x.IsDir).Select(x => $"\"{x.Path}\"")))));

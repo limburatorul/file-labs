@@ -4,33 +4,142 @@
 <meta charset="utf-8">
 <title>File Labs editor</title>
 <style>
-  html, body, #editor { margin: 0; height: 100%; overflow: hidden; background: #0f131b; }
+  :root { --bg: #0f131b; --bar: #0b0e14; --line: rgba(255,255,255,.07); --text: #e6e9ef; --mute: #8b93a3; --accent: #4c8dff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+    font: 12px "Segoe UI Variable Text", "Segoe UI", sans-serif; }
+  body { display: flex; flex-direction: column; }
+
+  /* tabs */
+  #tabs { display: flex; flex: none; background: var(--bar); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: thin; min-height: 35px; }
+  .tab { display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px; height: 35px; border-right: 1px solid var(--line);
+    color: var(--mute); cursor: pointer; white-space: nowrap; position: relative; user-select: none; flex: none; }
+  .tab:hover { color: var(--text); background: rgba(255,255,255,.03); }
+  .tab.on { color: var(--text); background: var(--bg); }
+  .tab.on::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--accent); }
+  .tab .x { width: 20px; height: 20px; border-radius: 4px; display: grid; place-items: center; font: 14px "Segoe Fluent Icons"; color: var(--mute); }
+  .tab .x:hover { background: rgba(255,255,255,.1); color: var(--text); }
+  .tab .x::before { content: "\E711"; font-size: 10px; }
+  .tab.dirty .x::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--text); }
+  .tab.dirty .x:hover::before { content: "\E711"; width: auto; height: auto; background: none; }
+  .tab .kind { font-size: 10px; color: var(--accent); }
+
+  /* the file changed on disk */
+  #disk { display: none; align-items: center; gap: 12px; padding: 7px 14px; background: #3a2e0f; color: #ffe2a3; border-bottom: 1px solid #5a4717; }
+  #disk.show { display: flex; }
+  #disk span { flex: 1; }
+  button { font: inherit; color: var(--text); background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.14); border-radius: 5px; padding: 3px 12px; cursor: pointer; }
+  button:hover { background: rgba(255,255,255,.18); }
+  button.primary { background: var(--accent); border-color: transparent; color: #fff; }
+
+  #main { position: relative; display: flex; flex: 1; min-height: 0; }
+  #editor, #diff { flex: 1; min-width: 0; }
+  #diff { display: none; }
+  #preview { display: none; flex: 1; min-width: 0; border: 0; border-left: 1px solid var(--line); background: #fff; }
+  body.diff #editor { display: none; } body.diff #diff { display: block; }
+  body.preview #preview { display: block; }
+  #empty { position: absolute; inset: 0; display: none; place-items: center; color: var(--mute); font-size: 14px; }
+  body.none #empty { display: grid; } body.none #editor { visibility: hidden; }
+
+  /* status bar */
+  #status { display: flex; align-items: center; height: 24px; background: var(--bar); border-top: 1px solid var(--line); color: var(--mute); padding: 0 6px; }
+  #status .grow { flex: 1; }
+  #status .item { position: relative; padding: 0 8px; height: 24px; display: flex; align-items: center; cursor: default; }
+  #status .pick { cursor: pointer; } #status .pick:hover { color: var(--text); background: rgba(255,255,255,.06); }
+  #status select { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  #status .on { color: var(--accent); }
+  #status .icon { font-family: "Segoe Fluent Icons"; font-size: 12px; }
+
+  /* settings */
+  #settings { position: absolute; right: 8px; bottom: 30px; width: 260px; display: none; padding: 12px 14px; z-index: 10;
+    background: #161b26; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+  #settings.show { display: block; }
+  #settings h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--mute); font-weight: 600; }
+  #settings label { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; color: var(--text); }
+  #settings input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
+  #settings select, #settings input[type=number] { font: inherit; color: var(--text); background: #0f131b; border: 1px solid rgba(255,255,255,.14); border-radius: 4px; padding: 2px 4px; width: 70px; }
 </style>
 </head>
-<body>
-<div id="editor"></div>
+<body class="none">
+<div id="tabs" role="tablist" aria-label="Open files"></div>
+<div id="disk" role="alert"><span id="disk-text"></span><button id="disk-reload" class="primary">Reload</button><button id="disk-keep">Keep mine</button></div>
+<div id="main">
+  <div id="editor"></div>
+  <div id="diff"></div>
+  <!-- Markdown preview: sandboxed with no scripts, so a file's HTML can't reach the editor or the app -->
+  <iframe id="preview" sandbox="" title="Markdown preview"></iframe>
+  <div id="empty">No files open</div>
+</div>
+<div id="status">
+  <div class="item" id="pos"></div>
+  <div class="grow"></div>
+  <div class="item pick" id="md-toggle" title="Markdown preview (Ctrl+Shift+V)" style="display:none"><span class="icon">&#xE8A1;</span>&nbsp;Preview</div>
+  <div class="item pick" title="Indentation"><span id="indent-label"></span><select id="indent" aria-label="Indentation"></select></div>
+  <div class="item pick" title="Encoding the file is saved in"><span id="enc-label"></span><select id="enc" aria-label="Encoding"></select></div>
+  <div class="item pick" title="Line endings"><span id="eol-label"></span><select id="eol" aria-label="Line endings"><option value="CRLF">CRLF</option><option value="LF">LF</option></select></div>
+  <div class="item pick" title="Language"><span id="lang-label"></span><select id="lang" aria-label="Language"></select></div>
+  <div class="item pick" id="gear" title="Editor settings"><span class="icon">&#xE713;</span></div>
+</div>
+<div id="settings" role="dialog" aria-label="Editor settings">
+  <h3>Editor</h3>
+  <label>Font size <input type="number" id="s-font" min="8" max="40"></label>
+  <label>Wrap long lines <input type="checkbox" id="s-wrap"></label>
+  <label>Minimap <input type="checkbox" id="s-minimap"></label>
+  <label>Show whitespace <input type="checkbox" id="s-space"></label>
+  <label>Indent new files with <select id="s-indent"><option value="spaces">spaces</option><option value="tabs">tabs</option></select></label>
+  <label>Tab size <input type="number" id="s-tab" min="1" max="8"></label>
+</div>
+<script src="marked.umd.js"></script><!-- before loader.js: with Monaco's AMD loader present it would register as a module instead -->
 <script src="vs/loader.js"></script>
 <script>
-  // Monaco (the editor inside VS Code), served from the app folder by EditorWindow. The page only
-  // edits: EditorWindow reads and writes the file and sends the text over web messages.
+  // Monaco (the editor inside VS Code), served from the app folder by EditorWindow. The page edits and
+  // shows tabs; EditorWindow reads, writes and watches the files and talks to it over web messages.
   const host = window.chrome.webview;
+  const $ = id => document.getElementById(id);
+  const post = m => host.postMessage(m);
+  const ENCODINGS = { utf8: 'UTF-8', utf8bom: 'UTF-8 with BOM', utf16le: 'UTF-16 LE', utf16be: 'UTF-16 BE', legacy: 'ANSI (kept byte for byte)' };
+
   require.config({ paths: { vs: 'vs' } });
   require(['vs/editor/editor.main'], () => {
-    monaco.editor.defineTheme('filelabs', {
-      base: 'vs-dark', inherit: true, rules: [],
-      colors: { 'editor.background': '#0f131b', 'editorGutter.background': '#0f131b', 'minimap.background': '#0f131b' },
-    });
-    const editor = monaco.editor.create(document.getElementById('editor'), {
-      theme: 'filelabs', automaticLayout: true, fontFamily: 'Cascadia Code, Cascadia Mono, Consolas', fontSize: 13,
-      fontLigatures: true, smoothScrolling: true, bracketPairColorization: { enabled: true },
-      formatOnPaste: true, renderWhitespace: 'selection', stickyScroll: { enabled: true },
-    });
-    window.currentText = () => editor.getValue(); // EditorWindow saves with this when closing
-    let saved = 0;
-    const dirty = () => editor.getModel().getAlternativeVersionId() !== saved;
+    let settings = { fontSize: 13, wordWrap: false, minimap: true, whitespace: false, insertSpaces: true, tabSize: 4 };
+    const tabs = [];        // { id, name, path, model, view, saved, encoding, kind: 'file' | 'diff', diskChanged, left, right }
+    let active = null;
 
-    // The language comes from the file name, the way VS Code picks it: extension, then exact names
-    // (Dockerfile, Makefile...).
+    const editor = monaco.editor.create($('editor'), {
+      automaticLayout: true, fontFamily: 'Cascadia Code, Cascadia Mono, Consolas', fontLigatures: true,
+      smoothScrolling: true, bracketPairColorization: { enabled: true }, stickyScroll: { enabled: true },
+      mouseWheelZoom: true, formatOnPaste: true, model: null,
+    });
+    const diff = monaco.editor.createDiffEditor($('diff'), {
+      automaticLayout: true, readOnly: true, originalEditable: false, fontFamily: 'Cascadia Code, Cascadia Mono, Consolas',
+      renderSideBySide: true, mouseWheelZoom: true,
+    });
+
+    function theme(accent) {
+      document.documentElement.style.setProperty('--accent', accent);
+      monaco.editor.defineTheme('filelabs', {
+        base: 'vs-dark', inherit: true, rules: [],
+        colors: {
+          'editor.background': '#0f131b', 'editorGutter.background': '#0f131b', 'minimap.background': '#0f131b',
+          'editorCursor.foreground': accent, 'editor.selectionBackground': accent + '55',
+          'editor.inactiveSelectionBackground': accent + '30', 'editorLineNumber.activeForeground': accent,
+          'focusBorder': accent, 'editorLink.activeForeground': accent,
+        },
+      });
+      monaco.editor.setTheme('filelabs');
+    }
+
+    function applySettings() {
+      const o = { fontSize: settings.fontSize, wordWrap: settings.wordWrap ? 'on' : 'off', minimap: { enabled: settings.minimap },
+        renderWhitespace: settings.whitespace ? 'all' : 'selection' };
+      editor.updateOptions(o); diff.updateOptions(o);
+      $('s-font').value = settings.fontSize; $('s-wrap').checked = settings.wordWrap; $('s-minimap').checked = settings.minimap;
+      $('s-space').checked = settings.whitespace; $('s-indent').value = settings.insertSpaces ? 'spaces' : 'tabs'; $('s-tab').value = settings.tabSize;
+    }
+    function storeSettings() { applySettings(); post({ type: 'settings', settings }); }
+
+    // The language comes from the file name, the way VS Code picks it: exact names (Dockerfile,
+    // Makefile...) first, then the extension.
     function language(name) {
       const lower = name.toLowerCase();
       const all = monaco.languages.getLanguages();
@@ -39,25 +148,239 @@
       return hit ? hit.id : 'plaintext';
     }
 
-    host.addEventListener('message', e => {
-      const m = e.data;
-      if (m.type === 'open') {
-        const model = monaco.editor.createModel(m.text, language(m.name));
-        editor.setModel(model);
-        saved = model.getAlternativeVersionId();
-        editor.focus();
-        host.postMessage({ type: 'language', value: model.getLanguageId() });
-      } else if (m.type === 'saved') {
-        saved = m.version;
-        host.postMessage({ type: 'dirty', value: dirty() });
+    const find = id => tabs.find(t => t.id === id);
+    const isDirty = t => t.kind === 'file' && (t.model.getAlternativeVersionId() !== t.saved || t.forced);
+
+    // ---- tabs ----
+    function renderTabs() {
+      const bar = $('tabs');
+      bar.textContent = '';
+      for (const t of tabs) {
+        const el = document.createElement('div');
+        el.className = 'tab' + (t === active ? ' on' : '') + (isDirty(t) ? ' dirty' : '');
+        el.setAttribute('role', 'tab'); el.setAttribute('aria-selected', t === active);
+        el.title = t.path || t.name;
+        if (t.kind === 'diff') { const k = document.createElement('span'); k.className = 'kind'; k.textContent = 'DIFF'; el.append(k); }
+        el.append(t.name);
+        const x = document.createElement('span');
+        x.className = 'x'; x.title = 'Close (Ctrl+W)';
+        x.addEventListener('click', e => { e.stopPropagation(); requestClose(t); });
+        el.append(x);
+        el.addEventListener('mousedown', e => { if (e.button === 1) { e.preventDefault(); requestClose(t); } });
+        el.addEventListener('click', () => activate(t));
+        bar.append(el);
+        if (t === active) setTimeout(() => el.scrollIntoView({ inline: 'nearest', block: 'nearest' }));
       }
+      document.body.classList.toggle('none', tabs.length === 0);
+    }
+
+    function activate(t) {
+      if (active && active.kind === 'file') active.view = editor.saveViewState();
+      active = t;
+      document.body.classList.toggle('diff', !!t && t.kind === 'diff');
+      if (t && t.kind === 'file') {
+        editor.setModel(t.model);
+        if (t.view) editor.restoreViewState(t.view);
+        else if (t.cursor) { editor.setPosition(t.cursor); editor.revealPositionInCenter(t.cursor); }
+        t.cursor = null;
+        editor.focus();
+      } else if (t) {
+        diff.setModel({ original: t.left, modified: t.right });
+        diff.focus();
+      } else editor.setModel(null);
+      renderTabs(); renderStatus(); renderDisk(); renderPreview();
+      post({ type: 'active', id: t ? t.id : 0, title: t ? (t.path || t.name) : '' });
+    }
+
+    function requestClose(t) {
+      if (isDirty(t)) post({ type: 'closeRequest', id: t.id, name: t.name }); // the app asks Save / Don't save / Cancel
+      else closeTab(t);
+    }
+
+    function closeTab(t) {
+      const i = tabs.indexOf(t);
+      if (i < 0) return;
+      tabs.splice(i, 1);
+      if (active === t) { active = null; activate(tabs[Math.min(i, tabs.length - 1)] || null); }
+      else renderTabs();
+      if (t.kind === 'file') t.model.dispose(); else { t.left.dispose(); t.right.dispose(); }
+      post({ type: 'closed', id: t.id, empty: tabs.length === 0 });
+    }
+
+    function step(d) { if (tabs.length > 1) activate(tabs[(tabs.indexOf(active) + d + tabs.length) % tabs.length]); }
+
+    // ---- status bar ----
+    const langs = monaco.languages.getLanguages().map(l => ({ id: l.id, name: (l.aliases && l.aliases[0]) || l.id }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    $('lang').innerHTML = langs.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+    $('enc').innerHTML = Object.entries(ENCODINGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+    $('indent').innerHTML = ['Spaces: 2', 'Spaces: 4', 'Tabs: 4'].map(v => `<option>${v}</option>`).join('');
+
+    function renderStatus() {
+      const f = active && active.kind === 'file';
+      for (const id of ['indent', 'enc', 'eol', 'lang']) $(id).parentElement.style.display = f ? '' : 'none';
+      $('md-toggle').style.display = f && active.model.getLanguageId() === 'markdown' ? '' : 'none';
+      $('md-toggle').classList.toggle('on', document.body.classList.contains('preview'));
+      if (!f) { $('pos').textContent = active ? 'Read-only comparison' : ''; return; }
+      const m = active.model, p = editor.getPosition(), sel = editor.getSelection();
+      const chosen = sel && !sel.isEmpty() ? ` (${m.getValueInRange(sel).length} selected)` : '';
+      $('pos').textContent = p ? `Ln ${p.lineNumber}, Col ${p.column}${chosen}` : '';
+      const lang = langs.find(l => l.id === m.getLanguageId());
+      $('lang-label').textContent = lang ? lang.name : m.getLanguageId(); $('lang').value = m.getLanguageId();
+      $('enc-label').textContent = ENCODINGS[active.encoding]; $('enc').value = active.encoding;
+      const eol = m.getEOL() === '\r\n' ? 'CRLF' : 'LF';
+      $('eol-label').textContent = eol; $('eol').value = eol;
+      const o = m.getOptions();
+      const indent = `${o.insertSpaces ? 'Spaces' : 'Tabs'}: ${o.tabSize}`;
+      $('indent-label').textContent = indent; $('indent').value = indent;
+      // "legacy" is only offered for a file that came in that way: anything else can't be turned into it
+      $('enc').querySelector('[value=legacy]').hidden = active.encoding !== 'legacy' && !active.wasLegacy;
+    }
+
+    $('lang').addEventListener('change', e => { monaco.editor.setModelLanguage(active.model, e.target.value); renderStatus(); renderPreview(); editor.focus(); });
+    $('eol').addEventListener('change', e => { active.model.pushEOL(e.target.value === 'CRLF' ? 1 : 0); editor.focus(); });
+    $('enc').addEventListener('change', e => {
+      active.encoding = e.target.value; active.forced = true; // saved in the new encoding on the next Ctrl+S
+      post({ type: 'dirty', id: active.id, value: true }); renderTabs(); renderStatus(); editor.focus();
+    });
+    $('indent').addEventListener('change', e => {
+      const [kind, size] = e.target.value.split(': ');
+      active.model.updateOptions({ insertSpaces: kind === 'Spaces', tabSize: +size }); renderStatus(); editor.focus();
+    });
+    editor.onDidChangeCursorSelection(renderStatus);
+
+    // ---- settings ----
+    $('gear').addEventListener('click', e => { e.stopPropagation(); $('settings').classList.toggle('show'); });
+    document.addEventListener('mousedown', e => { if (!$('settings').contains(e.target) && !$('gear').contains(e.target)) $('settings').classList.remove('show'); });
+    $('s-font').addEventListener('change', e => { settings.fontSize = Math.min(40, Math.max(8, +e.target.value || 13)); storeSettings(); });
+    $('s-wrap').addEventListener('change', e => { settings.wordWrap = e.target.checked; storeSettings(); });
+    $('s-minimap').addEventListener('change', e => { settings.minimap = e.target.checked; storeSettings(); });
+    $('s-space').addEventListener('change', e => { settings.whitespace = e.target.checked; storeSettings(); });
+    $('s-indent').addEventListener('change', e => { settings.insertSpaces = e.target.value === 'spaces'; storeSettings(); });
+    $('s-tab').addEventListener('change', e => { settings.tabSize = Math.min(8, Math.max(1, +e.target.value || 4)); storeSettings(); });
+    // Ctrl+wheel zoom changes the font size; keep it for the next start
+    editor.onDidChangeConfiguration(e => {
+      if (!e.hasChanged(monaco.editor.EditorOption.fontInfo)) return;
+      const size = Math.round(editor.getOption(monaco.editor.EditorOption.fontSize));
+      if (size !== settings.fontSize) { settings.fontSize = size; $('s-font').value = size; post({ type: 'settings', settings }); }
     });
 
-    editor.onDidChangeModelContent(() => host.postMessage({ type: 'dirty', value: dirty() }));
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () =>
-      host.postMessage({ type: 'save', text: editor.getValue(), version: editor.getModel().getAlternativeVersionId() }));
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, () => host.postMessage({ type: 'close' }));
-    host.postMessage({ type: 'ready' });
+    // ---- Markdown preview ----
+    let previewTimer;
+    function renderPreview() {
+      const on = document.body.classList.contains('preview') && active && active.kind === 'file' && active.model.getLanguageId() === 'markdown';
+      $('preview').style.display = on ? 'block' : 'none';
+      if (!on) return;
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(() => {
+        $('preview').srcdoc = '<!doctype html><meta charset="utf-8"><style>body{font:15px/1.6 "Segoe UI",sans-serif;color:#1f2328;max-width:820px;margin:24px auto;padding:0 24px}' +
+          'pre,code{font-family:"Cascadia Mono",Consolas,monospace;background:#f3f4f6;border-radius:6px}pre{padding:12px;overflow:auto}code{padding:1px 4px}pre code{padding:0}' +
+          'img{max-width:100%}table{border-collapse:collapse}td,th{border:1px solid #d0d7de;padding:4px 10px}blockquote{margin:0;padding-left:14px;border-left:4px solid #d0d7de;color:#59636e}' +
+          'h1,h2{border-bottom:1px solid #d8dee4;padding-bottom:.3em}a{color:#0969da}</style>' + marked.parse(active.model.getValue());
+      }, 150);
+    }
+    function togglePreview() {
+      if (!active || active.kind !== 'file' || active.model.getLanguageId() !== 'markdown') return;
+      document.body.classList.toggle('preview'); renderStatus(); renderPreview();
+    }
+    $('md-toggle').addEventListener('click', togglePreview);
+
+    // ---- the file changed on disk ----
+    function renderDisk() {
+      const t = active && active.kind === 'file' && active.diskChanged;
+      $('disk').classList.toggle('show', !!t);
+      if (!t) return;
+      $('disk-text').textContent = t === 'deleted'
+        ? `${active.name} was deleted or moved on disk. Saving writes it again.`
+        : `${active.name} was changed on disk by another program.` + (isDirty(active) ? ' Reloading loses your unsaved changes.' : '');
+      $('disk-reload').style.display = t === 'deleted' ? 'none' : '';
+    }
+    $('disk-reload').addEventListener('click', () => post({ type: 'reload', id: active.id }));
+    $('disk-keep').addEventListener('click', () => { active.diskChanged = false; renderDisk(); editor.focus(); });
+
+    // ---- keys ----
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, save);
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW, () => active && requestClose(active));
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV, togglePreview);
+    window.addEventListener('keydown', e => {
+      if (e.ctrlKey && (e.key === 'Tab' || e.key === 'PageDown' || e.key === 'PageUp')) {
+        e.preventDefault(); e.stopPropagation();
+        step(e.key === 'PageUp' || (e.key === 'Tab' && e.shiftKey) ? -1 : 1);
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'w' && active && active.kind === 'diff') { e.preventDefault(); requestClose(active); }
+    }, true);
+
+    function save() {
+      if (!active || active.kind !== 'file') return;
+      post({ type: 'save', id: active.id, text: active.model.getValue(), version: active.model.getAlternativeVersionId(), encoding: active.encoding });
+    }
+
+    // ---- what EditorWindow asks of the page ----
+    window.dirtyTexts = () => tabs.filter(isDirty).map(t => ({ id: t.id, text: t.model.getValue(), encoding: t.encoding }));
+    window.textOf = id => { const t = find(id); return { text: t.model.getValue(), encoding: t.encoding }; };
+    window.sessionState = () => {
+      if (active && active.kind === 'file') active.view = editor.saveViewState();
+      return { active: active && active.path, files: tabs.filter(t => t.kind === 'file').map(t => {
+        const c = t.cursor || (t.view && t.view.cursorState && t.view.cursorState[0] ? t.view.cursorState[0].position : { lineNumber: 1, column: 1 });
+        return { path: t.path, line: c.lineNumber, column: c.column };
+      }) };
+    };
+
+    host.addEventListener('message', e => {
+      const m = e.data;
+      switch (m.type) {
+        case 'init':
+          settings = Object.assign(settings, m.settings || {});
+          theme(m.accent); applySettings();
+          break;
+        case 'open': {
+          const model = monaco.editor.createModel(m.text, language(m.name));
+          model.updateOptions({ insertSpaces: settings.insertSpaces, tabSize: settings.tabSize });
+          if (m.detectIndent) model.detectIndentation(settings.insertSpaces, settings.tabSize);
+          const t = { id: m.id, name: m.name, path: m.path, model, saved: model.getAlternativeVersionId(), encoding: m.encoding,
+            wasLegacy: m.encoding === 'legacy', kind: 'file' };
+          if (m.line > 1 || m.column > 1) t.cursor = { lineNumber: m.line, column: m.column }; // a restored session
+          model.onDidChangeContent(() => {
+            post({ type: 'dirty', id: t.id, value: isDirty(t) });
+            if (t === active) { renderTabs(); renderPreview(); }
+          });
+          tabs.push(t);
+          if (m.activate || !active) activate(t); else renderTabs();
+          break;
+        }
+        case 'diff': {
+          const lang = language(m.right.name);
+          const t = { id: m.id, name: `${m.left.name} ↔ ${m.right.name}`, kind: 'diff',
+            left: monaco.editor.createModel(m.left.text, lang), right: monaco.editor.createModel(m.right.text, lang) };
+          tabs.push(t); activate(t);
+          break;
+        }
+        case 'focus': { const t = find(m.id); if (t) activate(t); break; }
+        case 'saved': {
+          const t = find(m.id); if (!t) break;
+          t.saved = m.version; t.forced = false; t.encoding = m.encoding; t.diskChanged = false;
+          post({ type: 'dirty', id: t.id, value: isDirty(t) });
+          if (t === active) { renderTabs(); renderStatus(); renderDisk(); } else renderTabs();
+          break;
+        }
+        case 'reloaded': {
+          const t = find(m.id); if (!t) break;
+          t.model.setValue(m.text); t.saved = t.model.getAlternativeVersionId(); t.forced = false;
+          t.encoding = m.encoding; t.diskChanged = false;
+          post({ type: 'dirty', id: t.id, value: false });
+          if (t === active) { renderTabs(); renderStatus(); renderDisk(); }
+          break;
+        }
+        case 'diskChanged': {
+          const t = find(m.id); if (!t) break;
+          t.diskChanged = m.deleted ? 'deleted' : 'changed';
+          if (t === active) renderDisk();
+          break;
+        }
+        case 'close': { const t = find(m.id); if (t) closeTab(t); break; }
+        case 'accent': theme(m.accent); break;
+      }
+    });
+    post({ type: 'ready' });
   });
 </script>
 </body>

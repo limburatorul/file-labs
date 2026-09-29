@@ -205,6 +205,7 @@ public partial class MainWindow : Window
         Root.Background = Tint();
         SetBackdrop(this);
         if (quick != null) SetBackdrop(quick);
+        EditorWindow.AccentChanged();
         ApplyAccent();
         Application.Current.Resources["RowPad"] = new Thickness(4, Settings.RowPad, 4, Settings.RowPad);
         // the pane edge is painted by hand, so a new accent has to be painted on by hand
@@ -799,7 +800,7 @@ public partial class MainWindow : Window
 
     void EditSelected()
     {
-        foreach (var e in active.Selected.Where(x => !x.IsDir && !x.IsUp).Take(10)) EditorWindow.Open(this, e.Path);
+        foreach (var e in active.Selected.Where(x => !x.IsDir && !x.IsUp).Take(10)) EditorWindow.Open(e.Path);
     }
 
     void Rename() { if (active.Selected.Count > 1) RenameMany(); else active.BeginRename(); }

@@ -1167,7 +1167,7 @@ public partial class PaneView : UserControl
         if (List.SelectedItem is not Entry e) return;
         if (e.IsUp) Up();
         else if (e.IsDir) Navigate(e.Path);
-        else if (Settings.InternalEditor && EditorWindow.IsText(e.Path)) EditorWindow.Open(Window.GetWindow(this), e.Path);
+        else if (Settings.InternalEditor && EditorWindow.IsText(e.Path)) EditorWindow.Open(e.Path);
         else
             try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Path) { UseShellExecute = true }); }
             catch (System.ComponentModel.Win32Exception ex) { Error?.Invoke(ex.Message); } // e.g. no app associated
