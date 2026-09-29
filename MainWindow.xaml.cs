@@ -107,7 +107,7 @@ public partial class MainWindow : Window
             if (!Settings.Tabs.TryGetValue(p.Name, out var paths) || !p.Restore(paths, Settings.ActiveTab.TryGetValue(p.Name, out var a) ? a : 0))
                 p.Navigate(fallback);
         var arg = Environment.GetCommandLineArgs().Skip(1).FirstOrDefault(a => !a.StartsWith("--"));
-        if (arg != null && Directory.Exists(arg)) { Left.NewTab(); Left.Navigate(arg); }
+        if (arg != null) OpenPath(Left, arg);
         SetActive(Left);
         Loaded += (_, _) => Left.FocusList();
         // started from the Win+E agent or a folder double-click: make sure we open in front.
@@ -313,7 +313,7 @@ public partial class MainWindow : Window
     // taskbar) → just bring the existing window to the front, like switching to it.
     public void OpenFromOutside(string path)
     {
-        if (!string.IsNullOrEmpty(path) && (PaneView.IsRemote(path) || Directory.Exists(path))) { active.NewTab(); active.Navigate(path); }
+        if (!string.IsNullOrEmpty(path)) OpenPath(active, path);
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         // Win+E arrives straight from the agent now, which can't pass on the right to take focus (a
         // process started only to relay it could, at ~175 ms a press).
@@ -322,6 +322,22 @@ public partial class MainWindow : Window
         Topmost = true; Topmost = false;
         Activate();
         active.FocusList();
+    }
+
+    /// A folder opens as a new tab; a file opens its folder with the file selected — what "show in
+    /// folder" asks for (the agent passes those on from Explorer windows other programs open).
+    static void OpenPath(PaneView pane, string path)
+    {
+        if (File.Exists(path)) { pane.NewTab(); pane.Navigate(Path.GetDirectoryName(path), Path.GetFileName(path)); }
+        else if (PaneView.IsRemote(path) || Directory.Exists(path)) { pane.NewTab(); pane.Navigate(path); }
+    }
+
+    /// Explorer on purpose: the agent is told to leave the window alone instead of taking it over.
+    static void OpenInExplorer(string arguments)
+    {
+        using (var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(Agent.StateKey))
+            key.SetValue(Agent.ExplorerWantedValue, DateTime.UtcNow.Ticks, Microsoft.Win32.RegistryValueKind.QWord);
+        Process.Start("explorer.exe", arguments);
     }
 
     void SidebarSplitter_DragCompleted(object s, System.Windows.Controls.Primitives.DragCompletedEventArgs e)

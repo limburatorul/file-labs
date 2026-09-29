@@ -110,7 +110,7 @@ public partial class MainWindow
         m.Items.Add(Item("Create shortcut", "", "", CreateShortcuts));
         m.Items.Add(new Separator());
         if (sel.Any(x => x.IsDir)) m.Items.Add(Item("Pin to Quick access", "", "Ctrl+D", PinSelected));
-        m.Items.Add(Item("Show in File Explorer", "", "", () => Process.Start("explorer.exe", $"/select,\"{first.Path}\"")));
+        m.Items.Add(Item("Show in File Explorer", "", "", () => OpenInExplorer($"/select,\"{first.Path}\"")));
         m.Items.Add(Item("Scan with SpaceScan", "", "", () => ScanWithSpaceScan(first.IsDir ? first.Path : Path.GetDirectoryName(first.Path)!)));
         m.Items.Add(Item("Windows menu…", "", "", () => { if (ShellMenu.Show(this, p.Dir, sel.Select(x => x.Path).ToList()) == "rename") Rename(); }));
         m.Items.Add(Item("Properties", "", "Alt+Enter", () => Properties(sel.Select(x => x.Path).ToList())));
@@ -141,7 +141,7 @@ public partial class MainWindow
         m.Items.Add(Item(Settings.ShowHidden ? "Hide hidden files" : "Show hidden files", "", "Ctrl+H", ToggleHidden));
         m.Items.Add(Item("Pin to Quick access", "", "Ctrl+D", PinSelected));
         m.Items.Add(Item("Open terminal here", "", "Ctrl+`", OpenTerminal));
-        m.Items.Add(Item("Open in File Explorer", "", "", () => Process.Start("explorer.exe", $"\"{p.Dir}\"")));
+        m.Items.Add(Item("Open in File Explorer", "", "", () => OpenInExplorer($"\"{p.Dir}\"")));
         m.Items.Add(Item("Scan with SpaceScan", "", "", () => ScanWithSpaceScan(p.Dir)));
         m.Items.Add(new Separator());
         m.Items.Add(Item("Windows menu…", "", "", () => ShellMenu.Show(this, p.Dir, Array.Empty<string>())));

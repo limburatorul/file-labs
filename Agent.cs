@@ -45,6 +45,7 @@ public static class Agent
         if (hook == IntPtr.Zero) return 1;
 
         // the hook needs a message loop on this thread: WPF's dispatcher is one
+        WatchExplorerWindows();
         ThreadPool.RegisterWaitForSingleObject(stop, (_, _) => app.Dispatcher.BeginInvoke(() => app.Shutdown()), null, -1, true);
         app.ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
         app.Exit += (_, _) => UnhookWindowsHookEx(hook);
@@ -97,6 +98,129 @@ public static class Agent
             catch (System.ComponentModel.Win32Exception) { } // exe gone (e.g. mid-uninstall): nothing to open
         });
     }
+
+    // ---- Explorer windows that other programs open ----
+    // "Open destination folder" in qBittorrent, "Show in folder" in browsers, `explorer.exe /select` and
+    // SHOpenFolderAndSelectItems all open Explorer directly: none of them goes through the Directory
+    // verb that makes File Labs the default. So every new Explorer window is looked at once the shell
+    // has registered it; if it shows a folder on disk, its folder and selected file are opened in File
+    // Labs and the Explorer window is closed. Virtual places (Home, This PC, Control Panel, the Recycle
+    // Bin, a zip) stay in Explorer, the only thing that can show them.
+    public const string ExplorerWantedValue = "ExplorerWanted"; // File Labs' own "Open in File Explorer" sets it
+
+    delegate void WinEventProc(IntPtr hook, uint ev, IntPtr hwnd, int idObject, int idChild, uint thread, uint time);
+    static WinEventProc shown; // held so the GC can't collect the callback Windows calls
+    static readonly HashSet<IntPtr> looked = new();
+
+    static void WatchExplorerWindows()
+    {
+        shown = OnWindowEvent;
+        SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_SHOW, IntPtr.Zero, shown, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+    }
+
+    // Out of sight while it is being looked at — an Explorer window flashing up and closing again looks
+    // broken. Two steps, because each alone was seen to fail:
+    //   • at creation it is moved off screen, asynchronously: Explorer's thread applies that before the
+    //     first paint. (Making it transparent at creation made Explorer abandon windows it keeps, This
+    //     PC among them; hiding it outright stopped them from ever opening.)
+    //   • at showing it is also made transparent, in case Explorer put it back on screen. (Alone, that
+    //     came ~150 ms late: a style change waits for Explorer's thread, busy right after showing.)
+    // A window Explorer keeps gets its place and opacity back.
+    sealed class Hidden { public RECT Place; public IntPtr? Style; }
+    static readonly Dictionary<IntPtr, Hidden> hidden = new();
+
+    static void OnWindowEvent(IntPtr hook, uint ev, IntPtr hwnd, int idObject, int idChild, uint thread, uint time)
+    {
+        if (ev == EVENT_OBJECT_DESTROY || idObject != 0 || idChild != 0) return; // the window itself, created or shown
+        if (ev == EVENT_OBJECT_SHOW)
+        {
+            if (hidden.TryGetValue(hwnd, out var h) && h.Style == null) h.Style = MakeTransparent(hwnd);
+            return;
+        }
+        var cls = new System.Text.StringBuilder(32);
+        if (GetClassName(hwnd, cls, cls.Capacity) == 0 || cls.ToString() != "CabinetWClass") return;
+        if (looked.Count > 500) looked.Clear();
+        if (!looked.Add(hwnd) || ExplorerWanted()) return;
+        GetWindowRect(hwnd, out var place);
+        hidden[hwnd] = new Hidden { Place = place };
+        SetWindowPos(hwnd, IntPtr.Zero, -32000, -32000, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
+
+        // A fresh explorer.exe registers its window ~1.3 s after starting (measured); poll until then.
+        int tries = 0, waitedForSelection = 0;
+        var poll = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        poll.Tick += (_, _) =>
+        {
+            if (!IsWindow(hwnd)) { poll.Stop(); hidden.Remove(hwnd); return; }
+            var (window, folder, selected) = Locate(hwnd);
+            if (window == null && ++tries < 100) return;
+            // "Show in folder" selects the file a moment after the folder is shown; give it ~0.5 s
+            if (folder != null && selected == null && ++waitedForSelection < 10) return;
+            poll.Stop();
+            if (folder == null) { GiveBack(hwnd); return; } // a virtual place, or never registered: Explorer keeps it
+            hidden.Remove(hwnd);
+            try { window.Quit(); } catch (COMException) { }
+            OpenInFileLabs(selected ?? folder);
+        };
+        poll.Start();
+    }
+
+    /// Invisible and click-through: a layered window at alpha 0. Returns the style to restore.
+    static IntPtr MakeTransparent(IntPtr hwnd)
+    {
+        var style = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+        SetWindowLongPtr(hwnd, GWL_EXSTYLE, (IntPtr)((long)style | WS_EX_LAYERED));
+        SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA);
+        return style;
+    }
+
+    /// The Explorer window's folder, and its selected item when there is exactly one ("show in folder").
+    /// Window null: not registered with the shell yet. Folder null: not a folder on disk.
+    static (dynamic Window, string Folder, string Selected) Locate(IntPtr hwnd)
+    {
+        try
+        {
+            dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("Shell.Application"));
+            foreach (dynamic w in shell.Windows())
+            {
+                if (new IntPtr((long)w.HWND) != hwnd) continue;
+                string path = w.Document.Folder.Self.Path;
+                if (string.IsNullOrEmpty(path) || !System.IO.Directory.Exists(path)) return (w, null, null);
+                dynamic items = w.Document.SelectedItems();
+                return (w, path, items.Count == 1 ? (string)items.Item(0).Path : null);
+            }
+        }
+        // still navigating (no document yet), or the window went away between two calls
+        catch (Exception ex) when (ex is COMException or InvalidCastException or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException) { }
+        return (null, null, null);
+    }
+
+    /// A window Explorer keeps: back in its place, opaque, and in front where the user expected it. An
+    /// empty mouse input first — Windows only lets a process that just had input take the foreground.
+    static void GiveBack(IntPtr hwnd)
+    {
+        if (!hidden.Remove(hwnd, out var h)) return;
+        if (h.Style is { } style)
+        {
+            SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
+            SetWindowLongPtr(hwnd, GWL_EXSTYLE, style);
+        }
+        SetWindowPos(hwnd, IntPtr.Zero, h.Place.Left, h.Place.Top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_ASYNCWINDOWPOS);
+        SendInput(1, new INPUT[1], Marshal.SizeOf<INPUT>()); // all zero = a mouse event that moves nothing
+        SetForegroundWindow(hwnd);
+    }
+
+    static bool ExplorerWanted()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(StateKey);
+        return key?.GetValue(ExplorerWantedValue) is long ticks && DateTime.UtcNow.Ticks - ticks < TimeSpan.FromSeconds(10).Ticks;
+    }
+
+    static void OpenInFileLabs(string path) => ThreadPool.QueueUserWorkItem(_ =>
+    {
+        if (App.Running && App.HandOff(path)) return;
+        try { Process.Start(new ProcessStartInfo(Environment.ProcessPath) { ArgumentList = { "--front", path }, UseShellExecute = false }); }
+        catch (System.ComponentModel.Win32Exception) { } // exe gone (e.g. mid-uninstall)
+    });
 
     // ---- quick switch ----
     static bool swallowG;
@@ -153,6 +277,19 @@ public static class Agent
     const int WM_GETTEXT = 0x0D, WM_SETTEXT = 0x0C, WM_COMMAND = 0x111, VK_G = 0x47;
     delegate bool EnumProc(IntPtr h, IntPtr l);
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    const uint EVENT_OBJECT_CREATE = 0x8000, EVENT_OBJECT_DESTROY = 0x8001, EVENT_OBJECT_SHOW = 0x8002, WINEVENT_OUTOFCONTEXT = 0, WINEVENT_SKIPOWNPROCESS = 2;
+    [DllImport("user32.dll")] static extern IntPtr SetWinEventHook(uint min, uint max, IntPtr module, WinEventProc proc, uint pid, uint thread, uint flags);
+    [DllImport("user32.dll")] static extern bool IsWindow(IntPtr h);
+    const int GWL_EXSTYLE = -20, WS_EX_LAYERED = 0x80000;
+    const uint LWA_ALPHA = 2;
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr h, int index);
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] static extern IntPtr SetWindowLongPtr(IntPtr h, int index, IntPtr value);
+    [DllImport("user32.dll")] static extern bool SetLayeredWindowAttributes(IntPtr h, uint key, byte alpha, uint flags);
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr h);
+    [StructLayout(LayoutKind.Sequential)] struct RECT { public int Left, Top, Right, Bottom; }
+    const uint SWP_NOSIZE = 0x1, SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10, SWP_ASYNCWINDOWPOS = 0x4000;
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
     [DllImport("user32.dll")] static extern bool EnumChildWindows(IntPtr parent, EnumProc proc, IntPtr l);
     [DllImport("user32.dll")] static extern IntPtr GetParent(IntPtr h);

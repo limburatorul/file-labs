@@ -153,7 +153,9 @@ public static class Settings
         {
             using var cmd = hk.CreateSubKey(winEPath);
             var prev = cmd.GetValue("") as string;
-            if (!string.IsNullOrEmpty(prev) && !prev.Contains(exe, StringComparison.OrdinalIgnoreCase))
+            // any File Labs build counts as ours: a dev build's path was once kept as "the previous
+            // Win+E", which switching File Labs off would then have restored instead of Explorer
+            if (!string.IsNullOrEmpty(prev) && !prev.Contains("FileLabs.exe", StringComparison.OrdinalIgnoreCase))
             {
                 backup.SetValue("WinE", prev);
                 backup.SetValue("WinEDelegate", cmd.GetValue("DelegateExecute") as string ?? "");
