@@ -53,10 +53,13 @@ public partial class MainWindow
             : new ProcessStartInfo(exe, $"\"{path}\"") { UseShellExecute = true });
     }
 
-    // Shelf and Reel (sister apps) take folders and files on the command line and offer to add them,
-    // already running or not (Shelf 3.59.0, Reel 1.9.11). Each is found through the uninstall entry
-    // its installer writes; without one the menu item sends the user to the app's page.
+    // Shelf, Reel and Backup Labs (sister apps) take folders and files on the command line, already
+    // running or not: Shelf (3.59.0) and Reel (1.9.11) offer to add them, Backup Labs (1.0.2) makes a
+    // new job of them. Each is found through the uninstall entry its installer writes; without one
+    // the menu item sends the user to the app's page.
     const string ShelfKey = "93869666-a03d-5775-ba3a-19dde48e73bc", ReelKey = "95693626-e8c4-5132-9e4f-6f4a12169be6";
+    const string BackupKey = "{3B9E6A12-8C4D-4F7B-A1E5-6D2F0B8C9E34}_is1";
+    const string BackupPage = "https://protagonistlabs.app/backuplabs/?utm_source=filelabs&utm_medium=app&utm_campaign=back-up-with-backuplabs";
     const string ShelfPage = "https://protagonistlabs.app/shelf/?utm_source=filelabs&utm_medium=app&utm_campaign=add-to-shelf";
     const string ReelPage = "https://protagonistlabs.app/reel/?utm_source=filelabs&utm_medium=app&utm_campaign=add-to-reel";
     // the extensions Reel takes as a film
@@ -69,7 +72,7 @@ public partial class MainWindow
         return exe != null && File.Exists(exe) ? exe : null;
     }
 
-    static void AddTo(string uninstallKey, string page, IEnumerable<string> paths)
+    static void HandTo(string uninstallKey, string page, IEnumerable<string> paths)
     {
         var exe = ExeOf(Microsoft.Win32.Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Uninstall\" + uninstallKey, "DisplayIcon", null) as string);
         if (exe == null) { Process.Start(new ProcessStartInfo(page) { UseShellExecute = true }); return; }
@@ -139,9 +142,10 @@ public partial class MainWindow
         m.Items.Add(Item("Show in File Explorer", "", "", () => OpenInExplorer($"/select,\"{first.Path}\"")));
         m.Items.Add(Item("Scan with SpaceScan", "", "", () => ScanWithSpaceScan(first.IsDir ? first.Path : Path.GetDirectoryName(first.Path)!)));
         if (sel.All(x => x.IsDir || Path.GetExtension(x.Name).Equals(".exe", StringComparison.OrdinalIgnoreCase)))
-            m.Items.Add(Item("Add to Shelf", "\uE7FC", "", () => AddTo(ShelfKey, ShelfPage, sel.Select(x => x.Path))));
+            m.Items.Add(Item("Add to Shelf", "\uE7FC", "", () => HandTo(ShelfKey, ShelfPage, sel.Select(x => x.Path))));
         if (sel.All(x => x.IsDir || ReelVideo.Contains(Path.GetExtension(x.Name))))
-            m.Items.Add(Item("Add to Reel", "\uE8B2", "", () => AddTo(ReelKey, ReelPage, sel.Select(x => x.Path))));
+            m.Items.Add(Item("Add to Reel", "\uE8B2", "", () => HandTo(ReelKey, ReelPage, sel.Select(x => x.Path))));
+        m.Items.Add(Item("Back up with Backup Labs", "\uE81C", "", () => HandTo(BackupKey, BackupPage, sel.Select(x => x.Path))));
         m.Items.Add(Item("Windows menu…", "", "", () => { if (ShellMenu.Show(this, p.Dir, sel.Select(x => x.Path).ToList()) == "rename") Rename(); }));
         m.Items.Add(Item("Properties", "", "Alt+Enter", () => Properties(sel.Select(x => x.Path).ToList())));
         return m;
@@ -173,6 +177,7 @@ public partial class MainWindow
         m.Items.Add(Item("Open terminal here", "", "Ctrl+`", OpenTerminal));
         m.Items.Add(Item("Open in File Explorer", "", "", () => OpenInExplorer($"\"{p.Dir}\"")));
         m.Items.Add(Item("Scan with SpaceScan", "", "", () => ScanWithSpaceScan(p.Dir)));
+        m.Items.Add(Item("Back up with Backup Labs", "\uE81C", "", () => HandTo(BackupKey, BackupPage, new[] { p.Dir })));
         m.Items.Add(new Separator());
         m.Items.Add(Item("Windows menu…", "", "", () => ShellMenu.Show(this, p.Dir, Array.Empty<string>())));
         m.Items.Add(Item("Properties", "", "", () => Properties(p.Dir)));
