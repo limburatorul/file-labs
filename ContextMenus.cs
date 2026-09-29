@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -31,6 +31,26 @@ public partial class MainWindow
             menu.PlacementTarget = p.List;
             menu.IsOpen = true;
         };
+    }
+
+    // SpaceScan (sister app) publishes where it is installed; without it the menu item sends the user to its page.
+    const string SpaceScanPage = "https://protagonistlabs.app/spacescan/?utm_source=filelabs&utm_medium=app&utm_campaign=scan-with-spacescan";
+
+    static string SpaceScanExe
+    {
+        get
+        {
+            var exe = Microsoft.Win32.Registry.GetValue(@"HKEY_CURRENT_USER\Software\SpaceScan", "ExePath", null) as string;
+            return exe != null && File.Exists(exe) ? exe : null;
+        }
+    }
+
+    static void ScanWithSpaceScan(string path)
+    {
+        var exe = SpaceScanExe;
+        Process.Start(exe == null
+            ? new ProcessStartInfo(SpaceScanPage) { UseShellExecute = true }
+            : new ProcessStartInfo(exe, $"\"{path}\"") { UseShellExecute = true });
     }
 
     static MenuItem Item(string header, string glyph, string gesture, Action run, bool enabled = true)
@@ -91,6 +111,7 @@ public partial class MainWindow
         m.Items.Add(new Separator());
         if (sel.Any(x => x.IsDir)) m.Items.Add(Item("Pin to Quick access", "", "Ctrl+D", PinSelected));
         m.Items.Add(Item("Show in File Explorer", "", "", () => Process.Start("explorer.exe", $"/select,\"{first.Path}\"")));
+        m.Items.Add(Item("Scan with SpaceScan", "", "", () => ScanWithSpaceScan(first.IsDir ? first.Path : Path.GetDirectoryName(first.Path)!)));
         m.Items.Add(Item("Windows menu…", "", "", () => { if (ShellMenu.Show(this, p.Dir, sel.Select(x => x.Path).ToList()) == "rename") Rename(); }));
         m.Items.Add(Item("Properties", "", "Alt+Enter", () => Properties(sel.Select(x => x.Path).ToList())));
         return m;
@@ -121,6 +142,7 @@ public partial class MainWindow
         m.Items.Add(Item("Pin to Quick access", "", "Ctrl+D", PinSelected));
         m.Items.Add(Item("Open terminal here", "", "Ctrl+`", OpenTerminal));
         m.Items.Add(Item("Open in File Explorer", "", "", () => Process.Start("explorer.exe", $"\"{p.Dir}\"")));
+        m.Items.Add(Item("Scan with SpaceScan", "", "", () => ScanWithSpaceScan(p.Dir)));
         m.Items.Add(new Separator());
         m.Items.Add(Item("Windows menu…", "", "", () => ShellMenu.Show(this, p.Dir, Array.Empty<string>())));
         m.Items.Add(Item("Properties", "", "", () => Properties(p.Dir)));
