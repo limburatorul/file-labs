@@ -1167,9 +1167,11 @@ public partial class PaneView : UserControl
         if (List.SelectedItem is not Entry e) return;
         if (e.IsUp) Up();
         else if (e.IsDir) Navigate(e.Path);
-        else if (Settings.InternalEditor && EditorWindow.IsText(e.Path)) EditorWindow.Open(e.Path);
+        // a script is run, like Explorer does; editing it is F4 / Edit in the menu
+        else if (Settings.InternalEditor && EditorWindow.IsText(e.Path) && !MainWindow.Runnable.Contains(Path.GetExtension(e.Path))) EditorWindow.Open(e.Path);
         else
-            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Path) { UseShellExecute = true }); }
+            // started in its own folder, as from Explorer: scripts rely on relative paths
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Path) { UseShellExecute = true, WorkingDirectory = Path.GetDirectoryName(e.Path) }); }
             catch (System.ComponentModel.Win32Exception ex) { Error?.Invoke(ex.Message); } // e.g. no app associated
     }
 

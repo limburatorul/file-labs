@@ -288,7 +288,7 @@ public partial class MainWindow
     }
 
     // ---- Run as administrator ----
-    static readonly HashSet<string> Runnable = Set(".exe", ".bat", ".cmd", ".msi", ".com");
+    internal static readonly HashSet<string> Runnable = Set(".exe", ".bat", ".cmd", ".msi", ".com");
 
     void RunAsAdmin(string path)
     {
