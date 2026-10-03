@@ -54,3 +54,9 @@ The version lives only in `FileExplorer.csproj`.
 ## Licence
 
 MIT. Made by [Protagonist Labs](https://protagonistlabs.app/filelabs/).
+
+## More from Protagonist Labs
+
+- [Backup Labs](https://protagonistlabs.app/backuplabs/?utm_source=github&utm_medium=readme&utm_campaign=filelabs): scheduled, versioned folder backups, free.
+- [SpaceScan](https://protagonistlabs.app/spacescan/?utm_source=github&utm_medium=readme&utm_campaign=filelabs): shows what takes the space on a drive, free.
+- [All apps](https://protagonistlabs.app/?utm_source=github&utm_medium=readme&utm_campaign=filelabs): Windows apps that each do one job properly.
