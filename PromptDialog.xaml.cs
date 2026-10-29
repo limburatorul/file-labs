@@ -125,6 +125,7 @@ public partial class PromptDialog : Window
         }
         var error = new System.Windows.Controls.TextBlock { Foreground = MainWindow.Hex("#FF7A7A"), TextWrapping = TextWrapping.Wrap, Visibility = Visibility.Collapsed, Margin = new(2, 0, 0, 4) };
         panel.Children.Add(error);
+        foreach (var box in boxes) box.TextChanged += (_, _) => error.Visibility = Visibility.Collapsed; // being corrected
         (string, int)[] result = null;
         (string Text, int Unit)[] Read() => boxes.Select((b, i) => (b.Text.Trim(), units[i])).ToArray();
         void Accept()
