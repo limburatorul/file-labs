@@ -1,6 +1,27 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.65 | 2026-10-29 | Safer renames, honest transfers, an Undo that's sure
+The same user read 1.0.64's code and found what could still go wrong. All of it is fixed.
+**Renames and names**
+- A batch rename that fails halfway now **puts every name back**, also when names were swapped among themselves. If one can't go back, you're told which, and Ctrl+Z tries again.
+- If File Labs stops in the middle of a batch rename, Ctrl+Z can still put the names back.
+- **Keep both** no longer gives two files the same new name when they come from different folders, and two files of the same name in one copy are asked about like any other clash, instead of one failing.
+**Transfers say what happened**
+- A copy or move with files that failed or were skipped says so in its title: "Moved 4,990 of 5,000 · 10 failed", not "Moved 5,000".
+- A file that arrived just as you pressed Cancel is counted, and Undo knows about it.
+- Pause and Cancel also work while a move between drives is removing the originals.
+**Undo you can trust**
+- Undo puts things back under their **exact old names**, also ones Keep both had renamed.
+- After a delete, Undo brings back **that very item** from the Recycle Bin, never a later one deleted from the same place.
+- Something you put in place of an item since is **left alone**, and Undo says so.
+- Each transfer writes down what it did as it goes, so Undo survives even a crash. The history is saved in one piece, off to the side first, and a failure to save is said.
+**Smoother with big jobs**
+- The Recycle Bin window reads, restores and deletes in the background, with the count as it goes. So do batch renames, putting deleted items back, and Ctrl+C inside an archive.
+- A folder where thousands of files arrive at once refreshes once, not once per file.
+- A search with no limit hands its results to the list a few hundred at a time, as fast as the list takes them.
+- The Drop bin changes in place, and the rename preview waits for a pause in typing when thousands of files are selected.
+
 ## 1.0.64 | 2026-10-29 | Moves you can stop, and an Undo that remembers
 The same user's second mail: what big selections and moves could do, and how to take them back.
 **Moves**

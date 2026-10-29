@@ -26,6 +26,8 @@ public class Job : INotifyPropertyChanged
     public bool IsMove { get; init; }
     public bool Verify { get; init; }
     public bool Parallel { get; init; } // Settings → Transfers: small files several at once, where the drives take it well
+    public IReadOnlyDictionary<string, string> Names { get; init; } // source → the exact name it gets there (Undo puts back original names)
+    public string Journal { get; internal set; } // where each arrival is written down as it happens, so a crash doesn't lose what Undo needs
 
     // 0 running, 1 paused, 2 cancelled — read from the CopyFileExW callback, so kept lock-free.
     volatile int state;
@@ -37,7 +39,7 @@ public class Job : INotifyPropertyChanged
 
     public Phase Phase { get; internal set; }
     public long TotalBytes, DoneBytes, CurrentSize, CurrentDone;
-    public int TotalFiles, DoneFiles;
+    public int TotalFiles, DoneFiles, FailedFiles, SkippedFiles; // what was planned, what arrived, what didn't (an error), what was left (a conflict's Skip)
     public string Current = "";
     public List<Conflict> Conflicts { get; internal set; } = new();
     public bool Merged { get; internal set; } // a folder went into a folder of the same name that was already there
@@ -47,8 +49,39 @@ public class Job : INotifyPropertyChanged
     // What was done, for Undo, also when the job was cancelled or failed halfway: each item that arrived (Moved: the
     // source is gone, it came by rename), and the folders the job made that weren't there. A file that replaced another
     // is left out: the one it replaced can't come back.
-    public readonly System.Collections.Concurrent.ConcurrentQueue<(string From, string To, bool Moved)> Completed = new();
+    // Stamp: what the arrival looked like (Ferry.Stamp), so Undo leaves alone something put there in its place later.
+    public readonly System.Collections.Concurrent.ConcurrentQueue<(string From, string To, bool Moved, long Stamp)> Completed = new();
     public readonly List<string> CreatedDirs = new();
+
+    // ---- the journal: one line per arrival, flushed a few times a second by the worker, never by the UI ----
+    StreamWriter journal;
+    long journalFlushed;
+    internal void Arrived(string from, string to, bool moved)
+    {
+        var item = (from, to, moved, Ferry.Stamp(to));
+        Completed.Enqueue(item);
+        Write($"{(moved ? "moved" : "came")}\t{from}\t{to}\t{item.Item4}");
+    }
+    internal void MadeDir(string dir) { lock (CreatedDirs) CreatedDirs.Add(dir); Write($"dir\t{dir}"); }
+    void Write(string line)
+    {
+        if (Journal == null) return;
+        lock (Completed)
+            try
+            {
+                if (journal == null)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(Journal));
+                    journal = new StreamWriter(Journal, append: false);
+                    journal.WriteLine($"{(IsMove ? "move" : "copy")}\t{Destination}");
+                }
+                journal.WriteLine(line);
+                if (Environment.TickCount64 - journalFlushed > 250) { journal.Flush(); journalFlushed = Environment.TickCount64; }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Notes.Enqueue("Undo notes couldn't be written: " + ex.Message); JournalBroken(); }
+    }
+    void JournalBroken() { try { journal?.Dispose(); } catch (IOException) { } journal = null; Journal = null; } // said once; Undo still has Completed
+    internal void CloseJournal() { lock (Completed) try { journal?.Dispose(); } catch (IOException) { } finally { journal = null; } }
     public bool CanUndo { get; set; } // its Undo button: there is something to take back, and it hasn't been yet
 
     readonly TaskCompletionSource<Choice?> resolved = new();
@@ -96,10 +129,13 @@ public class Job : INotifyPropertyChanged
     }
 
     string Verb => IsMove ? "Moving" : "Copying";
+    // What really happened: a job with failed or skipped files says so in its title, not "Moved 5000" for 4,990.
+    string Outcome => (FailedFiles > 0 ? $" · {FailedFiles} failed" : "") + (SkippedFiles > 0 ? $" · {SkippedFiles} skipped" : "");
     public string Title => Phase switch
     {
+        Phase.Done when FailedFiles > 0 || SkippedFiles > 0 => $"{(IsMove ? "Moved" : "Copied")} {DoneFiles} of {TotalFiles + SkippedFiles} file(s) to {Destination}{Outcome}",
         Phase.Done => $"{(IsMove ? "Moved" : "Copied")} {TotalFiles} file(s) to {Destination}",
-        Phase.Cancelled => $"Cancelled — {DoneFiles} of {TotalFiles} file(s) to {Destination}",
+        Phase.Cancelled => $"Cancelled — {DoneFiles} of {TotalFiles + SkippedFiles} file(s) to {Destination}{Outcome}",
         Phase.Scanning => $"Scanning {Sources.Count} item(s)…",
         Phase.Verifying => $"Verifying {TotalFiles} file(s) in {Destination}",
         _ => $"{Verb} {TotalFiles} file(s) to {Destination}",
@@ -149,9 +185,9 @@ public static class Ferry
     public static event Action<Job> Finished;
 
     // Same destination volume → runs after the previous job there; other volumes run in parallel.
-    public static Job Submit(IEnumerable<string> sources, string destination, bool move)
+    public static Job Submit(IEnumerable<string> sources, string destination, bool move, IReadOnlyDictionary<string, string> names = null, string journal = null)
     {
-        var job = new Job { Sources = sources.ToList(), Destination = destination, IsMove = move, Verify = Settings.Verify, Parallel = Settings.ParallelCopy };
+        var job = new Job { Sources = sources.ToList(), Destination = destination, IsMove = move, Verify = Settings.Verify, Parallel = Settings.ParallelCopy, Names = names, Journal = journal };
         var lane = Path.GetPathRoot(destination);
         lock (lanes)
         {
@@ -191,6 +227,7 @@ public static class Ferry
         finally
         {
             job.Current = ""; job.CurrentSize = job.CurrentDone = 0;
+            job.CloseJournal();
             Finished?.Invoke(job);
         }
     }
@@ -202,12 +239,14 @@ public static class Ferry
         public List<string> Dirs = new();
         public List<Conflict> Conflicts = new();
         public Dictionary<string, (int Files, long Bytes)> PerSource = new(StringComparer.OrdinalIgnoreCase); // what each source holds
+        public bool InBatch; // two files of this batch would land on the same name
     }
 
     static Plan Scan(Job job)
     {
         var plan = new Plan();
         int links = 0;
+        var topNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         void Walk(string dir, string rel)
         {
             IEnumerable<FileSystemInfo> children;
@@ -241,16 +280,28 @@ public static class Ferry
             { job.Errors.Enqueue($"{fsi.Name}: can't copy a folder into itself"); continue; }
             // a copy into the folder it is already in is a duplicate beside it, as in Explorer ("name - Copy.ext")
             if (here) { var copy = CopyName(s.TrimEnd('\\'), fsi is DirectoryInfo); job.Duplicates[s] = copy; Add(fsi, Path.GetFileName(copy)); continue; }
-            if (fsi is DirectoryInfo && Directory.Exists(Path.Combine(job.Destination, fsi.Name))) job.Merged = true;
+            var name = job.Names?.GetValueOrDefault(s) ?? fsi.Name;
+            // a folder poured into one already there, or two sources of the same name (from different folders): file by file
+            if (!topNames.Add(name) || fsi is DirectoryInfo && Directory.Exists(Path.Combine(job.Destination, name))) job.Merged = true;
             int files = job.TotalFiles; long bytes = job.TotalBytes;
-            Add(fsi, fsi.Name);
+            Add(fsi, name);
             plan.PerSource[s] = (job.TotalFiles - files, job.TotalBytes - bytes);
         }
+        // A file conflicts with what is already there, and with a file earlier in this same batch that goes to the same
+        // place (x.txt from two folders): asked about once like the others, instead of the second one failing.
+        var first = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < plan.Files.Count; i++)
         {
-            var target = new FileInfo(Path.Combine(job.Destination, plan.Files[i].Relative));
+            var f = plan.Files[i];
+            var target = new FileInfo(Path.Combine(job.Destination, f.Relative));
             if (target.Exists)
-                plan.Conflicts.Add(new Conflict(i, plan.Files[i].Relative, plan.Files[i].Size, File.GetLastWriteTime(plan.Files[i].Source), target.Length, target.LastWriteTime));
+                plan.Conflicts.Add(new Conflict(i, f.Relative, f.Size, File.GetLastWriteTime(f.Source), target.Length, target.LastWriteTime));
+            else if (first.TryGetValue(target.FullName, out var earlier))
+            {
+                plan.Conflicts.Add(new Conflict(i, f.Relative, f.Size, File.GetLastWriteTime(f.Source), plan.Files[earlier].Size, File.GetLastWriteTime(plan.Files[earlier].Source)));
+                plan.InBatch = true;
+            }
+            else first[target.FullName] = i;
         }
         if (links > 0) job.Notes.Enqueue($"{links} shortcut(s) or junction(s) were left alone");
         return plan;
@@ -269,16 +320,16 @@ public static class Ferry
                 while (job.Paused && !job.IsCancelled) Thread.Sleep(60);
                 if (job.IsCancelled) return;
                 if (!plan.PerSource.TryGetValue(s, out var holds)) continue; // the scan left it out, and said why
-                var name = Path.GetFileName(s.TrimEnd('\\'));
+                var name = job.Names?.GetValueOrDefault(s) ?? Path.GetFileName(s.TrimEnd('\\'));
                 var target = Path.Combine(job.Destination, name);
                 job.Current = name;
                 if (MoveFileEx(Long(s), Long(target), MOVEFILE_COPY_ALLOWED | MOVEFILE_WRITE_THROUGH))
                 {
                     Interlocked.Add(ref job.DoneFiles, holds.Files);
                     Interlocked.Add(ref job.DoneBytes, holds.Bytes);
-                    job.Completed.Enqueue((s, target, true));
+                    job.Arrived(s, target, moved: true);
                 }
-                else job.Errors.Enqueue($"{name}: {LastError()}");
+                else { job.Errors.Enqueue($"{name}: {LastError()}"); Interlocked.Add(ref job.FailedFiles, holds.Files); }
             }
             job.Notes.Enqueue("Moved within the same drive");
             return;
@@ -291,13 +342,15 @@ public static class Ferry
                 var made = Path.Combine(job.Destination, d);
                 if (Directory.Exists(made)) continue;
                 Directory.CreateDirectory(made);
-                job.CreatedDirs.Add(made);
+                job.MadeDir(made);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { job.Errors.Enqueue($"{d}: {ex.Message}"); }
 
         var copied = new List<(string Source, string Target, long Size, string Relative)>();
         // where each file goes, decided first: a "Rename" target is picked before any copy runs beside it
         var work = new List<(FileEntry File, string Target, bool Overwrite)>();
+        // every name this batch will use, so "Keep both" never hands the same "x (2).txt" to two files
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < plan.Files.Count; i++)
         {
             var e = plan.Files[i];
@@ -306,9 +359,10 @@ public static class Ferry
             if (conflicts.TryGetValue(i, out var c))
             {
                 var ch = choice == Choice.Newer && c.SourceModified <= c.TargetModified ? Choice.Skip : choice;
-                if (ch == Choice.Skip) { job.TotalBytes -= e.Size; job.TotalFiles--; continue; }
-                if (ch == Choice.Rename) target = UniqueName(target); else overwrite = true;
+                if (ch == Choice.Skip) { job.TotalBytes -= e.Size; job.TotalFiles--; job.SkippedFiles++; continue; }
+                if (ch == Choice.Rename) target = UniqueName(target, taken); else overwrite = true;
             }
+            taken.Add(target);
             work.Add((e, target, overwrite));
         }
 
@@ -328,20 +382,22 @@ public static class Ferry
                 else error = LastError();
             }
             else error = CopyOne(job, e.Source, w.Target, e.Size, w.Overwrite);
-            if (job.IsCancelled) return;
+            if (ReferenceEquals(error, Stopped)) return; // cancelled inside the copy: the partial file is gone, nothing arrived
+            // what arrived is counted and written down even when Cancel came just after: it is there, and Undo must know
             if (error == null)
             {
                 Interlocked.Increment(ref job.DoneFiles);
                 if (!sameDiskMove) lock (copied) copied.Add((e.Source, w.Target, e.Size, e.Relative));
-                if (!w.Overwrite) job.Completed.Enqueue((e.Source, w.Target, sameDiskMove));
+                if (!w.Overwrite) job.Arrived(e.Source, w.Target, sameDiskMove);
             }
-            else job.Errors.Enqueue($"{e.Relative}: {error}"); // one bad file doesn't stop the other thousand
+            else { job.Errors.Enqueue($"{e.Relative}: {error}"); Interlocked.Increment(ref job.FailedFiles); } // one bad file doesn't stop the other thousand
         }
 
         // 1.0.61: small files several at a time where both ends take it well (SSDs, network shares: a small file is mostly
         // waiting, on the drive or the network); on a spinning disk the heads would only jump between them, so one by one.
         // Big files always one by one: each already keeps the drive busy.
-        bool together = job.Parallel && Fast(job.Destination) && job.Sources.All(Fast);
+        // not when two files of the batch share a name: who goes first decides which one replaces the other
+        bool together = job.Parallel && !plan.InBatch && Fast(job.Destination) && job.Sources.All(Fast);
         var small = together ? work.Where(w => w.File.Size < ParallelBelow).ToList() : new();
         if (small.Count > 1)
             System.Threading.Tasks.Parallel.ForEach(small, new ParallelOptions { MaxDegreeOfParallelism = ParallelWays }, (w, state) => { if (job.IsCancelled) state.Stop(); else One(w); });
@@ -356,9 +412,16 @@ public static class Ferry
 
         // Only now, with everything on the far side, does a cross-volume move delete anything —
         // and never a source whose copy failed verification.
+        // Pause and Cancel are heard here too, between files: a source not removed yet simply stays (its copy is there,
+        // and Undo, seeing the source still in place, takes back the copy rather than moving anything).
         if (job.IsMove && !job.IsCancelled)
         {
-            foreach (var s in copied.Select(c => c.Source).Where(x => !bad.Contains(x))) try { File.Delete(s); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { job.Errors.Enqueue($"{s}: not removed, {ex.Message}"); }
+            foreach (var s in copied.Select(c => c.Source).Where(x => !bad.Contains(x)))
+            {
+                while (job.Paused && !job.IsCancelled) Thread.Sleep(60);
+                if (job.IsCancelled) return;
+                try { File.Delete(s); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { job.Errors.Enqueue($"{s}: not removed, {ex.Message}"); }
+            }
             foreach (var s in job.Sources.Where(Directory.Exists)) RemoveEmptyTree(s);
         }
     }
@@ -420,16 +483,33 @@ public static class Ferry
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
-    static string UniqueName(string target)
+    /// "x (2).txt", "x (3).txt"… the first free on disk and not already given to another file of the batch.
+    internal static string UniqueName(string target, HashSet<string> taken)
     {
         string dir = Path.GetDirectoryName(target), stem = Path.GetFileNameWithoutExtension(target), ext = Path.GetExtension(target);
-        for (int n = 2; n < 10000; n++)
+        for (int n = 2; n < 100000; n++)
         {
             var candidate = Path.Combine(dir, $"{stem} ({n}){ext}");
-            if (!File.Exists(candidate) && !Directory.Exists(candidate)) return candidate;
+            if (!taken.Contains(candidate) && !File.Exists(candidate) && !Directory.Exists(candidate)) return candidate;
         }
         return target;
     }
+
+    /// What an item looks like now, to tell it from something put in its place later: a file by its size and last
+    /// write, a folder by when it was made. 0 when it isn't there.
+    public static long Stamp(string path)
+    {
+        try
+        {
+            var f = new FileInfo(path);
+            if (f.Exists) return unchecked(f.LastWriteTimeUtc.Ticks * 1_000_003 + f.Length);
+            var d = new DirectoryInfo(path);
+            return d.Exists ? d.CreationTimeUtc.Ticks : 0;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { return 0; }
+    }
+
+    static readonly string Stopped = new("cancelled"); // CopyOne's answer when Cancel stopped it midway (compared by reference)
 
     /// Explorer's name for a duplicate beside the original: "a - Copy.txt", then "a - Copy (2).txt"; a folder keeps
     /// its dots ("v1.2 - Copy").
@@ -508,7 +588,7 @@ public static class Ferry
         if (!ok && job.IsCancelled)
         {
             try { File.Delete(dst); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // partial file
-            return null;
+            return Stopped;
         }
         return err;
     }

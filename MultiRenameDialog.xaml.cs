@@ -17,13 +17,18 @@ public partial class MultiRenameDialog : Window
         InitializeComponent();
         Owner = owner;
         this.items = items;
+        typing.Tick += (_, _) => { typing.Stop(); Update(); };
         SourceInitialized += (_, _) => MainWindow.ApplyAcrylic(this);
         Root.Background = MainWindow.Tint();
         Loaded += (_, _) => { NameBox.Focus(); NameBox.SelectAll(); };
         PreviewKeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape) Close();
-            else if (e.Key == Key.Enter && OkButton.IsEnabled) DialogResult = true;
+            else if (e.Key == Key.Enter)
+            {
+                if (typing.IsEnabled) { typing.Stop(); Update(); } // Enter right after typing: the preview catches up first
+                if (OkButton.IsEnabled) DialogResult = true;
+            }
         };
         Update();
     }
@@ -37,7 +42,18 @@ public partial class MultiRenameDialog : Window
 
     record Row(string Old, string New, Brush Brush);
 
-    void Changed(object s, System.Windows.Controls.TextChangedEventArgs e) { if (IsLoaded) Update(); }
+    // With thousands selected, each keystroke would rebuild the whole preview: it waits for a pause in typing instead,
+    // and what is on disk is looked up once per name, not on every keystroke.
+    readonly System.Windows.Threading.DispatcherTimer typing = new() { Interval = TimeSpan.FromMilliseconds(150) };
+    readonly Dictionary<string, bool> onDisk = new(StringComparer.OrdinalIgnoreCase);
+
+    void Changed(object s, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        if (items.Count < 500) { Update(); return; }
+        OkButton.IsEnabled = false; // until the preview has caught up with what was typed
+        typing.Stop(); typing.Start();
+    }
 
     void Update()
     {
@@ -77,8 +93,12 @@ public partial class MultiRenameDialog : Window
     }
 
     // Taken by a file that isn't part of this rename (those move out of the way first).
-    static bool ExistsElsewhere(string path, HashSet<string> ours) =>
-        !ours.Contains(path) && (File.Exists(path) || Directory.Exists(path));
+    bool ExistsElsewhere(string path, HashSet<string> ours)
+    {
+        if (ours.Contains(path)) return false;
+        if (!onDisk.TryGetValue(path, out var there)) onDisk[path] = there = File.Exists(path) || Directory.Exists(path);
+        return there;
+    }
 
     void Ok_Click(object s, RoutedEventArgs e) => DialogResult = true;
     void Cancel_Click(object s, RoutedEventArgs e) => Close();

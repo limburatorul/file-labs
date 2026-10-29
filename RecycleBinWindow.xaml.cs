@@ -115,34 +115,44 @@ public partial class RecycleBinWindow : Window
         return false;
     }
 
-    void Load()
+    // Read off the UI thread: a bin with thousands of items on several drives is thousands of small files.
+    async void Load()
     {
-        var items = Read();
+        Summary.Text = "Reading the Recycle Bin…";
+        var items = await Task.Run(() => Read());
         List.ItemsSource = items.OrderByDescending(i => i.Deleted).ToList();
         Summary.Text = items.Count == 0 ? "The Recycle Bin is empty" : $"{items.Count} items  ·  {MainWindow.Fmt(items.Sum(i => i.Size))}";
     }
 
-    static List<Item> Read()
+    static string Sid => System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value;
+
+    /// Every item in the bins of these drives (roots like G:\), or of every fixed and removable drive.
+    static List<Item> Read(IEnumerable<string> roots = null)
     {
-        var sid = System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value;
+        var sid = Sid;
         var list = new List<Item>();
-        foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType is DriveType.Fixed or DriveType.Removable))
+        if (sid == null) return list;
+        roots ??= DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType is DriveType.Fixed or DriveType.Removable).Select(d => d.RootDirectory.FullName);
+        foreach (var root in roots.Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            var bin = Path.Combine(drive.RootDirectory.FullName, "$Recycle.Bin", sid ?? "");
-            if (sid == null || !Directory.Exists(bin)) continue;
+            var bin = Path.Combine(root, "$Recycle.Bin", sid);
+            if (!Directory.Exists(bin)) continue;
             IEnumerable<string> infos;
             try { infos = Directory.EnumerateFiles(bin, "$I*").ToList(); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { continue; }
             foreach (var info in infos)
-            {
-                var data = Path.Combine(bin, "$R" + Path.GetFileName(info)[2..]);
-                bool isDir = Directory.Exists(data);
-                if (!isDir && !File.Exists(data)) continue; // record without its item: nothing to restore
-                if (ParseInfo(info) is not { } r) continue;
-                list.Add(new Item(Path.GetFileName(r.Path), r.Path, r.Deleted, r.Size, data, info, isDir));
-            }
+                if (ItemOf(info) is { } item) list.Add(item);
         }
         return list;
+    }
+
+    /// The item an $I record describes, while its $R is still there.
+    static Item ItemOf(string info)
+    {
+        var data = Path.Combine(Path.GetDirectoryName(info), "$R" + Path.GetFileName(info)[2..]);
+        bool isDir = Directory.Exists(data);
+        if (!isDir && !File.Exists(data)) return null; // record without its item: nothing to restore
+        return ParseInfo(info) is { } r ? new Item(Path.GetFileName(r.Path), r.Path, r.Deleted, r.Size, data, info, isDir) : null;
     }
 
     /// The $I record: version (8 bytes), size (8), deletion time as FILETIME (8), then the original path —
@@ -172,15 +182,31 @@ public partial class RecycleBinWindow : Window
     void Restore_Click(object s, RoutedEventArgs e) => Restore(Selected);
     void List_DoubleClick(object s, MouseButtonEventArgs e) { if (List.SelectedItem is Item i) Restore(new() { i }); }
 
-    void Restore(List<Item> items)
+    // Restoring and deleting run off the UI thread, the count in the status line as they go.
+    async void Restore(List<Item> items)
     {
         if (items.Count == 0) return;
-        int ok = 0; string error = null;
-        foreach (var i in items)
-            if (RestoreOne(i) is { } failed) error ??= failed; else ok++;
+        var (ok, error) = await Task.Run(() => Each(items, "Restoring", RestoreOne));
         Status.Text = error ?? $"Restored {ok} item(s)";
         Load();
         changed();
+    }
+
+    /// Runs `one` on each item, saying how far it got ten times a second; how many worked and the first error.
+    (int Ok, string Error) Each(List<Item> items, string doing, Func<Item, string> one)
+    {
+        int ok = 0, done = 0; string error = null;
+        long said = 0;
+        foreach (var i in items)
+        {
+            if (one(i) is { } failed) error ??= failed; else ok++;
+            done++;
+            if (Environment.TickCount64 - said < 100) continue;
+            said = Environment.TickCount64;
+            int at = done;
+            Dispatcher.BeginInvoke(() => Status.Text = $"{doing} {at:N0} of {items.Count:N0}…");
+        }
+        return (ok, error);
     }
 
     /// Moves an item back where it was deleted from; null when it worked, else why not.
@@ -198,38 +224,44 @@ public partial class RecycleBinWindow : Window
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return $"{i.Name}: {ex.Message}"; }
     }
 
-    /// Undo of a delete (Ctrl+Z): puts back what was deleted from these places at or after `since`, the newest of each.
-    /// Gone: no longer in the Recycle Bin (emptied, or restored already). Failed: there, but it couldn't be moved back.
-    internal static (List<string> Gone, List<string> Failed, string Error) RestoreDeleted(IEnumerable<string> paths, DateTime since)
+    /// Right after a delete: which item in the bin each of these paths became, the newest deleted at or after `since`
+    /// from that place (path → its $R file). Undo then restores that very item, not whatever was deleted from there later.
+    internal static Dictionary<string, string> Find(IEnumerable<string> paths, DateTime since)
     {
-        var newest = Read().Where(i => i.Deleted >= since)
-                           .GroupBy(i => i.OriginalPath, StringComparer.OrdinalIgnoreCase)
-                           .ToDictionary(g => g.Key, g => g.MaxBy(i => i.Deleted), StringComparer.OrdinalIgnoreCase);
-        List<string> gone = new(), failed = new();
-        string error = null;
-        foreach (var p in paths)
-            if (!newest.TryGetValue(p, out var i)) gone.Add(p);
-            else if (RestoreOne(i) is { } why) { failed.Add(p); error ??= why; }
-        return (gone, failed, error);
+        var want = paths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return Read(want.Select(Path.GetPathRoot).Where(r => r != null))
+            .Where(i => i.Deleted >= since && want.Contains(i.OriginalPath))
+            .GroupBy(i => i.OriginalPath, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.MaxBy(i => i.Deleted).DataPath, StringComparer.OrdinalIgnoreCase);
     }
 
-    void Delete_Click(object s, RoutedEventArgs e)
+    /// Undo of a delete: puts back the item whose $R file this is. Gone: it isn't in the bin any more (emptied, or
+    /// restored already). Otherwise null when it worked, or why not.
+    internal static string RestoreItem(string dataPath, out bool gone)
+    {
+        var info = Path.Combine(Path.GetDirectoryName(dataPath), "$I" + Path.GetFileName(dataPath)[2..]);
+        var item = File.Exists(info) ? ItemOf(info) : null;
+        gone = item == null;
+        return item == null ? null : RestoreOne(item);
+    }
+
+    async void Delete_Click(object s, RoutedEventArgs e)
     {
         var items = Selected;
         if (items.Count == 0) return;
         if (MessageBox.Show(this, $"Permanently delete {(items.Count == 1 ? $"“{items[0].Name}”" : $"these {items.Count} items")}?", "Recycle Bin",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
-        string error = null;
-        foreach (var i in items)
+        var (ok, error) = await Task.Run(() => Each(items, "Deleting", i =>
         {
             try
             {
                 if (i.IsDir) Directory.Delete(i.DataPath, recursive: true); else File.Delete(i.DataPath);
                 File.Delete(i.InfoPath);
+                return null;
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { error ??= $"{i.Name}: {ex.Message}"; }
-        }
-        Status.Text = error ?? $"Deleted {items.Count} item(s)";
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return $"{i.Name}: {ex.Message}"; }
+        }));
+        Status.Text = error ?? $"Deleted {ok} item(s)";
         Load();
     }
 

@@ -1041,14 +1041,16 @@ public partial class MainWindow : Window
 
     /// `ask`: a move that gathers items from several folders into one (search results dropped on the search's own
     /// folder, say) is confirmed first, naming where it all goes. Off where gathering is the point (Drop bin, Undo).
-    internal Job Submit(List<string> sources, string dest, bool move, bool ask = true)
+    /// `names`: the exact name each source gets there (Undo, putting back names changed by Keep both). `journal`: Ferry
+    /// writes down each arrival as it happens, for Undo after a crash (FileOps.ReadJournal); off for Undo's own moves.
+    internal Job Submit(List<string> sources, string dest, bool move, bool ask = true, IReadOnlyDictionary<string, string> names = null, bool journal = true)
     {
         if (sources.Count == 0 || PaneView.IsVirtual(dest)) return null; // nothing goes "into" This PC, nor into an archive this way (AddToArchive)
         if (move && ask && sources.Select(s => Path.GetDirectoryName(s.TrimEnd('\\'))).Distinct(StringComparer.OrdinalIgnoreCase).Count() is var folders and > 1
             && PromptDialog.Choose(this, $"Move {sources.Count:N0} items from {folders:N0} folders into one folder?", "All of them go into " + dest, "Move", "Cancel") != 0)
             return null;
         Settings.Bump(Settings.RecentDestinations, dest, Settings.DestinationsMax); // for Copy to / Move to
-        var job = Ferry.Submit(sources, dest, move);
+        var job = Ferry.Submit(sources, dest, move, names, journal ? Path.Combine(JournalDir, $"{Guid.NewGuid():N}.txt") : null);
         job.Seq = ++jobSeq;
         job.Hue = Hex(JobHues[(jobSeq - 1) % JobHues.Length]);
         jobs.Insert(0, job);
@@ -1200,12 +1202,14 @@ public partial class MainWindow : Window
     void JobResolve_Click(object s, RoutedEventArgs e) => JobOf(s).Resolve(Enum.Parse<Choice>((string)((Button)s).CommandParameter));
 
     // Clipboard in Explorer's own format (CF_HDROP + Preferred DropEffect), so copy/paste works both ways.
-    void ClipboardPut(bool cut)
+    async void ClipboardPut(bool cut)
     {
-        // inside an archive, Ctrl+C copies what is selected, taken out to a temp folder (as a drag out does); never Ctrl+X
+        // inside an archive, Ctrl+C copies what is selected, taken out to a temp folder off the UI thread; never Ctrl+X
         if (active.ArchiveRoot != null)
         {
-            if (cut || active.ExtractForDrag() is not { Length: > 0 } copies) return;
+            if (cut) return;
+            Status.Text = "Taking them out of the archive…";
+            if (await active.ExtractForClipboard() is not { Length: > 0 } copies) { Status.Text = ""; return; }
             var list = new System.Collections.Specialized.StringCollection();
             list.AddRange(copies);
             Clipboard.SetFileDropList(list);
@@ -1256,14 +1260,18 @@ public partial class MainWindow : Window
         else RecycleUndoably(sel.Select(e => e.Path).ToList(), UIOption.AllDialogs);
     }
 
-    /// To the Recycle Bin, and what went there is one Undo entry: Ctrl+Z brings that batch back (RecycleBinWindow.RestoreDeleted).
+    /// To the Recycle Bin, and what went there is one Undo entry: Ctrl+Z brings that batch back. Right after the delete,
+    /// off the UI thread, each path is matched to the item it became in the bin (its $R file), so Undo restores exactly
+    /// that one and never a later deletion from the same place. An item Windows deleted for good (too big for the bin) has none.
     internal void RecycleUndoably(List<string> paths, UIOption ui, Action done = null)
     {
-        var when = DateTime.Now;
-        Recycle(paths, ui, done: () =>
+        var when = DateTime.Now.AddSeconds(-2); // the $I record's clock and ours may differ a little
+        Recycle(paths, ui, done: async () =>
         {
-            var gone = paths.Where(p => !Exists(p)).ToList(); // all, or as many as went before a Cancel
-            if (gone.Count > 0) Remember($"delete of {(gone.Count == 1 ? Path.GetFileName(gone[0].TrimEnd('\\')) : $"{gone.Count:N0} items")}", gone.Select(p => new UndoStep("restore", p)), when);
+            var found = await Task.Run(() => RecycleBinWindow.Find(paths.Where(p => !Exists(p)), when)); // all, or as many as went before a Cancel
+            if (found.Count > 0)
+                Remember($"delete of {(found.Count == 1 ? Path.GetFileName(found.Keys.First().TrimEnd('\\')) : $"{found.Count:N0} items")}",
+                         found.Select(f => new UndoStep("restore", f.Key, f.Value)), when);
             done?.Invoke();
         });
     }
@@ -1403,7 +1411,7 @@ public partial class MainWindow : Window
         Run(() => created = dialog.Create(active.Dir));
         if (created == null) return;
         var path = Path.Combine(active.Dir, created);
-        Remember($"new file {created}", new UndoStep("recycle", path));
+        Remember($"new file {created}", Made(path));
         active.Navigate(active.Dir, created, record: false);
     }
 
@@ -1417,7 +1425,7 @@ public partial class MainWindow : Window
     void RenameCommitted(PaneView pane, Entry entry, string name)
     {
         var renamed = Path.Combine(Path.GetDirectoryName(entry.Path), name);
-        if (Run(() => RenamePath(entry.Path, name))) Remember($"rename to {name}", new UndoStep("rename", renamed, entry.Name));
+        if (Run(() => RenamePath(entry.Path, name))) Remember($"rename to {name}", new UndoStep("rename", renamed, entry.Name, Ferry.Stamp(renamed)));
         if (pane.InSearch) pane.Refresh();
         else pane.Navigate(pane.Dir, name, record: false);
     }

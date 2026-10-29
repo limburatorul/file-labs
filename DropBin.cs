@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,34 +8,53 @@ namespace FileExplorer;
 // The Drop bin (1.0.43): files and folders gathered from anywhere while browsing — dragged onto the bin, or
 // Ctrl+B on a selection — then copied or moved together into the active pane's folder. Paths only: nothing
 // moves until Copy or Move is pressed, and the bin lasts for the session.
-// 1.0.64: built for big selections. A HashSet answers "already in?", and the list is virtualized: only the rows
-// in sight get controls (and an icon), so 20,000 paths cost 20,000 strings, not 20,000 rows of buttons.
+// Built for big selections (1.0.64–1.0.65): a HashSet answers "already in?", the list is virtualized (only the rows in
+// sight get controls and an icon), it changes in place instead of being rebuilt, the folders it spans are counted as
+// paths come and go, and the check for what is still on disk runs off the UI thread.
 public partial class MainWindow
 {
-    readonly List<string> bin = new();
+    readonly ObservableCollection<BinItem> bin = new();
     readonly HashSet<string> inBin = new(StringComparer.OrdinalIgnoreCase);
+    readonly Dictionary<string, int> binFolders = new(StringComparer.OrdinalIgnoreCase); // folder → how many of the bin's items it holds
 
     public sealed record BinItem(string Path)
     {
         public string Name => System.IO.Path.GetFileName(Path.TrimEnd('\\')) is { Length: > 0 } n ? n : Path;
         public string RemoveName => "Take " + Name + " out of the bin";
+        public string Folder => System.IO.Path.GetDirectoryName(Path.TrimEnd('\\')) ?? Path;
     }
 
     void AddToBin(IEnumerable<string> paths)
     {
         int before = bin.Count;
+        BinList.ItemsSource = null; // 20,000 additions as one change for the list, not 20,000
         foreach (var p in paths)
-            if (inBin.Add(p)) bin.Add(p);
+            if (inBin.Add(p))
+            {
+                var item = new BinItem(p);
+                bin.Add(item);
+                binFolders[item.Folder] = binFolders.GetValueOrDefault(item.Folder) + 1;
+            }
+        BinList.ItemsSource = bin;
         if (!DropBin.IsVisible) { DropBin.Visibility = Visibility.Visible; Motion.Enter(DropBin, rise: 8); }
         ShowBin();
         Status.Text = bin.Count == before ? "Already in the Drop bin" : $"{bin.Count - before:N0} added to the Drop bin";
     }
 
+    void TakeOut(BinItem item)
+    {
+        inBin.Remove(item.Path);
+        bin.Remove(item);
+        if (--binFolders[item.Folder] == 0) binFolders.Remove(item.Folder);
+    }
+
+    void EmptyBin() { bin.Clear(); inBin.Clear(); binFolders.Clear(); }
+
     void ShowBin()
     {
+        if (BinList.ItemsSource == null) BinList.ItemsSource = bin;
         BinCount.Text = bin.Count > 0 ? bin.Count.ToString("N0") : "";
         BinActions.Visibility = bin.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        BinList.ItemsSource = bin.Select(p => new BinItem(p)).ToList();
         ShowBinTarget();
     }
 
@@ -48,8 +68,7 @@ public partial class MainWindow
     void BinRemove_Click(object s, RoutedEventArgs e)
     {
         if (((FrameworkElement)s).DataContext is not BinItem item) return;
-        inBin.Remove(item.Path);
-        bin.Remove(item.Path);
+        TakeOut(item);
         ShowBin();
     }
 
@@ -57,7 +76,7 @@ public partial class MainWindow
     void ShowBinTarget()
     {
         if (bin.Count == 0) { BinSummary.Text = "Drag files here from any folder, or press Ctrl+B on a selection. Then copy or move them all at once."; return; }
-        int folders = bin.Select(p => Path.GetDirectoryName(p.TrimEnd('\\')) ?? p).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        int folders = binFolders.Count;
         var into = active?.Dir is { Length: > 0 } d ? (Path.GetFileName(d.TrimEnd('\\')) is { Length: > 0 } n ? n : d) : "?";
         BinSummary.Text = $"{bin.Count:N0} item{(bin.Count == 1 ? "" : "s")} from {folders:N0} folder{(folders == 1 ? "" : "s")}  ·  into {into}";
     }
@@ -84,19 +103,21 @@ public partial class MainWindow
         ShowBin();
     }
 
-    void BinClear_Click(object s, RoutedEventArgs e) { bin.Clear(); inBin.Clear(); ShowBin(); }
+    void BinClear_Click(object s, RoutedEventArgs e) { EmptyBin(); ShowBin(); }
     void BinCopy_Click(object s, RoutedEventArgs e) => SendBin(move: false);
     void BinMove_Click(object s, RoutedEventArgs e) => SendBin(move: true);
 
     /// Everything still on disk goes to the active pane's folder as one transfer; the bin empties.
-    void SendBin(bool move)
+    async void SendBin(bool move)
     {
-        var there = bin.Where(p => File.Exists(p) || Directory.Exists(p)).ToList();
-        int gone = bin.Count - there.Count;
-        if (there.Count > 0) Submit(there, active.Dir, move, ask: false); // the bin says how many from how many folders, and where
-        bin.Clear(); inBin.Clear();
+        var paths = bin.Select(i => i.Path).ToList();
+        var into = active.Dir;
+        EmptyBin();
         ShowBin();
         DropBin.Visibility = Visibility.Collapsed;
+        var there = await Task.Run(() => paths.Where(p => File.Exists(p) || Directory.Exists(p)).ToList());
+        int gone = paths.Count - there.Count;
+        if (there.Count > 0) Submit(there, into, move, ask: false); // the bin says how many from how many folders, and where
         if (gone > 0) Status.Text = $"{gone} item{(gone == 1 ? " was" : "s were")} no longer there and stayed out";
     }
 }

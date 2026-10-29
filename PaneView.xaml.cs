@@ -714,11 +714,28 @@ public partial class PaneView : UserControl
     /// selected is extracted to a temp folder first and those copies are dragged, to the other pane or any app, as Explorer
     /// does with a ZIP. ponytail: extracted before the drag starts, so a big selection waits a moment with the wait cursor;
     /// delayed rendering (the data written only on drop) would remove that wait.
+    // A drag out of an archive needs the files before it can start, so that one waits (with the wait cursor): Windows
+    // asks for the dragged paths as the drag begins. ponytail: delayed rendering (virtual files) would lift that, if big
+    // archives make it matter. Ctrl+C has no such hurry and takes them out off the UI thread.
     internal string[] ExtractForDrag()
     {
-        if (ArchiveRoot is not var (archive, inner)) return Array.Empty<string>();
-        var names = List.SelectedItems.Cast<Entry>().Where(e => !e.IsUp).Select(e => e.Name).ToList();
-        if (names.Count == 0) return Array.Empty<string>();
+        if (ArchiveRoot is not var (archive, inner) || SelectedNames() is not { Count: > 0 } names) return Array.Empty<string>();
+        Mouse.OverrideCursor = Cursors.Wait;
+        try { return TakeOut(archive, inner, names); }
+        finally { Mouse.OverrideCursor = null; }
+    }
+
+    internal async Task<string[]> ExtractForClipboard()
+    {
+        if (ArchiveRoot is not var (archive, inner) || SelectedNames() is not { Count: > 0 } names) return Array.Empty<string>();
+        return await Task.Run(() => TakeOut(archive, inner, names));
+    }
+
+    List<string> SelectedNames() => List.SelectedItems.Cast<Entry>().Where(e => !e.IsUp).Select(e => e.Name).ToList();
+
+    /// Extracts these entries to a new folder under %TEMP%\FileLabs\drag; the paths that came out. Any thread.
+    string[] TakeOut(string archive, string inner, List<string> names)
+    {
         var drags = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "FileLabs", "drag");
         var temp = System.IO.Path.Combine(drags, Guid.NewGuid().ToString("N")[..8]);
         try
@@ -727,16 +744,14 @@ public partial class PaneView : UserControl
             if (Directory.Exists(drags))
                 foreach (var old in new DirectoryInfo(drags).EnumerateDirectories().Where(d => d.CreationTimeUtc < DateTime.UtcNow.AddHours(-1)))
                     try { old.Delete(true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
-            Mouse.OverrideCursor = Cursors.Wait;
             Directory.CreateDirectory(temp);
             Archive.Extract(archive, names, inner, temp);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or FormatException)
         {
-            Error?.Invoke($"Couldn't take them out of {System.IO.Path.GetFileName(archive)}: {ex.Message}");
+            Dispatcher.BeginInvoke(() => Error?.Invoke($"Couldn't take them out of {System.IO.Path.GetFileName(archive)}: {ex.Message}"));
             return Array.Empty<string>();
         }
-        finally { Mouse.OverrideCursor = null; }
         return names.Select(n => System.IO.Path.Combine(temp, n)).Where(p => File.Exists(p) || Directory.Exists(p)).ToArray();
     }
 
@@ -1097,10 +1112,15 @@ public partial class PaneView : UserControl
             var clock = System.Diagnostics.Stopwatch.StartNew();
             int found = 0, limit = Settings.SearchLimit;
             bool paused = false;
+            // Results go to the list in batches of at most 500, and the next batch waits until the list has taken the last:
+            // a fast walk (no limit, a big drive) can't pile up more work on the UI than it gets through. Only the size of
+            // each delivery is capped, never how many results the search finds.
+            System.Windows.Threading.DispatcherOperation shown = null;
             void Flush()
             {
+                shown?.Wait();
                 var b = batch; batch = new();
-                Dispatcher.BeginInvoke(() => { if (v != navVersion) return; foreach (var e in b) results.Add(e); UpdateFooter(); });
+                shown = Dispatcher.BeginInvoke(() => { if (v != navVersion) return; foreach (var e in b) results.Add(e); UpdateFooter(); });
             }
             try
             {
@@ -1120,7 +1140,7 @@ public partial class PaneView : UserControl
                         Size = isDir ? SizeCache.Get(fsi.FullName, fsi.LastWriteTimeUtc) : ((FileInfo)fsi).Length,
                     });
                     if (++found == limit) { paused = true; break; }
-                    if (clock.ElapsedMilliseconds > 150) { Flush(); clock.Restart(); }
+                    if (batch.Count >= 500 || clock.ElapsedMilliseconds > 150) { Flush(); clock.Restart(); }
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // what was found so far still shows
@@ -1359,15 +1379,22 @@ public partial class PaneView : UserControl
         }, token);
     }
 
+    int changeQueued;
+
     void Watch()
     {
         watcher?.Dispose();
         try
         {
             watcher = new FileSystemWatcher(Dir) { NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size };
-            FileSystemEventHandler h = (_, _) => Dispatcher.BeginInvoke(() => { debounce.Stop(); debounce.Start(); });
-            watcher.Created += h; watcher.Deleted += h; watcher.Changed += h;
-            watcher.Renamed += (_, _) => Dispatcher.BeginInvoke(() => { debounce.Stop(); debounce.Start(); });
+            // 10,000 files arriving are 10,000 events: one callback is queued to the UI until it has run, not one per event
+            void Changed()
+            {
+                if (Interlocked.Exchange(ref changeQueued, 1) == 1) return;
+                Dispatcher.BeginInvoke(() => { Volatile.Write(ref changeQueued, 0); debounce.Stop(); debounce.Start(); });
+            }
+            watcher.Created += (_, _) => Changed(); watcher.Deleted += (_, _) => Changed(); watcher.Changed += (_, _) => Changed();
+            watcher.Renamed += (_, _) => Changed();
             watcher.EnableRaisingEvents = true;
         }
         catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException) { watcher = null; } // some drives can't be watched; manual refresh still works

@@ -222,6 +222,53 @@ public partial class App : Application
             var undoBack = System.Text.Json.JsonSerializer.Deserialize<List<MainWindow.UndoEntry>>(System.Text.Json.JsonSerializer.Serialize(new List<MainWindow.UndoEntry> { undoEntry }))!.Single();
             Check(undoBack.What == undoEntry.What && undoBack.When == undoEntry.When && undoBack.Steps.SequenceEqual(undoEntry.Steps), "undo entries saved and read back");
 
+            // 1.0.65 a batch rename that fails halfway puts every name back, swapped names included (through temporary names)
+            var rn = Directory.CreateDirectory(Path.Combine(root, "rn")).FullName;
+            foreach (var n in new[] { "a", "b", "c", "taken" }) File.WriteAllText(Path.Combine(rn, n + ".txt"), n);
+            try { FileExplorer.MainWindow.RenameAll(new() { (Path.Combine(rn, "a.txt"), "b.txt"), (Path.Combine(rn, "b.txt"), "a.txt"), (Path.Combine(rn, "c.txt"), "taken.txt") }); Check(false, "rename onto a taken name must fail"); }
+            catch (FileExplorer.MainWindow.RenameFailed ex) { Check(ex.NotBack.Count == 0, "failed rename: nothing left unrestored"); }
+            Check(new[] { "a", "b", "c", "taken" }.All(n => File.ReadAllText(Path.Combine(rn, n + ".txt")) == n) && Directory.GetFiles(rn).Length == 4,
+                  "failed rename: every name back, swapped ones too, no temporary names left");
+
+            // 1.0.65 Keep both with the same name from two folders: each gets its own name, none fails
+            var kb = Directory.CreateDirectory(Path.Combine(root, "kb")).FullName;
+            var k1 = Directory.CreateDirectory(Path.Combine(root, "k1")).FullName; var k2 = Directory.CreateDirectory(Path.Combine(root, "k2")).FullName;
+            File.WriteAllText(Path.Combine(kb, "x.txt"), "there"); File.WriteAllText(Path.Combine(k1, "x.txt"), "one"); File.WriteAllText(Path.Combine(k2, "x.txt"), "two");
+            File.WriteAllText(Path.Combine(k1, "y.txt"), "y1"); File.WriteAllText(Path.Combine(k2, "y.txt"), "y2");
+            j = Ferry.Submit(new[] { Path.Combine(k1, "x.txt"), Path.Combine(k2, "x.txt"), Path.Combine(k1, "y.txt"), Path.Combine(k2, "y.txt") }, kb, move: false);
+            Wait(() => j.Phase == Phase.Conflicts);
+            Check(j.Conflicts.Count == 3, $"same names from two folders are conflicts too ({j.Conflicts.Count} of 3)");
+            j.Resolve(Choice.Rename);
+            Run(j);
+            var keptTexts = Directory.GetFiles(kb).Select(f => File.ReadAllText(f)).OrderBy(t => t).ToList();
+            Check(j.Phase == Phase.Done && j.Errors.IsEmpty && j.FailedFiles == 0 && keptTexts.SequenceEqual(new[] { "one", "there", "two", "y1", "y2" }),
+                  "keep both: every file arrives under its own name");
+
+            // 1.0.65 a job with a failed file says so: done, but "1 failed" in its title
+            var lk = Directory.CreateDirectory(Path.Combine(root, "lk")).FullName;
+            File.WriteAllText(Path.Combine(lk, "free.txt"), "f"); File.WriteAllText(Path.Combine(lk, "held.txt"), "h");
+            using (new FileStream(Path.Combine(lk, "held.txt"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                j = Run(Ferry.Submit(new[] { Path.Combine(lk, "free.txt"), Path.Combine(lk, "held.txt") }, Directory.CreateDirectory(Path.Combine(root, "lk2")).FullName, move: false));
+            Check(j.DoneFiles == 1 && j.FailedFiles == 1 && j.Title.Contains("1 of 2") && j.Title.Contains("1 failed"), $"failed files are counted and named: {j.Title}");
+
+            // 1.0.65 exact names on the way back (Undo of a Keep both): the item gets the name it is given
+            var nb = Directory.CreateDirectory(Path.Combine(root, "nb")).FullName;
+            j = Run(Ferry.Submit(new[] { Path.Combine(kb, "x (2).txt") }, nb, move: true, names: new Dictionary<string, string> { [Path.Combine(kb, "x (2).txt")] = "x.txt" }));
+            Check(File.Exists(Path.Combine(nb, "x.txt")) && !File.Exists(Path.Combine(nb, "x (2).txt")), "a move back takes the exact old name");
+
+            // 1.0.65 the journal a transfer writes as it goes is read back into Undo steps after a crash
+            var jf = Path.Combine(root, "journal.txt");
+            File.WriteAllLines(jf, new[] { "move\tD:\\to", "moved\tD:\\from\\a.txt\tD:\\to\\a.txt\t123", $"came\t{Path.Combine(root, "nowhere.txt")}\tD:\\to\\b.txt\t456", "dir\tD:\\to\\sub" });
+            var je = FileExplorer.MainWindow.ReadJournal(jf);
+            Check(je != null && je.Steps.Count == 3 && je.Steps[0] == new FileExplorer.MainWindow.UndoStep("move", "D:\\to\\a.txt", "D:\\from\\a.txt", 123)
+                  && je.Steps[1].Kind == "move" && je.Steps[2] == new FileExplorer.MainWindow.UndoStep("rmdir", "D:\\to\\sub") && je.What.Contains("interrupted"), "journal read back after a crash");
+
+            // 1.0.65 Undo knows an item from one put in its place later
+            var stampFile = Path.Combine(root, "stamp.txt");
+            File.WriteAllText(stampFile, "first"); long before = Ferry.Stamp(stampFile);
+            File.WriteAllText(stampFile, "second, longer"); File.SetLastWriteTimeUtc(stampFile, DateTime.UtcNow.AddMinutes(1));
+            Check(before != 0 && Ferry.Stamp(stampFile) != before && Ferry.Stamp(Path.Combine(root, "missing")) == 0, "stamps tell a replaced file apart");
+
             // move a folder onto a folder of the same name: merged file by file, never renamed over it,
             // and not undoable (undo would take the files that were already there with it)
             var merge = Directory.CreateDirectory(Path.Combine(root, "merge")).FullName;
