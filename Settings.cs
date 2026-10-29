@@ -34,6 +34,7 @@ public static class Settings
     public static bool QuickLook;            // Space asks QuickLook (QL-Win) for the preview when it is running
     public static bool ItemTips = true;      // hovering a file shows its full name, type, size and date
     public static bool DeleteSound = true;   // Shift+Delete's warning and Windows' delete sound; off = silent
+    public static bool MissingApps = true;   // right-click items for sister apps that aren't installed (they open the app's page)
     public static string BackgroundImage = ""; // a picture behind the panes, "" = none
     public static double ImageOpacity = 40;  // how much of it shows, 5–100
     public static double ImageBlur;          // blur radius in px, 0–40
@@ -139,6 +140,7 @@ public static class Settings
                 case "quicklook": QuickLook = v == "1"; break;
                 case "itemtips": ItemTips = v == "1"; break;
                 case "deletesound": DeleteSound = v == "1"; break;
+                case "missingapps": MissingApps = v != "0"; break;
                 case "bgimage": BackgroundImage = v; break;
                 case "bgblur" when double.TryParse(v, CultureInfo.InvariantCulture, out var bb) && double.IsFinite(bb): ImageBlur = Math.Clamp(bb, 0, 40); break;
                 case "bgbright" when double.TryParse(v, CultureInfo.InvariantCulture, out var bl) && double.IsFinite(bl): ImageBrightness = Math.Clamp(bl, -100, 100); break;
@@ -215,6 +217,7 @@ public static class Settings
             $"quicklook={(QuickLook ? 1 : 0)}",
             $"itemtips={(ItemTips ? 1 : 0)}",
             $"deletesound={(DeleteSound ? 1 : 0)}",
+            $"missingapps={(MissingApps ? 1 : 0)}",
             $"bgimage={BackgroundImage}",
             $"bgopacity={ImageOpacity.ToString(CultureInfo.InvariantCulture)}",
             $"bgblur={ImageBlur.ToString(CultureInfo.InvariantCulture)}",

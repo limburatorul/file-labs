@@ -205,6 +205,8 @@
               <Button x:Name="MenuWin" Content="Windows" Style="{StaticResource Tab}" Click="Menu_Click"/>
             </StackPanel>
             <TextBlock Style="{StaticResource Hint}" Text="File Labs: a compact menu that matches the app. Windows: the full Explorer menu, with Send to, Open with and extensions like 7-Zip. Either one can open the other: File Labs has a 'Windows menu…' item."/>
+            <CheckBox x:Name="MissingAppsBox" Content="Show items for our other apps that aren't installed" Margin="0,8,0,0" Click="MissingApps_Click"/>
+            <TextBlock Style="{StaticResource Hint}" Text="Scan with SpaceScan, Add to Shelf, Add to Reel and Back up with Backup Labs. When the app isn't on this PC, the item opens its web page. Off: the item shows only once the app is installed."/>
           </StackPanel>
         </Border>
 

@@ -64,6 +64,7 @@ public partial class SettingsWindow : Window
         QuickLookBox.IsChecked = Settings.QuickLook;
         ItemTipsBox.IsChecked = Settings.ItemTips;
         DeleteSoundBox.IsChecked = Settings.DeleteSound;
+        MissingAppsBox.IsChecked = Settings.MissingApps;
         StrengthSlider.Value = Settings.AccentStrength * 100;
         CloseEmptyPaneBox.IsChecked = Settings.CloseEmptyPane;
         AutoscrollBox.IsChecked = Settings.Autoscroll;
@@ -81,7 +82,7 @@ public partial class SettingsWindow : Window
         "scale.sidebar", "scale.tabs", "scale.path", "scale.list", "singlepane", "closeemptypane", "stats", "animations", "smoothscroll",
         "autoscroll", "autoscrollx",
     };
-    internal static readonly string[] FilesKeys = { "hidden", "shortcutfolders", "internaleditor", "quicklook", "itemtips", "tipdelay", "deletesound", "nativemenu", "searchlimit" };
+    internal static readonly string[] FilesKeys = { "hidden", "shortcutfolders", "internaleditor", "quicklook", "itemtips", "tipdelay", "deletesound", "nativemenu", "searchlimit", "missingapps" };
     internal static readonly string[] TransfersKeys = { "verify", "parallel" };
     /// What File Labs keeps that isn't a choice in these cards: Windows integration, and what it remembers by itself.
     internal static readonly string[] NotReset =
@@ -498,6 +499,7 @@ public partial class SettingsWindow : Window
         Application.Current.Resources["ItemTips"] = Settings.ItemTips;
     }
     void DeleteSound_Click(object s, RoutedEventArgs e) { Settings.DeleteSound = DeleteSoundBox.IsChecked == true; Settings.Save(); }
+    void MissingApps_Click(object s, RoutedEventArgs e) { Settings.MissingApps = MissingAppsBox.IsChecked == true; Settings.Save(); }
     void Verify_Click(object s, RoutedEventArgs e) { Settings.Verify = VerifyBox.IsChecked == true; Settings.Save(); }
     void Parallel_Click(object s, RoutedEventArgs e) { Settings.ParallelCopy = ParallelBox.IsChecked == true; Settings.Save(); }
     void Tray_Click(object s, RoutedEventArgs e)

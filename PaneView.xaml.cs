@@ -2727,14 +2727,29 @@ public partial class PaneView : UserControl
         e.Handled = true;
     }
 
+    // What a drag carries, read once per drag: DragOver comes many times a second, and with 20,000 search results each
+    // one copied the whole list out of the drag again and walked it. WPF keeps one data object from DragEnter to Drop.
+    static (IDataObject Data, string[] Files, HashSet<string> Paths, HashSet<string> Parents) dragged;
+
+    static (string[] Files, HashSet<string> Paths, HashSet<string> Parents)? Dragged(IDataObject data)
+    {
+        if (!ReferenceEquals(dragged.Data, data))
+            dragged = data.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } files
+                ? (data, files, files.ToHashSet(StringComparer.OrdinalIgnoreCase),
+                   files.Select(f => System.IO.Path.GetDirectoryName(f)).Where(d => d != null).ToHashSet(StringComparer.OrdinalIgnoreCase))
+                : (data, null, null, null);
+        return dragged.Files == null ? null : (dragged.Files, dragged.Paths, dragged.Parents);
+    }
+
     /// What a drop of this drag into `target` would do.
     static DragDropEffects DropEffects(DragEventArgs e, string target)
     {
         var effects = DragDropEffects.None;
         // As in Explorer: Ctrl copies, Shift moves, and without either a drop on the same drive moves and
         // on another drive copies — only as far as the source allows (some offer Copy alone).
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } files)
+        if (Dragged(e.Data) is { } drag)
         {
+            var (files, paths, parents) = drag;
             bool sameDrive = string.Equals(System.IO.Path.GetPathRoot(files[0]), System.IO.Path.GetPathRoot(target), StringComparison.OrdinalIgnoreCase);
             var want = e.KeyStates.HasFlag(DragDropKeyStates.ControlKey) ? DragDropEffects.Copy
                 : e.KeyStates.HasFlag(DragDropKeyStates.ShiftKey) || sameDrive ? DragDropEffects.Move
@@ -2743,8 +2758,7 @@ public partial class PaneView : UserControl
             // no dropping a folder onto itself, nor into the folder it's already in — except Ctrl+drop (a copy),
             // which duplicates there as in Explorer ("name - Copy.ext")
             bool duplicate = effects == DragDropEffects.Copy && e.KeyStates.HasFlag(DragDropKeyStates.ControlKey);
-            if (files.Any(f => f.Equals(target, StringComparison.OrdinalIgnoreCase)
-                            || !duplicate && System.IO.Path.GetDirectoryName(f)?.Equals(target, StringComparison.OrdinalIgnoreCase) == true))
+            if (paths.Contains(target) || !duplicate && parents.Contains(target))
                 effects = DragDropEffects.None;
         }
         return effects;

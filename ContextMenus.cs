@@ -96,6 +96,9 @@ public partial class MainWindow
         }
     }
 
+    /// A sister app's right-click item: always, or (Settings → Files) only once that app is installed.
+    static bool Offer(string id) => Settings.MissingApps || SisterExe(id) != null;
+
     static void ScanWithSpaceScan(string path) => HandTo("spacescan", SpaceScanPage, new[] { path });
 
     // Shelf, Reel and Backup Labs (sister apps) take folders and files on the command line, already
@@ -260,12 +263,12 @@ public partial class MainWindow
         if (LumeItem(sel.Select(x => x.Path).ToList()) is { } lume) m.Items.Add(lume);
         m.Items.Add(Item("Show in File Explorer", "", "", () => OpenInExplorer($"/select,\"{first.Path}\"")));
         AddShell(m, shell, "drive");
-        m.Items.Add(Item("Scan with SpaceScan", "", "", () => ScanWithSpaceScan(first.IsDir ? first.Path : Path.GetDirectoryName(first.Path)!)));
-        if (sel.All(x => x.IsDir || Path.GetExtension(x.Name).Equals(".exe", StringComparison.OrdinalIgnoreCase)))
+        if (Offer("spacescan")) m.Items.Add(Item("Scan with SpaceScan", "", "", () => ScanWithSpaceScan(first.IsDir ? first.Path : Path.GetDirectoryName(first.Path)!)));
+        if (Offer("shelf") && sel.All(x => x.IsDir || Path.GetExtension(x.Name).Equals(".exe", StringComparison.OrdinalIgnoreCase)))
             m.Items.Add(Item("Add to Shelf", "\uE7FC", "", () => HandTo("shelf", ShelfPage, sel.Select(x => x.Path))));
-        if (sel.All(x => x.IsDir || ReelVideo.Contains(Path.GetExtension(x.Name))))
+        if (Offer("reel") && sel.All(x => x.IsDir || ReelVideo.Contains(Path.GetExtension(x.Name))))
             m.Items.Add(Item("Add to Reel", "\uE8B2", "", () => HandTo("reel", ReelPage, sel.Select(x => x.Path))));
-        m.Items.Add(Item("Back up with Backup Labs", "\uE81C", "", () => HandTo("backuplabs", BackupPage, sel.Select(x => x.Path))));
+        if (Offer("backuplabs")) m.Items.Add(Item("Back up with Backup Labs", "\uE81C", "", () => HandTo("backuplabs", BackupPage, sel.Select(x => x.Path))));
         m.Items.Add(Item("Windows menu…", "", "", () => { if (ShellMenu.Show(this, p.Dir, sel.Select(x => x.Path).ToList()) == "rename") Rename(); }));
         m.Items.Add(Item("Properties", "", "Alt+Enter", () => Properties(sel.Select(x => x.Path).ToList())));
         return m;
@@ -324,8 +327,8 @@ public partial class MainWindow
         if (LumeItem(new[] { p.Dir }) is { } lume) m.Items.Add(lume);
         m.Items.Add(Item("Open terminal here", "", "Ctrl+`", OpenTerminal));
         m.Items.Add(Item("Open in File Explorer", "", "", () => OpenInExplorer($"\"{p.Dir}\"")));
-        m.Items.Add(Item("Scan with SpaceScan", "", "", () => ScanWithSpaceScan(p.Dir)));
-        m.Items.Add(Item("Back up with Backup Labs", "\uE81C", "", () => HandTo("backuplabs", BackupPage, new[] { p.Dir })));
+        if (Offer("spacescan")) m.Items.Add(Item("Scan with SpaceScan", "", "", () => ScanWithSpaceScan(p.Dir)));
+        if (Offer("backuplabs")) m.Items.Add(Item("Back up with Backup Labs", "\uE81C", "", () => HandTo("backuplabs", BackupPage, new[] { p.Dir })));
         m.Items.Add(new Separator());
         m.Items.Add(Item("Windows menu…", "", "", () => ShellMenu.Show(this, p.Dir, Array.Empty<string>())));
         m.Items.Add(Item("Properties", "", "", () => Properties(p.Dir)));

@@ -1,6 +1,22 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.64 | 2026-10-29 | Moves you can stop, and an Undo that remembers
+The same user's second mail: what big selections and moves could do, and how to take them back.
+**Moves**
+- A move on the same drive now **hears Pause and Cancel** between items, and its progress counts up as it goes. It used to sit at zero and finish whatever you pressed.
+- A move that **gathers items from several folders into one** asks first, with how many and where they all go. Search results dropped on the search's own folder used to land there without a word.
+**Undo**
+- **Ctrl+Z brings back what you deleted**: the batch you sent to the Recycle Bin, from where it was. Deletes from Find duplicates too.
+- A copy or move that was **cancelled or stopped halfway can be undone**: what it had done goes back, and the folders it made go once empty. Files that replaced others stay, since the ones they replaced are gone.
+- Each transfer's card has an **Undo** button when there's something to take back.
+- Undo **survives a restart**, and an undo that couldn't finish (a file in use, say) keeps the rest: Ctrl+Z tries again.
+**Big selections**
+- Dragging 20,000 search results reads them once per drag instead of on every move of the mouse.
+- The **Drop bin** takes thousands of items without slowing down: it checks for doubles at once and only draws the rows in sight.
+**Also**
+- Settings → Files: **Show items for our other apps that aren't installed**. Turn it off and Scan with SpaceScan, Add to Shelf, Add to Reel and Back up with Backup Labs appear only once that app is on the PC.
+
 ## 1.0.63 | 2026-10-29 | Bigger searches, faster deletes, your own sizes and dates
 Three wishes from a user's mail.
 **Search**

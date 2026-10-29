@@ -44,6 +44,12 @@ public class Job : INotifyPropertyChanged
     public readonly Dictionary<string, string> Duplicates = new(StringComparer.OrdinalIgnoreCase); // source → its "- Copy" beside it, which Undo removes
     public readonly System.Collections.Concurrent.ConcurrentQueue<string> Errors = new(); // written by the worker, read by the UI
     public readonly System.Collections.Concurrent.ConcurrentQueue<string> Notes = new();
+    // What was done, for Undo, also when the job was cancelled or failed halfway: each item that arrived (Moved: the
+    // source is gone, it came by rename), and the folders the job made that weren't there. A file that replaced another
+    // is left out: the one it replaced can't come back.
+    public readonly System.Collections.Concurrent.ConcurrentQueue<(string From, string To, bool Moved)> Completed = new();
+    public readonly List<string> CreatedDirs = new();
+    public bool CanUndo { get; set; } // its Undo button: there is something to take back, and it hasn't been yet
 
     readonly TaskCompletionSource<Choice?> resolved = new();
     public void Resolve(Choice c) => resolved.TrySetResult(c);
@@ -195,6 +201,7 @@ public static class Ferry
         public List<FileEntry> Files = new();
         public List<string> Dirs = new();
         public List<Conflict> Conflicts = new();
+        public Dictionary<string, (int Files, long Bytes)> PerSource = new(StringComparer.OrdinalIgnoreCase); // what each source holds
     }
 
     static Plan Scan(Job job)
@@ -235,7 +242,9 @@ public static class Ferry
             // a copy into the folder it is already in is a duplicate beside it, as in Explorer ("name - Copy.ext")
             if (here) { var copy = CopyName(s.TrimEnd('\\'), fsi is DirectoryInfo); job.Duplicates[s] = copy; Add(fsi, Path.GetFileName(copy)); continue; }
             if (fsi is DirectoryInfo && Directory.Exists(Path.Combine(job.Destination, fsi.Name))) job.Merged = true;
+            int files = job.TotalFiles; long bytes = job.TotalBytes;
             Add(fsi, fsi.Name);
+            plan.PerSource[s] = (job.TotalFiles - files, job.TotalBytes - bytes);
         }
         for (int i = 0; i < plan.Files.Count; i++)
         {
@@ -251,23 +260,39 @@ public static class Ferry
 
     static void Transfer(Job job, Plan plan, Choice choice)
     {
-        // A move inside one volume is a rename: no bytes travel.
+        // A move inside one volume is a rename: no bytes travel. Pause and Cancel are heard between items, and the
+        // counts grow as each one goes (a folder counts all it holds); the card reads them at its own pace.
         if (job.IsMove && plan.Conflicts.Count == 0 && !job.Merged && job.Sources.All(s => SameVolume(s, job.Destination)))
         {
             foreach (var s in job.Sources)
             {
+                while (job.Paused && !job.IsCancelled) Thread.Sleep(60);
+                if (job.IsCancelled) return;
+                if (!plan.PerSource.TryGetValue(s, out var holds)) continue; // the scan left it out, and said why
                 var name = Path.GetFileName(s.TrimEnd('\\'));
-                if (!MoveFileEx(Long(s), Long(Path.Combine(job.Destination, name)), MOVEFILE_COPY_ALLOWED | MOVEFILE_WRITE_THROUGH))
-                    job.Errors.Enqueue($"{name}: {LastError()}");
+                var target = Path.Combine(job.Destination, name);
+                job.Current = name;
+                if (MoveFileEx(Long(s), Long(target), MOVEFILE_COPY_ALLOWED | MOVEFILE_WRITE_THROUGH))
+                {
+                    Interlocked.Add(ref job.DoneFiles, holds.Files);
+                    Interlocked.Add(ref job.DoneBytes, holds.Bytes);
+                    job.Completed.Enqueue((s, target, true));
+                }
+                else job.Errors.Enqueue($"{name}: {LastError()}");
             }
-            job.DoneBytes = job.TotalBytes; job.DoneFiles = job.TotalFiles;
             job.Notes.Enqueue("Moved within the same drive");
             return;
         }
 
         var conflicts = plan.Conflicts.ToDictionary(c => c.File);
         foreach (var d in plan.Dirs)
-            try { Directory.CreateDirectory(Path.Combine(job.Destination, d)); }
+            try
+            {
+                var made = Path.Combine(job.Destination, d);
+                if (Directory.Exists(made)) continue;
+                Directory.CreateDirectory(made);
+                job.CreatedDirs.Add(made);
+            }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { job.Errors.Enqueue($"{d}: {ex.Message}"); }
 
         var copied = new List<(string Source, string Target, long Size, string Relative)>();
@@ -304,7 +329,12 @@ public static class Ferry
             }
             else error = CopyOne(job, e.Source, w.Target, e.Size, w.Overwrite);
             if (job.IsCancelled) return;
-            if (error == null) { Interlocked.Increment(ref job.DoneFiles); if (!sameDiskMove) lock (copied) copied.Add((e.Source, w.Target, e.Size, e.Relative)); }
+            if (error == null)
+            {
+                Interlocked.Increment(ref job.DoneFiles);
+                if (!sameDiskMove) lock (copied) copied.Add((e.Source, w.Target, e.Size, e.Relative));
+                if (!w.Overwrite) job.Completed.Enqueue((e.Source, w.Target, sameDiskMove));
+            }
             else job.Errors.Enqueue($"{e.Relative}: {error}"); // one bad file doesn't stop the other thousand
         }
 

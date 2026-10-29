@@ -11,44 +11,123 @@ namespace FileExplorer;
 // Commands beyond copy/move/delete: undo, zip, compare, rename many, checksum, shortcuts, run as admin.
 public partial class MainWindow
 {
-    // ---- Undo (Ctrl+Z) ----
-    // Renames, new folders/files, zips, shortcuts, and copies/moves that met no conflicts. A job that
-    // had conflicts, or poured a folder into one of the same name, is not undoable: its targets are not
-    // simply "what it created", so undoing would take files that were there before along with it.
-    // Deletes need no entry here — the Recycle Bin is their undo.
-    readonly List<(string What, Action Undo)> undo = new();
+    // ---- Undo (Ctrl+Z, the right-click menu, a transfer's Undo button) ----
+    // Each operation is kept as the steps that take it back, in undo.json beside the settings, so it outlives a restart:
+    // renames, new folders and files, zips, shortcuts, copies and moves (finished, or cancelled or failed halfway: what
+    // they did), and deletes, put back from the Recycle Bin. A file that replaced another isn't undone, since the one it
+    // replaced is gone. An entry stays until each of its steps has worked: what failed is tried again next time.
+    // Kinds: recycle (Path, made by the operation), move (Path back to To), rename (Path to the name To), rmdir (Path, a
+    // folder it made, once empty), restore (Path, sent to the Recycle Bin at or after When).
+    internal record UndoStep(string Kind, string Path, string To = null);
+    internal record UndoEntry(string What, DateTime When, List<UndoStep> Steps);
 
-    void Remember(string what, Action undoIt)
+    readonly List<UndoEntry> undo = LoadUndo();
+    static string UndoFile => Path.Combine(Settings.Dir, "undo.json");
+
+    static List<UndoEntry> LoadUndo()
     {
-        undo.Add((what, undoIt));
+        try { return System.Text.Json.JsonSerializer.Deserialize<List<UndoEntry>>(File.ReadAllText(UndoFile)) ?? new(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { return new(); }
+    }
+
+    void SaveUndo()
+    {
+        try { File.WriteAllText(UndoFile, System.Text.Json.JsonSerializer.Serialize(undo)); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // kept for this session all the same
+    }
+
+    UndoEntry Remember(string what, IEnumerable<UndoStep> steps, DateTime? when = null)
+    {
+        var entry = new UndoEntry(what, when ?? DateTime.Now, steps.ToList());
+        undo.Add(entry);
         if (undo.Count > 50) undo.RemoveAt(0);
+        SaveUndo();
+        return entry;
     }
 
-    void Undo()
+    UndoEntry Remember(string what, params UndoStep[] steps) => Remember(what, steps, null);
+
+    UndoEntry undoing; // a Ctrl+Z still waiting on the shell or a transfer
+    readonly Dictionary<Job, Action> undoJobs = new(); // moves that undo a move: not undoable themselves; each says when it's done
+    readonly Dictionary<Job, UndoEntry> jobUndo = new(); // a transfer's card → its entry, for its Undo button
+
+    void Undo() => Undo(undo.Count > 0 ? undo[^1] : null);
+
+    void Undo(UndoEntry entry)
     {
-        if (undo.Count == 0) { Status.Text = "Nothing to undo"; return; }
-        var (what, run) = undo[^1];
-        undo.RemoveAt(undo.Count - 1);
-        if (Run(run)) Status.Text = "Undone: " + what;
+        if (undoing != null) { Status.Text = "Still undoing " + undoing.What; return; }
+        if (entry == null || !undo.Contains(entry)) { Status.Text = "Nothing to undo"; return; }
+        undoing = entry;
+        var left = new List<UndoStep>();
+        string error = null;
+        // at once: names back (all together, so names swapped among themselves don't collide), deleted items back
+        var renames = entry.Steps.Where(s => s.Kind == "rename").ToList();
+        if (renames.Count > 0)
+            try { RenameAll(renames.Select(s => (s.Path, s.To)).ToList()); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { left.AddRange(renames); error ??= ex.Message; }
+        var restore = entry.Steps.Where(s => s.Kind == "restore").ToList();
+        int gone = 0;
+        if (restore.Count > 0)
+        {
+            var (lost, failed, why) = RecycleBinWindow.RestoreDeleted(restore.Select(s => s.Path), entry.When.AddSeconds(-2));
+            gone = lost.Count; // emptied from the bin: nothing left to bring back, so not kept either
+            left.AddRange(failed.Select(p => new UndoStep("restore", p)));
+            error ??= why;
+        }
+        // then through the shell and through transfers; the folders the operation made go last, once emptied
+        var recycle = entry.Steps.Where(s => s.Kind == "recycle" && Exists(s.Path)).Select(s => s.Path).ToList();
+        var moves = entry.Steps.Where(s => s.Kind == "move" && Exists(s.Path)).GroupBy(s => Path.GetDirectoryName(s.To)).ToList();
+        int waiting = (recycle.Count > 0 ? 1 : 0) + moves.Count;
+        void OneDone() { if (--waiting == 0) Finish(); }
+        void Finish()
+        {
+            foreach (var s in entry.Steps.Where(s => s.Kind == "rmdir").OrderByDescending(s => s.Path.Length))
+                try { if (Directory.Exists(s.Path) && !Directory.EnumerateFileSystemEntries(s.Path).Any()) Directory.Delete(s.Path); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            // what still stands where the operation put it is left to try again (a folder still holding something stays, quietly)
+            left.AddRange(entry.Steps.Where(s => (s.Kind is "recycle" or "move") && Exists(s.Path)));
+            if (left.Count > 0) left.AddRange(entry.Steps.Where(s => s.Kind == "rmdir" && Directory.Exists(s.Path))); // emptied once the rest goes
+            undo.Remove(entry);
+            if (left.Count > 0) undo.Add(entry with { Steps = left });
+            SaveUndo();
+            foreach (var (job, e) in jobUndo.Where(x => x.Value == entry).ToList()) { job.CanUndo = false; job.Refresh(); jobUndo.Remove(job); }
+            undoing = null;
+            Status.Text = left.Count == 0 ? $"Undone: {entry.What}{(gone > 0 ? $" ({gone} no longer in the Recycle Bin)" : "")}"
+                        : $"Partly undone: {entry.What}. Ctrl+Z tries the rest{(error != null ? $" ({error})" : "")}";
+            Left.Refresh(); Right.Refresh();
+        }
+        if (waiting == 0) { Finish(); return; }
+        if (recycle.Count > 0) Recycle(recycle, UIOption.OnlyErrorDialogs, done: OneDone);
+        foreach (var back in moves)
+            if (Submit(back.Select(s => s.Path).ToList(), back.Key, move: true, ask: false) is { } job) undoJobs[job] = OneDone;
+            else OneDone();
     }
 
-    readonly HashSet<Job> undoJobs = new(); // moves that undo a move: not undoable themselves
+    static bool Exists(string path) => File.Exists(path) || Directory.Exists(path);
 
-    // Called when a Ferry job ends.
+    // Called when a Ferry job ends. Finished cleanly: what it brought, as a whole (a folder is one step). Cancelled, failed,
+    // or with files that were already there: each file it brought, and the folders it made.
     void RememberJob(Job job)
     {
-        if (undoJobs.Remove(job) || job.Phase != Phase.Done || job.Conflicts.Count > 0 || job.Merged || !job.Errors.IsEmpty) return;
-        var made = job.Sources.Select(s => (Source: s, Target: job.Duplicates.GetValueOrDefault(s) ?? Path.Combine(job.Destination, Path.GetFileName(s.TrimEnd('\\')))))
-                              .Where(x => Path.GetFileName(x.Target) != "").ToList();
-        if (made.Count == 0) return;
-        string what = $"{(job.IsMove ? "move" : "copy")} of {(made.Count == 1 ? Path.GetFileName(made[0].Target) : $"{made.Count} items")}";
-        if (!job.IsMove) Remember(what, () => Recycle(made.Select(x => x.Target).ToList(), UIOption.OnlyErrorDialogs));
-        else Remember(what, () =>
-        {
-            foreach (var back in made.GroupBy(x => Path.GetDirectoryName(x.Source)))
-                undoJobs.Add(Submit(back.Select(x => x.Target).ToList(), back.Key, move: true));
-        });
+        if (undoJobs.Remove(job, out var undone)) { undone(); return; }
+        List<UndoStep> steps;
+        if (job.Phase == Phase.Done && job.Conflicts.Count == 0 && !job.Merged && job.Errors.IsEmpty)
+            steps = job.Sources.Select(s => (Source: s, Target: job.Duplicates.GetValueOrDefault(s) ?? Path.Combine(job.Destination, Path.GetFileName(s.TrimEnd('\\')))))
+                               .Where(x => Path.GetFileName(x.Target) != "")
+                               .Select(x => job.IsMove ? new UndoStep("move", x.Target, x.Source) : new UndoStep("recycle", x.Target)).ToList();
+        else
+            steps = job.Completed.Select(c => c.Moved || job.IsMove && !Exists(c.From) ? new UndoStep("move", c.To, c.From) : new UndoStep("recycle", c.To))
+                                 .Concat(job.CreatedDirs.Select(d => new UndoStep("rmdir", d))).ToList();
+        int items = steps.Count(s => s.Kind != "rmdir");
+        if (items == 0) return;
+        var what = $"{(job.IsMove ? "move" : "copy")} of {(items == 1 ? Path.GetFileName(steps[0].Path) : $"{items:N0} items")}"
+                   + (job.Phase == Phase.Done ? "" : job.IsCancelled ? " (cancelled)" : " (stopped)");
+        jobUndo[job] = Remember(what, steps);
+        job.CanUndo = true;
+        job.Refresh();
     }
+
+    void JobUndo_Click(object s, RoutedEventArgs e) { if (jobUndo.TryGetValue(JobOf(s), out var entry)) Undo(entry); }
 
     static void RenamePath(string path, string newName)
     {
@@ -91,7 +170,7 @@ public partial class MainWindow
         List<(string Path, string NewName)> reverse = null;
         if (Run(() => reverse = RenameAll(plan)))
         {
-            Remember($"rename of {plan.Count} items", () => RenameAll(reverse));
+            Remember($"rename of {plan.Count} items", reverse.Select(r => new UndoStep("rename", r.Path, r.NewName)), null);
             Status.Text = $"Renamed {plan.Count} items";
         }
         pane.Refresh();
@@ -167,7 +246,7 @@ public partial class MainWindow
         });
         if (error != null) { Status.Text = "Compress failed: " + error; return; }
         Status.Text = $"Created {Path.GetFileName(zip)}";
-        Remember($"zip {Path.GetFileName(zip)}", () => Recycle(new() { zip }, UIOption.OnlyErrorDialogs));
+        Remember($"zip {Path.GetFileName(zip)}", new UndoStep("recycle", zip));
         ShowCreated(pane, zip);
     }
 
@@ -195,7 +274,7 @@ public partial class MainWindow
         });
         if (error != null) { Status.Text = "Extract failed: " + error; return; }
         Status.Text = $"Extracted {e.Name}";
-        Remember($"extract {e.Name}", () => Recycle(created, UIOption.OnlyErrorDialogs));
+        Remember($"extract {e.Name}", created.Select(c => new UndoStep("recycle", c)), null);
         ShowCreated(pane, toFolder ? dest : e.Path);
     }
 
@@ -351,7 +430,7 @@ public partial class MainWindow
             var lnk = Unique(Path.Combine(pane.Dir, e.Name + " - Shortcut.lnk"));
             try { SaveShortcut(lnk, e.Path, e.IsDir ? e.Path : Path.GetDirectoryName(e.Path)); }
             catch (Exception ex) when (ex is COMException or UnauthorizedAccessException) { Status.Text = ex.Message; return; }
-            Remember($"shortcut {Path.GetFileName(lnk)}", () => Recycle(new() { lnk }, UIOption.OnlyErrorDialogs));
+            Remember($"shortcut {Path.GetFileName(lnk)}", new UndoStep("recycle", lnk));
             last = lnk;
         }
         if (last != null) ShowCreated(pane, last);

@@ -7,38 +7,50 @@ namespace FileExplorer;
 // The Drop bin (1.0.43): files and folders gathered from anywhere while browsing — dragged onto the bin, or
 // Ctrl+B on a selection — then copied or moved together into the active pane's folder. Paths only: nothing
 // moves until Copy or Move is pressed, and the bin lasts for the session.
+// 1.0.64: built for big selections. A HashSet answers "already in?", and the list is virtualized: only the rows
+// in sight get controls (and an icon), so 20,000 paths cost 20,000 strings, not 20,000 rows of buttons.
 public partial class MainWindow
 {
     readonly List<string> bin = new();
+    readonly HashSet<string> inBin = new(StringComparer.OrdinalIgnoreCase);
+
+    public sealed record BinItem(string Path)
+    {
+        public string Name => System.IO.Path.GetFileName(Path.TrimEnd('\\')) is { Length: > 0 } n ? n : Path;
+        public string RemoveName => "Take " + Name + " out of the bin";
+    }
 
     void AddToBin(IEnumerable<string> paths)
     {
         int before = bin.Count;
         foreach (var p in paths)
-            if (!bin.Contains(p, StringComparer.OrdinalIgnoreCase)) bin.Add(p);
+            if (inBin.Add(p)) bin.Add(p);
         if (!DropBin.IsVisible) { DropBin.Visibility = Visibility.Visible; Motion.Enter(DropBin, rise: 8); }
         ShowBin();
-        Status.Text = bin.Count == before ? "Already in the Drop bin" : $"{bin.Count - before} added to the Drop bin";
+        Status.Text = bin.Count == before ? "Already in the Drop bin" : $"{bin.Count - before:N0} added to the Drop bin";
     }
 
     void ShowBin()
     {
-        BinCount.Text = bin.Count > 0 ? bin.Count.ToString() : "";
+        BinCount.Text = bin.Count > 0 ? bin.Count.ToString("N0") : "";
         BinActions.Visibility = bin.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        BinList.Children.Clear();
-        foreach (var path in bin)
-        {
-            var row = new DockPanel { Margin = new(0, 1, 0, 1), ToolTip = path };
-            var remove = new Button { Style = (Style)FindResource("Ghost"), Content = "", FontFamily = new System.Windows.Media.FontFamily("Segoe Fluent Icons"), FontSize = 9, ToolTip = "Take it out of the bin" };
-            System.Windows.Automation.AutomationProperties.SetName(remove, "Take " + Path.GetFileName(path.TrimEnd('\\')) + " out of the bin");
-            remove.Click += (_, _) => { bin.Remove(path); ShowBin(); };
-            DockPanel.SetDock(remove, Dock.Right);
-            row.Children.Add(remove);
-            row.Children.Add(ShellIcon(path, Directory.Exists(path) ? "" : "", 16, new(0, 0, 8, 0)));
-            row.Children.Add(new TextBlock { Text = Path.GetFileName(path.TrimEnd('\\')) is { Length: > 0 } n ? n : path, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
-            BinList.Children.Add(row);
-        }
+        BinList.ItemsSource = bin.Select(p => new BinItem(p)).ToList();
         ShowBinTarget();
+    }
+
+    // A row's icon, when the row is made (it comes into sight): the shell's icon for that file or folder.
+    void BinIcon_Loaded(object s, RoutedEventArgs e)
+    {
+        if (s is Border { DataContext: BinItem item, Child: null } b)
+            b.Child = ShellIcon(item.Path, Directory.Exists(item.Path) ? "" : "", 16, new(0));
+    }
+
+    void BinRemove_Click(object s, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)s).DataContext is not BinItem item) return;
+        inBin.Remove(item.Path);
+        bin.Remove(item.Path);
+        ShowBin();
     }
 
     /// The summary names the folder the buttons would send everything to: the active pane's, which changes as you browse.
@@ -47,7 +59,7 @@ public partial class MainWindow
         if (bin.Count == 0) { BinSummary.Text = "Drag files here from any folder, or press Ctrl+B on a selection. Then copy or move them all at once."; return; }
         int folders = bin.Select(p => Path.GetDirectoryName(p.TrimEnd('\\')) ?? p).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         var into = active?.Dir is { Length: > 0 } d ? (Path.GetFileName(d.TrimEnd('\\')) is { Length: > 0 } n ? n : d) : "?";
-        BinSummary.Text = $"{bin.Count} item{(bin.Count == 1 ? "" : "s")} from {folders} folder{(folders == 1 ? "" : "s")}  ·  into {into}";
+        BinSummary.Text = $"{bin.Count:N0} item{(bin.Count == 1 ? "" : "s")} from {folders:N0} folder{(folders == 1 ? "" : "s")}  ·  into {into}";
     }
 
     // Copy, never Move, as the drop's effect: the bin only keeps the paths, and a source told "moved" (Explorer)
@@ -72,7 +84,7 @@ public partial class MainWindow
         ShowBin();
     }
 
-    void BinClear_Click(object s, RoutedEventArgs e) { bin.Clear(); ShowBin(); }
+    void BinClear_Click(object s, RoutedEventArgs e) { bin.Clear(); inBin.Clear(); ShowBin(); }
     void BinCopy_Click(object s, RoutedEventArgs e) => SendBin(move: false);
     void BinMove_Click(object s, RoutedEventArgs e) => SendBin(move: true);
 
@@ -81,8 +93,8 @@ public partial class MainWindow
     {
         var there = bin.Where(p => File.Exists(p) || Directory.Exists(p)).ToList();
         int gone = bin.Count - there.Count;
-        if (there.Count > 0) Submit(there, active.Dir, move);
-        bin.Clear();
+        if (there.Count > 0) Submit(there, active.Dir, move, ask: false); // the bin says how many from how many folders, and where
+        bin.Clear(); inBin.Clear();
         ShowBin();
         DropBin.Visibility = Visibility.Collapsed;
         if (gone > 0) Status.Text = $"{gone} item{(gone == 1 ? " was" : "s were")} no longer there and stayed out";

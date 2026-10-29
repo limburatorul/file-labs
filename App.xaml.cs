@@ -197,6 +197,30 @@ public partial class App : Application
             j = Run(Ferry.Submit(new[] { Path.Combine(src, "tree") }, mv, move: true));
             Check(j.Phase == Phase.Done && !Directory.Exists(Path.Combine(src, "tree")) && File.Exists(Path.Combine(mv, "tree", "a.txt")), "same-volume move");
             Check(j.Notes.Contains("Moved within the same drive"), "move took the rename path");
+            Check(j.DoneFiles == j.TotalFiles && j.DoneBytes == j.TotalBytes && j.Completed.Count == 1 && j.Completed.Single().Moved, "same-volume move: counts and what it did, for Undo");
+
+            // 1.0.64 a same-volume move hears Pause and Cancel between loose, and counts as it goes
+            var spread = Directory.CreateDirectory(Path.Combine(root, "spread")).FullName;
+            var gathered = Directory.CreateDirectory(Path.Combine(root, "gathered")).FullName;
+            var loose = Enumerable.Range(0, 300).Select(i => { var f = Path.Combine(spread, $"m{i:D3}.txt"); File.WriteAllText(f, "x"); return f; }).ToList();
+            j = Ferry.Submit(loose, gathered, move: true);
+            j.Pause();
+            Wait(() => j.Phase == Phase.Copying);
+            Thread.Sleep(300);
+            Check(j.DoneFiles == 0 && Directory.GetFiles(gathered).Length == 0, "paused same-volume move moves nothing");
+            j.Resume();
+            Wait(() => j.DoneFiles > 0 || j.Phase == Phase.Done);
+            j.Cancel();
+            Run(j);
+            int landed = Directory.GetFiles(gathered).Length;
+            Check(j.Phase is Phase.Cancelled or Phase.Done && landed == j.DoneFiles && j.Completed.Count == landed && landed + Directory.GetFiles(spread).Length == 300,
+                  $"cancelled same-volume move stops between loose ({landed} of 300 moved, each one counted)");
+
+            // 1.0.64 Undo entries outlive a restart: written to undo.json and read back step for step
+            var undoEntry = new MainWindow.UndoEntry("move of 2 items", new DateTime(2026, 10, 29, 20, 0, 0),
+                new() { new("move", @"C:\b\x.txt", @"C:\a\x.txt"), new("rmdir", @"C:\b\sub"), new("restore", @"C:\c\y.txt") });
+            var undoBack = System.Text.Json.JsonSerializer.Deserialize<List<MainWindow.UndoEntry>>(System.Text.Json.JsonSerializer.Serialize(new List<MainWindow.UndoEntry> { undoEntry }))!.Single();
+            Check(undoBack.What == undoEntry.What && undoBack.When == undoEntry.When && undoBack.Steps.SequenceEqual(undoEntry.Steps), "undo entries saved and read back");
 
             // move a folder onto a folder of the same name: merged file by file, never renamed over it,
             // and not undoable (undo would take the files that were already there with it)

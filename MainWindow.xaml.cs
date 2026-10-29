@@ -1039,9 +1039,14 @@ public partial class MainWindow : Window
         Submit(active.Selected.Select(e => e.Path).ToList(), Other.Dir, move);
     }
 
-    internal Job Submit(List<string> sources, string dest, bool move)
+    /// `ask`: a move that gathers items from several folders into one (search results dropped on the search's own
+    /// folder, say) is confirmed first, naming where it all goes. Off where gathering is the point (Drop bin, Undo).
+    internal Job Submit(List<string> sources, string dest, bool move, bool ask = true)
     {
         if (sources.Count == 0 || PaneView.IsVirtual(dest)) return null; // nothing goes "into" This PC, nor into an archive this way (AddToArchive)
+        if (move && ask && sources.Select(s => Path.GetDirectoryName(s.TrimEnd('\\'))).Distinct(StringComparer.OrdinalIgnoreCase).Count() is var folders and > 1
+            && PromptDialog.Choose(this, $"Move {sources.Count:N0} items from {folders:N0} folders into one folder?", "All of them go into " + dest, "Move", "Cancel") != 0)
+            return null;
         Settings.Bump(Settings.RecentDestinations, dest, Settings.DestinationsMax); // for Copy to / Move to
         var job = Ferry.Submit(sources, dest, move);
         job.Seq = ++jobSeq;
@@ -1247,7 +1252,20 @@ public partial class MainWindow : Window
         if (permanent && !(Settings.DeleteSound
                 ? MessageBox.Show(this, question + "\n\n" + detail, "Delete permanently", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.Yes) == MessageBoxResult.Yes
                 : PromptDialog.Choose(this, question, detail, "Delete", "Cancel") == 0)) return;
-        Recycle(sel.Select(e => e.Path).ToList(), UIOption.AllDialogs, permanent);
+        if (permanent) Recycle(sel.Select(e => e.Path).ToList(), UIOption.AllDialogs, permanent: true);
+        else RecycleUndoably(sel.Select(e => e.Path).ToList(), UIOption.AllDialogs);
+    }
+
+    /// To the Recycle Bin, and what went there is one Undo entry: Ctrl+Z brings that batch back (RecycleBinWindow.RestoreDeleted).
+    internal void RecycleUndoably(List<string> paths, UIOption ui, Action done = null)
+    {
+        var when = DateTime.Now;
+        Recycle(paths, ui, done: () =>
+        {
+            var gone = paths.Where(p => !Exists(p)).ToList(); // all, or as many as went before a Cancel
+            if (gone.Count > 0) Remember($"delete of {(gone.Count == 1 ? Path.GetFileName(gone[0].TrimEnd('\\')) : $"{gone.Count:N0} items")}", gone.Select(p => new UndoStep("restore", p)), when);
+            done?.Invoke();
+        });
     }
 
     /// A permanent delete without the shell, which plays Windows' "Empty Recycle Bin" sound for one.
@@ -1371,7 +1389,7 @@ public partial class MainWindow : Window
         var path = Path.Combine(active.Dir, name);
         bool existed = Directory.Exists(path);
         if (Run(() => Directory.CreateDirectory(path)) && !existed)
-            Remember($"new folder {name}", () => Directory.Delete(path)); // only while still empty: Delete refuses otherwise
+            Remember($"new folder {name}", new UndoStep("rmdir", path)); // only while still empty
         active.Navigate(active.Dir, name, record: false);
     }
 
@@ -1385,7 +1403,7 @@ public partial class MainWindow : Window
         Run(() => created = dialog.Create(active.Dir));
         if (created == null) return;
         var path = Path.Combine(active.Dir, created);
-        Remember($"new file {created}", () => Recycle(new() { path }, UIOption.OnlyErrorDialogs));
+        Remember($"new file {created}", new UndoStep("recycle", path));
         active.Navigate(active.Dir, created, record: false);
     }
 
@@ -1399,7 +1417,7 @@ public partial class MainWindow : Window
     void RenameCommitted(PaneView pane, Entry entry, string name)
     {
         var renamed = Path.Combine(Path.GetDirectoryName(entry.Path), name);
-        if (Run(() => RenamePath(entry.Path, name))) Remember($"rename to {name}", () => RenamePath(renamed, entry.Name));
+        if (Run(() => RenamePath(entry.Path, name))) Remember($"rename to {name}", new UndoStep("rename", renamed, entry.Name));
         if (pane.InSearch) pane.Refresh();
         else pane.Navigate(pane.Dir, name, record: false);
     }

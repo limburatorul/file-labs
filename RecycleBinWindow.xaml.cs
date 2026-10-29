@@ -177,21 +177,40 @@ public partial class RecycleBinWindow : Window
         if (items.Count == 0) return;
         int ok = 0; string error = null;
         foreach (var i in items)
-        {
-            try
-            {
-                // Something new at the old place wins; the restored item gets "name (2)" beside it.
-                var target = MainWindow.Unique(i.OriginalPath);
-                Directory.CreateDirectory(Path.GetDirectoryName(target));
-                if (i.IsDir) Directory.Move(i.DataPath, target); else File.Move(i.DataPath, target);
-                File.Delete(i.InfoPath);
-                ok++;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { error ??= $"{i.Name}: {ex.Message}"; }
-        }
+            if (RestoreOne(i) is { } failed) error ??= failed; else ok++;
         Status.Text = error ?? $"Restored {ok} item(s)";
         Load();
         changed();
+    }
+
+    /// Moves an item back where it was deleted from; null when it worked, else why not.
+    /// Something new at the old place wins: the restored item gets "name (2)" beside it.
+    static string RestoreOne(Item i)
+    {
+        try
+        {
+            var target = MainWindow.Unique(i.OriginalPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            if (i.IsDir) Directory.Move(i.DataPath, target); else File.Move(i.DataPath, target);
+            File.Delete(i.InfoPath);
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return $"{i.Name}: {ex.Message}"; }
+    }
+
+    /// Undo of a delete (Ctrl+Z): puts back what was deleted from these places at or after `since`, the newest of each.
+    /// Gone: no longer in the Recycle Bin (emptied, or restored already). Failed: there, but it couldn't be moved back.
+    internal static (List<string> Gone, List<string> Failed, string Error) RestoreDeleted(IEnumerable<string> paths, DateTime since)
+    {
+        var newest = Read().Where(i => i.Deleted >= since)
+                           .GroupBy(i => i.OriginalPath, StringComparer.OrdinalIgnoreCase)
+                           .ToDictionary(g => g.Key, g => g.MaxBy(i => i.Deleted), StringComparer.OrdinalIgnoreCase);
+        List<string> gone = new(), failed = new();
+        string error = null;
+        foreach (var p in paths)
+            if (!newest.TryGetValue(p, out var i)) gone.Add(p);
+            else if (RestoreOne(i) is { } why) { failed.Add(p); error ??= why; }
+        return (gone, failed, error);
     }
 
     void Delete_Click(object s, RoutedEventArgs e)

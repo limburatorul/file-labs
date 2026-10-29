@@ -305,7 +305,7 @@ public partial class DuplicatesWindow : Window
         var looseNote = match != Match.Content ? " These were matched by name, not by content: make sure they really are the same." : "";
         if (PromptDialog.Choose(this, $"Send {paths.Count} file{(paths.Count == 1 ? "" : "s")} to the Recycle Bin?", $"{MainWindow.Fmt(bytes)}. One copy of each stays where it is.{looseNote}", "Delete", "Cancel") != 0) return;
         Status.Text = "Deleting…";
-        main.Recycle(paths, UIOption.OnlyErrorDialogs, done: Prune);
+        main.RecycleUndoably(paths, UIOption.OnlyErrorDialogs, done: Prune); // Ctrl+Z in the main window brings them back
     }
 
     Job moving;
@@ -314,7 +314,7 @@ public partial class DuplicatesWindow : Window
         if (Chosen() is not { } paths) return;
         var pick = new Microsoft.Win32.OpenFolderDialog { Title = $"Move {paths.Count} file{(paths.Count == 1 ? "" : "s")} to which folder?" };
         if (pick.ShowDialog(this) != true) return;
-        moving = main.Submit(paths, pick.FolderName, move: true); // Ferry: progress, name conflicts and Ctrl+Z in the main window
+        moving = main.Submit(paths, pick.FolderName, move: true, ask: false); // Ferry: progress, name conflicts and Ctrl+Z in the main window
         Status.Text = "Moving… the progress is in the main window.";
     }
 

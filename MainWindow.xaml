@@ -131,6 +131,9 @@
                 <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="{Binding PauseGlyph, Mode=OneWay}"/>  <Run Text="{Binding PauseText, Mode=OneWay}"/></TextBlock></Button>
               <Button Style="{StaticResource JobAction}" Margin="0" Visibility="{Binding Active, Converter={StaticResource Vis}}" Click="JobCancel_Click">
                 <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE711;"/>  Cancel</TextBlock></Button>
+              <Button Style="{StaticResource JobAction}" Visibility="{Binding CanUndo, Converter={StaticResource Vis}}" Click="JobUndo_Click"
+                      ToolTip="Take back what this transfer did, also when it was cancelled or stopped halfway">
+                <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE7A7;"/>  Undo</TextBlock></Button>
               <Button Style="{StaticResource JobAction}" Margin="0" Visibility="{Binding Finished, Converter={StaticResource Vis}}" Click="JobDismiss_Click">
                 <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE73E;"/>  Dismiss</TextBlock></Button>
             </StackPanel>
@@ -219,9 +222,27 @@
             <Button Style="{StaticResource Tab}" Tag="on" Click="BinCopy_Click" Content="Copy here"/>
             <Button Style="{StaticResource Tab}" Click="BinMove_Click" Content="Move here"/>
           </StackPanel>
-          <ScrollViewer MaxHeight="190" VerticalScrollBarVisibility="Auto">
-            <StackPanel x:Name="BinList"/>
-          </ScrollViewer>
+          <!-- virtualized: only the rows in sight are made (MainWindow.ShowBin) -->
+          <ItemsControl x:Name="BinList" MaxHeight="190" VirtualizingPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="True">
+            <ItemsControl.Template>
+              <ControlTemplate TargetType="ItemsControl">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" CanContentScroll="True" Focusable="False"><ItemsPresenter/></ScrollViewer>
+              </ControlTemplate>
+            </ItemsControl.Template>
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><VirtualizingStackPanel/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <DockPanel Margin="0,1,0,1" ToolTip="{Binding Path}">
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="Segoe Fluent Icons" FontSize="9"
+                          ToolTip="Take it out of the bin" AutomationProperties.Name="{Binding RemoveName}" Click="BinRemove_Click"/>
+                  <Border Width="16" Height="16" Margin="0,0,8,0" Loaded="BinIcon_Loaded"/>
+                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                </DockPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </DockPanel>
       </Border>
       <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,12">
