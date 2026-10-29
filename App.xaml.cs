@@ -560,6 +560,23 @@ public partial class App : Application
                   && PaneView.SearchQuery.Parse("re:\"(\"", at).Error != null && PaneView.SearchQuery.Parse("size:lots", at).Error != null,
                   "search terms: size, date, wildcard, bad regex and bad size refused");
 
+            // 1.0.63 custom size and dates: what the dialogs write, read back by the parser, both ends of a size included
+            var (sizeTerm, _) = PaneView.SizeTerm(("1,5", 2), ("2", 3));
+            var custom = PaneView.SearchQuery.Parse(sizeTerm, at);
+            Check(sizeTerm == "size:1.5MB-2GB" && custom.MinSize == 1_500_000 && custom.MaxSize == 2_000_000_000
+                  && PaneView.SizeTerm(("10", 1), ("", 0)).Term == "size:>=10KB" && PaneView.SearchQuery.Parse("size:>=10KB", at).MinSize == 10_000
+                  && PaneView.SizeTerm(("", 0), ("3", 3)).Term == "size:<=3GB" && PaneView.SearchQuery.Parse("size:<=3GB", at).MaxSize == 3_000_000_000
+                  && PaneView.SizeTerm(("", 0), ("", 0)) == (null, null) && PaneView.SizeTerm(("5", 3), ("1", 3)).Error != null && PaneView.SizeTerm(("lots", 2), ("", 0)).Error != null,
+                  "custom size: terms written and read back");
+            var range = PaneView.DateTerms("2026-10-01", "2026-10-15");
+            var inRange = PaneView.SearchQuery.Parse(range.After + " " + range.Before, at);
+            Check(range == ("after:2026-10-01", "before:2026-10-15", null)
+                  && inRange.MatchesMeta("a", false, 1, new DateTime(2026, 10, 1)) && inRange.MatchesMeta("a", false, 1, new DateTime(2026, 10, 14, 23, 0, 0))
+                  && !inRange.MatchesMeta("a", false, 1, new DateTime(2026, 10, 15)) && !inRange.MatchesMeta("a", false, 1, new DateTime(2026, 9, 30))
+                  && PaneView.DateTerms("", "2026-01-01") == (null, "before:2026-01-01", null) && PaneView.DateTerms("2026-01-01", "") == ("after:2026-01-01", null, null)
+                  && PaneView.DateTerms("2026-10-15", "2026-10-01").Error != null && PaneView.DateTerms("soon", "").Error != null && PaneView.DateTerms("", "").Error != null,
+                  "custom dates: range, before, after, and wrong ones refused");
+
             // 1.0.61 small files several at once: the same files arrive, whole, either way; the times are printed
             var manyDir = Directory.CreateDirectory(Path.Combine(root, "many", "files")).FullName;
             var seeded = new Random(7);

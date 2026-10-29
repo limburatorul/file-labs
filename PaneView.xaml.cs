@@ -662,7 +662,7 @@ public partial class PaneView : UserControl
         // each folder keeps the order it was last sorted in; the rest are by name. Set before its rows are shown.
         var (key, desc) = Settings.FolderSorts.TryGetValue(path, out var sort) ? sort : ("Name", false);
         if (key != sortKey || desc != sortDesc) ShowSort(key, desc);
-        if (searchQuery != null) { searchQuery = null; FilterBox.Text = ""; } // the query would hide most of the new folder
+        if (searchQuery != null) { searchQuery = null; searchMore = null; FilterBox.Text = ""; } // the query would hide most of the new folder
         BuildCrumbs();
         BuildTabs();
         return ++navVersion;
@@ -972,10 +972,10 @@ public partial class PaneView : UserControl
     string searchQuery; // set while the list shows search results instead of the folder
     bool searching;
     public bool InSearch => searchQuery != null;
-    const int MaxResults = 10_000;
+    Action searchMore; // a search that paused at Settings.SearchLimit: carries on from where it stopped
 
     /// What the filter box asks for: words of the name (with * and ?), and terms for the rest —
-    /// size:>10MB · size:<1KB · size:10MB-1GB · within:7d (d, w, m, y, or today) · after:2026-10-01 · before:2026-01-01 ·
+    /// size:>10MB · size:<1KB · size:>=10MB · size:<=1GB · size:10MB-1GB (both ends included) · within:7d (d, w, m, y, or today) · after:2026-10-01 · before:2026-01-01 ·
     /// re:^IMG_\d+ (a regular expression on the name) · content:"some text" (inside files, on Enter only).
     /// Quotes keep spaces in a term. Sizes count in 1000s, like every size in File Labs.
     internal sealed class SearchQuery
@@ -1018,6 +1018,8 @@ public partial class PaneView : UserControl
         static bool ReadSizes(string v, SearchQuery q)
         {
             if (v.Split('-') is [var lo, var hi] && Bytes(lo) is { } l && Bytes(hi) is { } h) { q.MinSize = l; q.MaxSize = h; return true; }
+            if (v.StartsWith(">=") && Bytes(v[2..]) is { } least) { q.MinSize = least; return true; }
+            if (v.StartsWith("<=") && Bytes(v[2..]) is { } most) { q.MaxSize = most; return true; }
             if (v.StartsWith('>') && Bytes(v[1..]) is { } min) { q.MinSize = min + 1; return true; }
             if (v.StartsWith('<') && Bytes(v[1..]) is { } max) { q.MaxSize = max - 1; return true; }
             if (Bytes(v) is { } at) { q.MinSize = at; return true; } // size:1GB = at least 1 GB
@@ -1067,30 +1069,34 @@ public partial class PaneView : UserControl
         }
     }
 
+    /// Enter in the filter box. The same query again, on a search that paused at the limit, carries on instead.
     public void Search(string query)
     {
+        if (query == searchQuery && searchMore != null) { var more = searchMore; searchMore = null; searching = true; UpdateFooter(); more(); return; }
         if (IsServer(Dir) || Dir == ThisPC || ArchiveRoot != null) { if (ArchiveRoot != null) Error?.Invoke("Search works in folders, not inside an archive; the filter still narrows this one"); return; }
         var find = SearchQuery.Parse(query, DateTime.Now);
         if (find.Error != null) { Error?.Invoke(find.Error); return; }
         searchQuery = query;
         searching = true;
+        searchMore = null;
         int v = ++navVersion;
         sizing?.Cancel();
         watcher?.Dispose(); watcher = null; // results span the whole subtree; a refresh runs the search again
         var results = new System.Collections.ObjectModel.ObservableCollection<Entry>();
         ShowItems(results, null);
         string root = Dir;
-        bool hidden = ShowHidden;
-        Task.Run(() =>
+        var opts = new EnumerationOptions
         {
-            var opts = new EnumerationOptions
-            {
-                RecurseSubdirectories = true, IgnoreInaccessible = true,
-                AttributesToSkip = FileAttributes.ReparsePoint | (hidden ? 0 : FileAttributes.Hidden),
-            };
+            RecurseSubdirectories = true, IgnoreInaccessible = true,
+            AttributesToSkip = FileAttributes.ReparsePoint | (ShowHidden ? 0 : FileAttributes.Hidden),
+        };
+        IEnumerator<FileSystemInfo> walk = null;
+        void Run() => Task.Run(() =>
+        {
             var batch = new List<Entry>();
             var clock = System.Diagnostics.Stopwatch.StartNew();
-            int found = 0;
+            int found = 0, limit = Settings.SearchLimit;
+            bool paused = false;
             void Flush()
             {
                 var b = batch; batch = new();
@@ -1098,9 +1104,11 @@ public partial class PaneView : UserControl
             }
             try
             {
-                foreach (var fsi in new DirectoryInfo(root).EnumerateFileSystemInfos("*", opts))
+                walk ??= new DirectoryInfo(root).EnumerateFileSystemInfos("*", opts).GetEnumerator();
+                while (walk.MoveNext())
                 {
-                    if (v != navVersion) return;
+                    if (v != navVersion) { walk.Dispose(); return; }
+                    var fsi = walk.Current;
                     bool isDir = fsi is DirectoryInfo;
                     if (!find.MatchesMeta(fsi.Name, isDir, isDir ? 0 : ((FileInfo)fsi).Length, fsi.LastWriteTime)
                         || !isDir && !find.MatchesContent((FileInfo)fsi)) continue;
@@ -1111,20 +1119,23 @@ public partial class PaneView : UserControl
                         IsCut = CutPaths.Contains(fsi.FullName),
                         Size = isDir ? SizeCache.Get(fsi.FullName, fsi.LastWriteTimeUtc) : ((FileInfo)fsi).Length,
                     });
-                    if (++found >= MaxResults) break;
+                    if (++found == limit) { paused = true; break; }
                     if (clock.ElapsedMilliseconds > 150) { Flush(); clock.Restart(); }
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // what was found so far still shows
+            if (!paused) walk?.Dispose(); // null when the folder itself couldn't be read
             Flush();
             Dispatcher.BeginInvoke(() =>
             {
-                if (v != navVersion) return;
+                if (v != navVersion) { if (paused) walk.Dispose(); return; }
                 searching = false;
+                if (paused) searchMore = Run;
                 UpdateFooter();
                 StartSizing(); StartVersions(); StartIcons(); StartThumbs();
             });
         });
+        Run();
     }
 
     // ---- the search options button: each choice writes its term into the filter box, replacing one of the same kind ----
@@ -1140,9 +1151,25 @@ public partial class PaneView : UserControl
         var size = new MenuItem { Header = "Size" };
         foreach (var (h, t) in new[] { ("Any size", null), ("Under 1 MB", "size:<1MB"), ("1 MB to 100 MB", "size:1MB-100MB"), ("Over 100 MB", "size:>100MB"), ("Over 1 GB", "size:>1GB") })
             size.Items.Add(Choice(h, "size", t));
+        size.Items.Add(new Separator());
+        var customSize = new MenuItem { Header = "Custom size…" };
+        customSize.Click += (_, _) => { if (AskSize(FilterBox.Text) is var t && t != "") SetTerm("size", t); };
+        size.Items.Add(customSize);
         var date = new MenuItem { Header = "Modified" };
         foreach (var (h, t) in new[] { ("Any time", null), ("Today", "within:today"), ("In the last 7 days", "within:7d"), ("In the last 30 days", "within:30d"), ("In the last year", "within:1y") })
-            date.Items.Add(Choice(h, "within", t));
+        {
+            var mi = Choice(h, "within", t);
+            mi.Click += (_, _) => { SetTerm("after", null); SetTerm("before", null); }; // a preset replaces custom dates
+            date.Items.Add(mi);
+        }
+        date.Items.Add(new Separator());
+        var customDate = new MenuItem { Header = "Custom dates…", IsChecked = FilterBox.Text.Contains("after:", StringComparison.OrdinalIgnoreCase) || FilterBox.Text.Contains("before:", StringComparison.OrdinalIgnoreCase) };
+        customDate.Click += (_, _) =>
+        {
+            if (AskDates(FilterBox.Text) is not var (after, before)) return;
+            SetTerm("within", null); SetTerm("after", after); SetTerm("before", before);
+        };
+        date.Items.Add(customDate);
         menu.Items.Add(size);
         menu.Items.Add(date);
         menu.Items.Add(new Separator());
@@ -1163,6 +1190,73 @@ public partial class PaneView : UserControl
             var current = System.Text.RegularExpressions.Regex.Match(FilterBox.Text, @"(?<!\S)" + kind + @"(""[^""]*""|\S+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Groups[1].Value.Trim('"');
             return PromptDialog.Ask(Window.GetWindow(this), title, label, current, "Use") is { Length: > 0 } v ? v.Replace("\"", "") : null;
         }
+    }
+
+    static readonly string[] SizeUnits = { "B", "KB", "MB", "GB" };
+
+    /// The Custom size dialog: at least and at most, either or both, each in its own unit. Returns the size: term,
+    /// null when both are left empty (any size), or "" for Cancel.
+    string AskSize(string text)
+    {
+        var now = SearchQuery.Parse(text, DateTime.Now);
+        var (minText, minUnit) = now.MinSize > 0 ? Shown(now.MinSize) : ("", 2);
+        var (maxText, maxUnit) = now.MaxSize != long.MaxValue ? Shown(now.MaxSize) : ("", 2);
+        var got = PromptDialog.Fields(Window.GetWindow(this), "Custom size",
+                                      "Files of this size, both ends included. Leave a box empty for no limit that way. 1 KB = 1,000 bytes, as everywhere in File Labs.",
+                                      new (string, string, string[], int)[] { ("At least", minText, SizeUnits, minUnit), ("At most", maxText, SizeUnits, maxUnit) },
+                                      e => SizeTerm(e[0], e[1]).Error);
+        return got == null ? "" : SizeTerm(got[0], got[1]).Term;
+    }
+
+    /// The term for an at-least and an at-most size (text and unit index), or what's wrong with them.
+    internal static (string Term, string Error) SizeTerm((string Text, int Unit) least, (string Text, int Unit) most)
+    {
+        string lo = least.Text == "" ? null : least.Text.Replace(',', '.') + SizeUnits[least.Unit];
+        string hi = most.Text == "" ? null : most.Text.Replace(',', '.') + SizeUnits[most.Unit];
+        if (lo != null && SearchQuery.Bytes(lo) == null) return (null, $"“{least.Text}” isn't a size");
+        if (hi != null && SearchQuery.Bytes(hi) == null) return (null, $"“{most.Text}” isn't a size");
+        if (lo != null && hi != null && SearchQuery.Bytes(lo) > SearchQuery.Bytes(hi)) return (null, "At least is more than at most");
+        return (lo, hi) switch
+        {
+            (null, null) => (null, null),
+            (_, null) => ($"size:>={lo}", null),
+            (null, _) => ($"size:<={hi}", null),
+            _ => ($"size:{lo}-{hi}", null),
+        };
+    }
+
+    static (string Text, int Unit) Shown(long bytes)
+    {
+        int unit = bytes >= 1e9 ? 3 : bytes >= 1e6 ? 2 : bytes >= 1e3 ? 1 : 0;
+        return ((bytes / Math.Pow(1000, unit)).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture), unit);
+    }
+
+    /// The Custom dates dialog: on or after, before, or both for a range. Returns the after: and before: terms
+    /// (null for an empty box), or null for Cancel.
+    (string After, string Before)? AskDates(string text)
+    {
+        string Current(string kind) => System.Text.RegularExpressions.Regex.Match(text, @"(?<!\S)" + kind + @":(""[^""]*""|\S+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Groups[1].Value.Trim('"');
+        var got = PromptDialog.Fields(Window.GetWindow(this), "Custom dates",
+                                      "Modified on or after the first date, and before the second (that day not included). Fill one or both, as 2026-10-01.",
+                                      new (string, string, string[], int)[] { ("On or after", Current("after"), null, 0), ("Before", Current("before"), null, 0) },
+                                      e => DateTerms(e[0].Text, e[1].Text).Error);
+        if (got == null) return null;
+        var (after, before, _) = DateTerms(got[0].Text, got[1].Text);
+        return (after, before);
+    }
+
+    /// after: and before: terms for two dates as typed (empty = no limit that way), or what's wrong with them.
+    internal static (string After, string Before, string Error) DateTerms(string after, string before)
+    {
+        DateTime? Read(string v) => v == "" ? null
+            : DateTime.TryParseExact(v, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var d) || DateTime.TryParse(v, out d) ? d.Date : DateTime.MinValue;
+        var a = Read(after);
+        var b = Read(before);
+        if (a == DateTime.MinValue) return (null, null, $"“{after}” isn't a date");
+        if (b == DateTime.MinValue) return (null, null, $"“{before}” isn't a date");
+        if (a == null && b == null) return (null, null, "Fill at least one date");
+        if (a >= b) return (null, null, "The first date has to come before the second");
+        return (a is { } x ? $"after:{x:yyyy-MM-dd}" : null, b is { } y ? $"before:{y:yyyy-MM-dd}" : null, null);
     }
 
     /// Puts `term` in the filter box in place of any term of the same kind (null just removes it).
@@ -1191,7 +1285,7 @@ public partial class PaneView : UserControl
     public void Refresh(bool force = false)
     {
         if (force) lock (listCache) listCache.Remove(Dir); // rebuilt from scratch: folder sizes are measured again
-        if (searchQuery != null) Search(searchQuery);
+        if (searchQuery != null) { searchMore = null; Search(searchQuery); }
         // Without force the rows on screen keep their own selection and scroll; rebuilt, the list is told
         // which row to put the cursor back on.
         else Navigate(Dir, force ? (List.SelectedItem as Entry)?.Name : null, record: false);
@@ -1286,7 +1380,7 @@ public partial class PaneView : UserControl
         Footer.Text = sel.Count > 0
             ? $"{sel.Count} selected  ·  {MainWindow.Fmt(sel.Sum(e => Math.Max(0, e.Size)))}"
             : searchQuery != null
-                ? $"{items.Count} found for “{searchQuery}”{(searching ? "  ·  searching…" : items.Count >= MaxResults ? $"  ·  stopped at {MaxResults}" : "")}  ·  Esc goes back"
+                ? $"{items.Count:N0} found for “{searchQuery}”{(searching ? "  ·  searching…" : searchMore != null ? "  ·  paused, Enter carries on" : "")}  ·  Esc goes back"
             : $"{folders} folders  ·  {files} files  ·  {MainWindow.Fmt(FolderTotal)}{Pending()}";
 
         string Pending()

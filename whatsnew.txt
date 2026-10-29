@@ -1,6 +1,18 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.63 | 2026-10-29 | Bigger searches, faster deletes, your own sizes and dates
+Three wishes from a user's mail.
+**Search**
+- A search in subfolders no longer just stops at 10,000 results. It **pauses** there, and **Enter carries on** from where it stopped, as many times as you like.
+- Pick where it pauses in Settings → Files: 1,000, 10,000, 100,000 or **No limit**.
+**Custom size and dates**
+- The funnel button beside the filter box has **Custom size…**: at least, at most, or both, each in B, KB, MB or GB.
+- And **Custom dates…**: modified on or after a date, before a date, or between the two.
+- Both write their terms into the filter box (size:1.5MB-2GB, after:2026-10-01 before:2026-10-15), so they narrow the folder as you type and work in a search through subfolders too.
+**Delete**
+- **Delete sends the whole selection to the Recycle Bin in one go**: one progress window and, if you have Windows ask, one question, instead of one per file. 2,000 small files took about 9 seconds instead of a minute.
+
 ## 1.0.62 | 2026-10-28 | Focus where you'd expect it, and a portable copy
 A long-time tester's newest notes: everything File Labs should keep track of for you, it now does.
 **Keeping your place**

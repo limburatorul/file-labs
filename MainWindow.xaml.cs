@@ -1292,15 +1292,19 @@ public partial class MainWindow : Window
 
     // Shift+Delete with the sound on: the shell's delete with its progress window and error prompts, but not
     // its own confirmation (FOF_NOCONFIRMATION) — File Labs has just asked. Without FOF_ALLOWUNDO it's permanent.
-    static string ShellDelete(IntPtr owner, List<string> paths)
+    // To the Recycle Bin too, with FOF_ALLOWUNDO: the whole list in one operation, so 10,000 files are one
+    // progress window and one question, not 10,000 of each. FOF_WANTNUKEWARNING: an item too big for the bin
+    // is asked about even when the rest goes quietly, never deleted for good without a word.
+    static string ShellDelete(IntPtr owner, List<string> paths, ushort flags)
     {
-        var op = new SHFILEOPSTRUCT { hwnd = owner, wFunc = FO_DELETE, pFrom = string.Join("\0", paths) + "\0", fFlags = FOF_NOCONFIRMATION };
+        var op = new SHFILEOPSTRUCT { hwnd = owner, wFunc = FO_DELETE, pFrom = string.Join("\0", paths) + "\0", fFlags = flags };
         int r = SHFileOperation(ref op);
-        return r == 0 || op.fAnyOperationsAborted ? null : $"Not everything could be deleted (error {r}).";
+        return r is 0 or ERROR_CANCELLED || op.fAnyOperationsAborted ? null : $"Not everything could be deleted (error {r}).";
     }
 
     const uint FO_DELETE = 3, PROGDLG_NOTIME = 0x4, PROGDLG_MARQUEEPROGRESS = 0x20;
-    const ushort FOF_NOCONFIRMATION = 0x10;
+    const int ERROR_CANCELLED = 1223;
+    const ushort FOF_SILENT = 0x4, FOF_NOCONFIRMATION = 0x10, FOF_ALLOWUNDO = 0x40, FOF_WANTNUKEWARNING = 0x4000;
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     struct SHFILEOPSTRUCT { public IntPtr hwnd; public uint wFunc; public string pFrom, pTo; public ushort fFlags; public bool fAnyOperationsAborted; public IntPtr hNameMappings; public string lpszProgressTitle; }
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern int SHFileOperation(ref SHFILEOPSTRUCT op);
@@ -1332,11 +1336,10 @@ public partial class MainWindow : Window
             string error = null;
             try
             {
-                if (permanent && Settings.DeleteSound) error = ShellDelete(owner, paths);
+                if (permanent && Settings.DeleteSound) error = ShellDelete(owner, paths, FOF_NOCONFIRMATION);
                 else if (permanent) DeleteWithProgress(owner, paths);
-                else foreach (var p in paths)
-                    if (Directory.Exists(p)) VbFs.DeleteDirectory(p, ui, RecycleOption.SendToRecycleBin, UICancelOption.ThrowException);
-                    else if (File.Exists(p)) VbFs.DeleteFile(p, ui, RecycleOption.SendToRecycleBin, UICancelOption.ThrowException);
+                else if (paths.Where(p => File.Exists(p) || Directory.Exists(p)).ToList() is { Count: > 0 } there) // gone already: nothing to do
+                    error = ShellDelete(owner, there, (ushort)(FOF_ALLOWUNDO | FOF_WANTNUKEWARNING | (ui == UIOption.AllDialogs ? 0 : FOF_SILENT | FOF_NOCONFIRMATION)));
             }
             catch (OperationCanceledException) { }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { error = ex.Message; }

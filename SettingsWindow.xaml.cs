@@ -81,7 +81,7 @@ public partial class SettingsWindow : Window
         "scale.sidebar", "scale.tabs", "scale.path", "scale.list", "singlepane", "closeemptypane", "stats", "animations", "smoothscroll",
         "autoscroll", "autoscrollx",
     };
-    internal static readonly string[] FilesKeys = { "hidden", "shortcutfolders", "internaleditor", "quicklook", "itemtips", "tipdelay", "deletesound", "nativemenu" };
+    internal static readonly string[] FilesKeys = { "hidden", "shortcutfolders", "internaleditor", "quicklook", "itemtips", "tipdelay", "deletesound", "nativemenu", "searchlimit" };
     internal static readonly string[] TransfersKeys = { "verify", "parallel" };
     /// What File Labs keeps that isn't a choice in these cards: Windows integration, and what it remembers by itself.
     internal static readonly string[] NotReset =
@@ -382,6 +382,8 @@ public partial class SettingsWindow : Window
         OpacitySlider.IsEnabled = Settings.Backdrop != 1;
         MenuOwn.Tag = Settings.NativeMenu ? null : "on";
         MenuWin.Tag = Settings.NativeMenu ? "on" : null;
+        foreach (var (b, v) in new[] { (Limit1k, 1_000), (Limit10k, 10_000), (Limit100k, 100_000), (LimitNone, 0) })
+            b.Tag = Settings.SearchLimit == v ? "on" : null;
         OpacityText.Text = Settings.Backdrop == 1 ? "—" : $"{Settings.Opacity:0}%";
         BgChoose.Tag = Settings.BackgroundImage != "" ? "on" : null;
         BgNone.Tag = Settings.BackgroundImage == "" ? "on" : null;
@@ -455,6 +457,13 @@ public partial class SettingsWindow : Window
         if (!IsLoaded || loading) return;
         Settings.Opacity = e.NewValue;
         Changed();
+    }
+
+    void SearchLimit_Click(object s, RoutedEventArgs e)
+    {
+        Settings.SearchLimit = s == Limit1k ? 1_000 : s == Limit10k ? 10_000 : s == Limit100k ? 100_000 : 0;
+        Settings.Save();
+        Refresh();
     }
 
     void Menu_Click(object s, RoutedEventArgs e)

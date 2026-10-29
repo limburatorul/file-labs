@@ -191,6 +191,14 @@
             <TextBlock Style="{StaticResource Hint}" Text="How long the pointer rests on something before its tooltip shows, for every tooltip in File Labs, the next one too: running the pointer down a list no longer pops one on every row. 1.5 s unless you change it (1 s before 1.0.51). Takes effect the next time File Labs starts."/>
             <CheckBox x:Name="DeleteSoundBox" Content="Play a sound when deleting permanently" Click="DeleteSound_Click"/>
             <TextBlock Style="{StaticResource Hint}" Text="Shift+Delete: the warning when it asks, and Windows' recycle sound when it deletes. Off: both are silent."/>
+            <TextBlock Text="Search in subfolders stops after"/>
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+              <Button x:Name="Limit1k" Content="1,000" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
+              <Button x:Name="Limit10k" Content="10,000" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
+              <Button x:Name="Limit100k" Content="100,000" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
+              <Button x:Name="LimitNone" Content="No limit" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
+            </StackPanel>
+            <TextBlock Style="{StaticResource Hint}" Text="Results found when you press Enter in the filter box. When a search stops there, Enter again carries on from where it stopped."/>
             <TextBlock Text="Right-click menu"/>
             <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
               <Button x:Name="MenuOwn" Content="File Labs" Style="{StaticResource Tab}" Click="Menu_Click"/>
