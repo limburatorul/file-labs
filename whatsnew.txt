@@ -9,7 +9,7 @@ A long-time tester's newest notes: everything File Labs should keep track of for
 - **Each tab keeps its selection and how far it was scrolled** while you're in another one.
 **The selection rectangle**
 - Holding it past the top or bottom of the list now scrolls smoothly to the end. Before, the list kept jumping back to where you started, and the count went 50, 100, 50, 100.
-- It no longer runs over the column headers, and it doesn't flicker while the list scrolls.
+- It no longer runs over the column headers.
 **Transfers and archives**
 - The Transfers window is **as tall as its cards**: one copy, one card, and it grows as more start. The speed and its chart show only while something runs.
 - **Drag files out of a ZIP or TAR** to the other pane, or to any app, and Ctrl+C copies them too. They are copied, and the archive keeps them.
