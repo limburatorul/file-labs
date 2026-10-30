@@ -653,6 +653,8 @@ public partial class PaneView : UserControl
 
     /// Makes `path` the current tab's folder (history, crumbs, tabs) and leaves any search.
     /// Returns the navigation number that later results must still match.
+    string filteredFolder; // the folder on screen when GoTo last ran, whichever tab it is in
+
     int GoTo(string path, bool record)
     {
         if (record && tabs[tab] != "" && !tabs[tab].Equals(path, StringComparison.OrdinalIgnoreCase)) { back.Push(tabs[tab]); fwd.Clear(); }
@@ -663,6 +665,10 @@ public partial class PaneView : UserControl
         var (key, desc) = Settings.FolderSorts.TryGetValue(path, out var sort) ? sort : ("Name", false);
         if (key != sortKey || desc != sortDesc) ShowSort(key, desc);
         if (searchQuery != null) { searchQuery = null; searchMore = null; FilterBox.Text = ""; } // the query would hide most of the new folder
+        // A filter belongs to the folder it was typed in: carried along (another folder, a drive, another tab) it showed an
+        // empty list over a full folder. Reading the same folder again keeps it.
+        else if (!path.Equals(filteredFolder, StringComparison.OrdinalIgnoreCase)) FilterBox.Text = "";
+        filteredFolder = path;
         BuildCrumbs();
         BuildTabs();
         return ++navVersion;
@@ -1408,6 +1414,8 @@ public partial class PaneView : UserControl
             ? $"{sel.Count} selected  ·  {MainWindow.Fmt(sel.Sum(e => Math.Max(0, e.Size)))}"
             : searchQuery != null
                 ? $"{items.Count:N0} found for “{searchQuery}”{(searching ? "  ·  searching…" : searchMore != null ? "  ·  paused, Enter carries on" : "")}  ·  Esc goes back"
+            : view?.Filter != null // what the list shows, not what the folder holds: an empty list explains itself
+                ? $"{view.Cast<Entry>().Count(e => !e.IsUp):N0} of {folders + files:N0} match “{FilterBox.Text.Trim()}”"
             : $"{folders} folders  ·  {files} files  ·  {MainWindow.Fmt(FolderTotal)}{Pending()}";
 
         string Pending()
@@ -2050,6 +2058,7 @@ public partial class PaneView : UserControl
     {
         FilterHint.Visibility = FilterBox.Text == "" ? Visibility.Visible : Visibility.Collapsed;
         ApplyFilter();
+        if (view != null) UpdateFooter();
     }
     void ApplyFilter()
     {

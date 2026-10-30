@@ -1,6 +1,11 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.66 | 2026-10-30 | A filter stays with its folder
+**Fixes**
+- A filter no longer follows you to another folder, drive or tab, where it could show an empty list over a full folder. Going somewhere else clears it; refreshing the same folder keeps it.
+- While a filter is on, the bottom of the pane says how much it shows: "3 of 110 match “fra”", instead of what the folder holds.
+
 ## 1.0.65 | 2026-10-29 | Safer renames, honest transfers, an Undo that's sure
 The same user read 1.0.64's code and found what could still go wrong. All of it is fixed.
 **Renames and names**
