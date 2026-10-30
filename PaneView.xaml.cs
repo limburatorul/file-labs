@@ -2057,9 +2057,13 @@ public partial class PaneView : UserControl
     void Filter_Changed(object s, TextChangedEventArgs e)
     {
         FilterHint.Visibility = FilterBox.Text == "" ? Visibility.Visible : Visibility.Collapsed;
+        FilterClear.Visibility = FilterBox.Text == "" ? Visibility.Collapsed : Visibility.Visible;
         ApplyFilter();
         if (view != null) UpdateFooter();
     }
+
+    // Empties the box, and leaves search results if it was showing them, as Esc does; the keyboard stays there for what comes next.
+    void FilterClear_Click(object s, RoutedEventArgs e) { ClearFilter(); FilterBox.Focus(); }
     void ApplyFilter()
     {
         if (view == null) return;

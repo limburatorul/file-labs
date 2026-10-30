@@ -5,6 +5,7 @@
 **Fixes**
 - A filter no longer follows you to another folder, drive or tab, where it could show an empty list over a full folder. Going somewhere else clears it; refreshing the same folder keeps it.
 - While a filter is on, the bottom of the pane says how much it shows: "3 of 110 match “fra”", instead of what the folder holds.
+- An **X** beside the funnel button empties the filter box in one click, and leaves search results if it was showing them.
 
 ## 1.0.65 | 2026-10-29 | Safer renames, honest transfers, an Undo that's sure
 The same user read 1.0.64's code and found what could still go wrong. All of it is fixed.
