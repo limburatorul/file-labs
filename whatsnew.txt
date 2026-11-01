@@ -1,6 +1,10 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.67 | 2026-11-01 | Buy me a pizza
+File Labs stays free and has no ads. If it saves you time and you'd like to say thanks:
+- Settings → About has a **Buy me a pizza** button. It's optional, it opens a page in your browser, and it goes toward code signing and a Steam listing.
+
 ## 1.0.66 | 2026-10-30 | A filter stays with its folder
 **Fixes**
 - A filter no longer follows you to another folder, drive or tab, where it could show an empty list over a full folder. Going somewhere else clears it; refreshing the same folder keeps it.

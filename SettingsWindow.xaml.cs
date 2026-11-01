@@ -171,6 +171,8 @@ public partial class SettingsWindow : Window
 
     static void Open(string url) => System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
 
+    void Pizza_Click(object s, RoutedEventArgs e) => Open("https://buymeacoffee.com/protagonistlabs");
+
     static System.Windows.Documents.Hyperlink Link(string text, Action open)
     {
         var link = new System.Windows.Documents.Hyperlink(new System.Windows.Documents.Run(text));
