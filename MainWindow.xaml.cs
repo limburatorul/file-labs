@@ -1475,6 +1475,18 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    // Start typing anywhere and it lands in the active pane's filter, as in Shelf. Ctrl and Alt combinations arrive
+    // with no Text, and keys handled in OnPreviewKeyDown arrive not at all; Space stays Quick view. A menu or popup
+    // has its own presentation source and keeps its access keys.
+    protected override void OnPreviewTextInput(TextCompositionEventArgs e)
+    {
+        base.OnPreviewTextInput(e);
+        if (e.Text is not { Length: > 0 } text || char.IsControl(text[0]) || text == " ") return;
+        if (e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase || e.OriginalSource is not Visual v || PresentationSource.FromVisual(v)?.RootVisual != this) return;
+        active.TypeInFilter(text);
+        e.Handled = true;
+    }
+
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
         var ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
@@ -1490,7 +1502,7 @@ public partial class MainWindow : Window
             // boxes handle their own Enter/Esc.
             if (e.OriginalSource is not TextBox { Name: "FilterBox" } filter) return;
             if (key == Key.Enter && filter.Text.Trim() is { Length: > 0 } query) { active.Search(query); active.FocusList(); e.Handled = true; }
-            else if (key is Key.Down or Key.Enter) { active.FocusList(); e.Handled = true; }
+            else if (key is Key.Down or Key.Enter) { active.LeaveFilter(); e.Handled = true; }
             else if (key == Key.Escape) { active.ClearFilter(); active.FocusList(); e.Handled = true; }
             return;
         }
@@ -1543,7 +1555,7 @@ public partial class MainWindow : Window
             case Key.N when ctrl: NewFile(); break;
             case Key.Delete when shift: case Key.F8 when shift: Delete(permanent: true); break;
             case Key.F8: case Key.Delete: Delete(); break;
-            case Key.Escape when active.InSearch: active.ClearFilter(); break;
+            case Key.Escape when active.InSearch || active.Filtered: active.ClearFilter(); break;
             case Key.Add: SelectByPattern(true); break;
             case Key.Subtract: SelectByPattern(false); break;
             case Key.Multiply: active.InvertSelection(); break;

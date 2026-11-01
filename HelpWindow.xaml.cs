@@ -47,7 +47,7 @@ public partial class HelpWindow : Window
             ("Alt+Left / Alt+Right", "Back / Forward (also the mouse side buttons)"),
             ("Ctrl+L", "Type a path; matching folders are suggested, Tab completes, Down picks one. %USERPROFILE% and other variables work"),
             ("Chevron after a path segment", "The folders inside it, to jump sideways"),
-            ("Ctrl+F", "Filter this folder as you type; Enter searches every subfolder, * and ? work"),
+            ("Just type (or Ctrl+F)", "Filters this folder from anywhere in the window, no click needed; Enter searches every subfolder, * and ? work, Down goes to the list, Esc clears"),
             ("Esc", "Leave search results"),
             ("Ctrl+D", "Pin the folder (or the selected folders) to Quick access; drag a pinned folder to reorder, right-click it to move or remove it"),
             ("Quick access lists", "Several lists with names you choose: the ··· on Quick access' header, or a right-click on the header, switches between them and adds, renames, reorders or deletes them. Ctrl+D pins to the list shown"),

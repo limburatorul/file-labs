@@ -993,6 +993,7 @@ public partial class PaneView : UserControl
     string searchQuery; // set while the list shows search results instead of the folder
     bool searching;
     public bool InSearch => searchQuery != null;
+    public bool Filtered => FilterBox.Text != "";
     Action searchMore; // a search that paused at Settings.SearchLimit: carries on from where it stopped
 
     /// What the filter box asks for: words of the name (with * and ?), and terms for the rest —
@@ -2046,6 +2047,17 @@ public partial class PaneView : UserControl
     }
 
     public void FocusFilter() { FilterBox.Focus(); FilterBox.SelectAll(); }
+    public void TypeInFilter(string text) { FilterBox.Focus(); FilterBox.Text += text; FilterBox.CaretIndex = FilterBox.Text.Length; }
+    // Into the list on the first match when the filter hid the selection or left only ".." selected, so Enter opens what was typed.
+    public void LeaveFilter()
+    {
+        if (List.SelectedItem is null or Entry { IsUp: true } && view?.Cast<Entry>().FirstOrDefault(e => !e.IsUp) is { } first)
+        {
+            List.SelectedItem = first;
+            List.ScrollIntoView(first);
+        }
+        FocusList();
+    }
     // On the selected row once it is drawn, not on the list: a file handed in from outside (Open path in Everything,
     // Open-Shell) was selected while the keyboard stayed on the list, so the arrows started elsewhere (Rico, 1.0.53).
     // A folder read from the cache is shown before this runs, and a fresh read that changes nothing only patches it.

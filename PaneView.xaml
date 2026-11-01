@@ -154,7 +154,7 @@
             <Button x:Name="FilterClear" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="Segoe Fluent Icons" FontSize="10" Visibility="Collapsed"
                     ToolTip="Clear (Esc)" AutomationProperties.Name="Clear the filter" Click="FilterClear_Click"/>
             <Grid>
-              <TextBlock x:Name="FilterHint" Text="Filter · Enter searches" Foreground="#66FFFFFF" Margin="8,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+              <TextBlock x:Name="FilterHint" Text="Type to filter · Enter searches" Foreground="#66FFFFFF" Margin="8,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
               <TextBox x:Name="FilterBox" Style="{StaticResource Bare}" Margin="6,3" TextChanged="Filter_Changed"/>
             </Grid>
           </DockPanel>

@@ -1,6 +1,12 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.68 | 2026-11-01 | Just start typing
+You no longer need to click the filter box first.
+- Type anywhere in the window and the letters land in the active pane's filter, as in Shelf. **Down** takes you to the list, **Esc** clears it, **Enter** searches every subfolder.
+- This replaces the old jump to a name as you type: the list now narrows to what matches instead.
+- Space is still Quick view, and shortcuts work as before.
+
 ## 1.0.67 | 2026-11-01 | Buy me a pizza
 File Labs stays free and has no ads. If it saves you time and you'd like to say thanks:
 - Settings → About has a **Buy me a pizza** button. It's optional, it opens a page in your browser, and it goes toward code signing and a Steam listing.
