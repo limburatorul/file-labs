@@ -806,6 +806,7 @@ public partial class App : Application
             Check(Watch(Enumerable.Repeat((@"C:\D", (string)null), 200).ToArray()).SequenceEqual(new[] { (@"C:\D", false), ((string)null, true) }), "agent: never selected, the folder, then done");
             Check(Watch(none.Concat(none).Append((@"C:\Other", @"C:\Other\x")).ToArray()).SequenceEqual(new[] { (@"C:\D", false), ((string)null, true) }), "agent: navigated elsewhere, nothing more");
 
+            Check(!FileExplorer.MainWindow.BinIsOff(@"\\server\share\x.txt") && !FileExplorer.MainWindow.BinIsOff("x.txt"), "a share or a relative path has no Recycle Bin setting to read");
             // 1.0.51 middle-click autoscroll: still inside the dead zone, then faster the further away, either way
             Check(PaneView.AutoscrollSpeed(0) == 0 && PaneView.AutoscrollSpeed(-12) == 0 && PaneView.AutoscrollSpeed(30) > 0 && PaneView.AutoscrollSpeed(-30) == -PaneView.AutoscrollSpeed(30)
                   && PaneView.AutoscrollSpeed(200) > PaneView.AutoscrollSpeed(100) && PaneView.AutoscrollSpeed(100000) == 8000, "autoscroll speed");

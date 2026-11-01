@@ -66,7 +66,7 @@ public partial class HelpWindow : Window
             ("Ctrl+drag in the same folder", "Duplicate, as in Explorer: “name - Copy.ext”, then “name - Copy (2).ext”; folders too. Pasting copied files into their own folder does the same"),
             ("F7 / Ctrl+Shift+N", "New folder"),
             ("Ctrl+N", "New file: the types Explorer's New menu offers, plus text, Markdown, JSON, CSV, PowerShell and batch"),
-            ("F8 / Del", "Delete to the Recycle Bin"),
+            ("F8 / Del", "Delete to the Recycle Bin; on a drive with its Recycle Bin turned off, it asks first, since that delete is for good"),
             ("Shift+Del, Enter", "Delete permanently; the next file is selected, to carry on from there"),
             ("Ctrl+Z", "Undo the last copy, move, rename, new file or folder, zip, extract or shortcut"),
             ("Ctrl+Shift+C", "Copy the selected paths as text; Copy name is in the right-click menu"),

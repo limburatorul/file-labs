@@ -1248,16 +1248,33 @@ public partial class MainWindow : Window
         if (active.ArchiveRoot != null) { DeleteFromArchive(active); return; } // out of the ZIP: asked there, never to the Recycle Bin
         var sel = active.Selected;
         if (sel.Count == 0) return;
-        var question = $"Permanently delete {(sel.Count == 1 ? $"“{sel[0].Name}”" : $"these {sel.Count} items")}?";
-        const string detail = "They will not go to the Recycle Bin.";
-        // Shift+Delete, Enter deletes, as in Explorer: Yes is the default button, and the shell is not
-        // asked to confirm a second time what was just confirmed here. With the sound off (Settings →
-        // Files) the question is File Labs' own dialog, which is silent, not a box that plays a warning.
-        if (permanent && !(Settings.DeleteSound
-                ? MessageBox.Show(this, question + "\n\n" + detail, "Delete permanently", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.Yes) == MessageBoxResult.Yes
-                : PromptDialog.Choose(this, question, detail, "Delete", "Cancel") == 0)) return;
+        if (permanent && !AskPermanent(this, sel.Select(e => e.Path).ToList(), "They will not go to the Recycle Bin.")) return;
         if (permanent) Recycle(sel.Select(e => e.Path).ToList(), UIOption.AllDialogs, permanent: true);
         else RecycleUndoably(sel.Select(e => e.Path).ToList(), UIOption.AllDialogs);
+    }
+
+    // Shift+Delete, Enter deletes, as in Explorer: Yes is the default button, and the shell is not
+    // asked to confirm a second time what was just confirmed here. With the sound off (Settings →
+    // Files) the question is File Labs' own dialog, which is silent, not a box that plays a warning.
+    static bool AskPermanent(Window owner, List<string> paths, string detail)
+    {
+        var question = $"Permanently delete {(paths.Count == 1 ? $"“{Path.GetFileName(paths[0].TrimEnd('\\'))}”" : $"these {paths.Count:N0} items")}?";
+        return Settings.DeleteSound
+            ? MessageBox.Show(owner, question + "\n\n" + detail, "Delete permanently", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.Yes) == MessageBoxResult.Yes
+            : PromptDialog.Choose(owner, question, detail, "Delete", "Cancel") == 0;
+    }
+
+    /// The drive's Recycle Bin is switched off in Windows, so a delete there is for good. The shell doesn't say so unless its
+    /// own delete confirmation is on (off by default). Only what is known: a subst drive or a network share has no such
+    /// setting, and the shell warns about those itself.
+    // ponytail: asks about the path's drive, so a volume mounted in a folder counts as the drive above it.
+    internal static bool BinIsOff(string path)
+    {
+        var name = new System.Text.StringBuilder(64);
+        if (Path.GetPathRoot(path) is not { Length: > 0 } root || !GetVolumeNameForVolumeMountPoint(root, name, 64)) return false;
+        var volume = name.ToString().Replace(@"\\?\Volume", "").TrimEnd('\\'); // \\?\Volume{guid}\ -> {guid}
+        using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\BitBucket\Volume\" + volume);
+        return key?.GetValue("NukeOnDelete") is 1;
     }
 
     /// To the Recycle Bin, and what went there is one Undo entry: Ctrl+Z brings that batch back. Right after the delete,
@@ -1265,6 +1282,10 @@ public partial class MainWindow : Window
     /// that one and never a later deletion from the same place. An item Windows deleted for good (too big for the bin) has none.
     internal void RecycleUndoably(List<string> paths, UIOption ui, Action done = null)
     {
+        var off = paths.GroupBy(p => Path.GetPathRoot(p), StringComparer.OrdinalIgnoreCase).Where(g => BinIsOff(g.First())).SelectMany(g => g).ToList();
+        if (off.Count > 0 && !AskPermanent(Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive) ?? this, off,
+                "The Recycle Bin is turned off on this drive, so this can't be undone."
+                + (off.Count < paths.Count ? $" The other {paths.Count - off.Count:N0} go to the Recycle Bin." : ""))) return;
         var when = DateTime.Now.AddSeconds(-2); // the $I record's clock and ours may differ a little
         Recycle(paths, ui, done: async () =>
         {
@@ -1334,6 +1355,7 @@ public partial class MainWindow : Window
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     struct SHFILEOPSTRUCT { public IntPtr hwnd; public uint wFunc; public string pFrom, pTo; public ushort fFlags; public bool fAnyOperationsAborted; public IntPtr hNameMappings; public string lpszProgressTitle; }
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern int SHFileOperation(ref SHFILEOPSTRUCT op);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern bool GetVolumeNameForVolumeMountPoint(string mountPoint, System.Text.StringBuilder name, int size);
 
     [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("EBBC7C04-315E-11d2-B62F-006097DF5BD4")]
     interface IProgressDialog // only up to SetLine, in vtable order

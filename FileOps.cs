@@ -528,7 +528,7 @@ public partial class MainWindow
         Left.SetSelection(e => Differs(e, r));
         Right.SetSelection(e => Differs(e, l));
         int nl = Left.Selected.Count, nr = Right.Selected.Count;
-        Status.Text = nl + nr == 0 ? "The two folders have the same files" : $"Different: {nl} on the left, {nr} on the right  ·  F5 copies the selection across";
+        Status.Text = nl + nr == 0 ? "The two folders have the same files" : $"Different: {nl} on the left, {nr} on the right  ·  Ctrl+F5 copies the selection across";
     }
 
     // ---- Checksum ----
