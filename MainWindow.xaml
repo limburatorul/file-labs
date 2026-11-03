@@ -207,6 +207,24 @@
           </StackPanel>
         </Button>
       </DockPanel>
+      <!-- the same red pizza button in every free app; Motion.Nudge pulses it now and then -->
+      <Button x:Name="PizzaButton" DockPanel.Dock="Bottom" Margin="8,4,8,0" Click="Pizza_Click" Cursor="Hand" FontSize="12" FontWeight="SemiBold"
+              Content="&#x1F355; Buy me a pizza" AutomationProperties.Name="Buy me a pizza" ToolTip="Optional. It goes toward code signing and a Steam listing.">
+        <Button.Template>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Background="#D63A3A" CornerRadius="5">
+              <Grid>
+                <Border x:Name="Glow" Background="#F25555" CornerRadius="5" Opacity="0"/>
+                <ContentPresenter HorizontalAlignment="Center" Margin="7,6" TextElement.Foreground="White"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#E54848"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bd" Property="Background" Value="#BF3030"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Button.Template>
+      </Button>
       <!-- Drop bin: files gathered from anywhere, sent together to the active pane's folder -->
       <Border x:Name="DropBin" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="8,4,8,0" Padding="10,8" CornerRadius="8"
               Background="#0DFFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1" AllowDrop="True" DragOver="Bin_DragOver" Drop="Bin_Drop">

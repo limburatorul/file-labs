@@ -259,8 +259,6 @@
             <WrapPanel Margin="0,10,0,0">
               <Button x:Name="UpdateCheck" Content="Check for updates" Style="{StaticResource Tab}" Padding="12,6" Click="Update_Click"/>
               <Button Content="What&#x2019;s new" Style="{StaticResource Tab}" Padding="12,6" Margin="6,0,0,0" Click="WhatsNew_Click"/>
-              <Button x:Name="PizzaButton" Content="&#x1F355; Buy me a pizza" Style="{StaticResource Tab}" Padding="12,6" Margin="6,0,0,0" Click="Pizza_Click"
-                      ToolTip="Optional. It goes toward code signing and a Steam listing."/>
               <TextBlock x:Name="UpdateStatus" Foreground="#8A97AA" VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
             </WrapPanel>
             <TextBlock Foreground="#8A97AA" TextWrapping="Wrap" Margin="0,10,0,0">

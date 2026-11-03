@@ -81,6 +81,40 @@ static class Motion
         w.Closing += FadeOut; // after the window's own handlers, so one that cancels (close to tray) is seen
     }
 
+    /// The pizza button's nudge: 3 s after `w` first shows, then every 10 s while it is on screen, a 700 ms double pulse
+    /// (grow to 1.06, back, to 1.03, back) with the template's "Glow" brightening it at each peak. Not while the pointer
+    /// is on it; the timer stops while the window is minimized or hidden to the tray.
+    public static void Nudge(Button b, Window w)
+    {
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        b.RenderTransformOrigin = new Point(0.5, 0.5);
+        var s = new ScaleTransform();
+        b.RenderTransform = s;
+        timer.Tick += (_, _) =>
+        {
+            timer.Interval = TimeSpan.FromSeconds(10);
+            if (!On || b.IsMouseOver || !b.IsVisible || b.Template.FindName("Glow", b) is not UIElement glow) return;
+            s.BeginAnimation(ScaleTransform.ScaleXProperty, Pulse(1, 1.06, 1, 1.03, 1));
+            s.BeginAnimation(ScaleTransform.ScaleYProperty, Pulse(1, 1.06, 1, 1.03, 1));
+            glow.BeginAnimation(UIElement.OpacityProperty, Pulse(0, 1, 0, 1, 0));
+        };
+        void Follow() => timer.IsEnabled = w.IsVisible && w.WindowState != WindowState.Minimized;
+        w.ContentRendered += (_, _) =>
+        {
+            Follow();
+            w.StateChanged += (_, _) => Follow();
+            w.IsVisibleChanged += (_, _) => Follow();
+        };
+    }
+
+    // values 175 ms apart, each step eased out
+    static DoubleAnimationUsingKeyFrames Pulse(params double[] v)
+    {
+        var a = new DoubleAnimationUsingKeyFrames();
+        for (int i = 0; i < v.Length; i++) a.KeyFrames.Add(new EasingDoubleKeyFrame(v[i], KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(i * 175)), Out));
+        return a;
+    }
+
     static readonly HashSet<Window> leaving = new();
 
     /// The first popup the app shows (a menu, a tooltip) held its first frame back by about half a second; once any popup

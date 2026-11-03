@@ -53,6 +53,7 @@ public partial class MainWindow : Window
         Closed += (_, _) => tray?.Dispose(); // or the icon lingers until the pointer passes over it
         SourceInitialized += (_, _) => { ApplyAcrylic(this); WatchShellChanges(); };
         StartUpdateChecks();
+        Motion.Nudge(PizzaButton, this);
 
         foreach (var p in new[] { Left, Right })
         {
@@ -421,6 +422,7 @@ public partial class MainWindow : Window
         settingsWindow.Show();
     }
     void Settings_Click(object s, RoutedEventArgs e) => OpenSettings();
+    void Pizza_Click(object s, RoutedEventArgs e) => Process.Start(new ProcessStartInfo("https://buymeacoffee.com/protagonistlabs") { UseShellExecute = true });
 
     HelpWindow helpWindow;
     void OpenHelp()
