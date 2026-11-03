@@ -70,7 +70,7 @@
                     <ColumnDefinition/>
                   </Grid.ColumnDefinitions>
                   <TextBlock Text="{Binding Old}" Foreground="#8A97AA" TextTrimming="CharacterEllipsis"/>
-                  <TextBlock Grid.Column="1" Text="&#xE72A;" FontFamily="Segoe Fluent Icons" FontSize="10" Foreground="#59FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="&#xE72A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Foreground="#59FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                   <TextBlock Grid.Column="2" Text="{Binding New}" Foreground="{Binding Brush}" TextTrimming="CharacterEllipsis"/>
                 </Grid>
               </DataTemplate>

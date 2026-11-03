@@ -8,13 +8,13 @@
       <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
           <Button Style="{StaticResource Tab}" MaxWidth="200" Padding="12,6" Margin="0,0,6,0" Click="Restore_Click" ToolTip="Put the selected items back where they were deleted from">
-            <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE777;"/>  Restore</TextBlock>
+            <TextBlock><Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE777;"/>  Restore</TextBlock>
           </Button>
           <Button Style="{StaticResource Tab}" MaxWidth="200" Padding="12,6" Margin="0,0,6,0" Click="Delete_Click">
-            <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE74D;"/>  Delete permanently</TextBlock>
+            <TextBlock><Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE74D;"/>  Delete permanently</TextBlock>
           </Button>
           <Button Style="{StaticResource Tab}" MaxWidth="200" Padding="12,6" Click="Empty_Click">
-            <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE894;"/>  Empty Recycle Bin</TextBlock>
+            <TextBlock><Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE894;"/>  Empty Recycle Bin</TextBlock>
           </Button>
         </StackPanel>
         <TextBlock x:Name="Summary" Foreground="#8A97AA" VerticalAlignment="Center"/>
@@ -30,7 +30,7 @@
                 <GridViewColumn.CellTemplate>
                   <DataTemplate>
                     <StackPanel Orientation="Horizontal">
-                      <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons" Foreground="{Binding GlyphBrush}" Margin="0,1,8,0"/>
+                      <TextBlock Text="{Binding Glyph}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{Binding GlyphBrush}" Margin="0,1,8,0"/>
                       <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                   </DataTemplate>

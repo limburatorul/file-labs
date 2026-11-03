@@ -17,7 +17,7 @@
   .tab:hover { color: var(--text); background: rgba(255,255,255,.03); }
   .tab.on { color: var(--text); background: var(--bg); }
   .tab.on::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--accent); }
-  .tab .x { width: 20px; height: 20px; border-radius: 4px; display: grid; place-items: center; font: 14px "Segoe Fluent Icons"; color: var(--mute); }
+  .tab .x { width: 20px; height: 20px; border-radius: 4px; display: grid; place-items: center; font: 14px "Segoe Fluent Icons", "Segoe MDL2 Assets"; color: var(--mute); }
   .tab .x:hover { background: rgba(255,255,255,.1); color: var(--text); }
   .tab .x::before { content: "\E711"; font-size: 10px; }
   .tab.dirty .x::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--text); }
@@ -48,7 +48,7 @@
   #status .pick { cursor: pointer; } #status .pick:hover { color: var(--text); background: rgba(255,255,255,.06); }
   #status select { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
   #status .on { color: var(--accent); }
-  #status .icon { font-family: "Segoe Fluent Icons"; font-size: 12px; }
+  #status .icon { font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets"; font-size: 12px; }
 
   /* settings */
   #settings { position: absolute; right: 8px; bottom: 30px; width: 260px; display: none; padding: 12px 14px; z-index: 10;

@@ -42,17 +42,3 @@ if ($LASTEXITCODE -ne 0) { throw "installer failed" }
 
 $setup = Join-Path $root "dist\FileLabs-$version-setup.exe"
 Write-Host ("  installer: {0} ({1:N1} MB)" -f $setup, ((Get-Item $setup).Length / 1MB)) -ForegroundColor Green
-
-# The portable copy: the same files in a "File Labs" folder, with portable.txt beside the exe, which keeps the settings
-# in Data next to it and its updates to the release page (Program.PortableDir).
-$stage = Join-Path ([IO.Path]::GetTempPath()) "FileLabs-portable-$version"
-if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-Copy-Item $publishDir (Join-Path $stage 'File Labs') -Recurse
-Set-Content (Join-Path $stage 'File Labs\portable.txt') "This copy of File Labs is portable: its settings live in the Data folder beside it, and nothing is installed. Delete this file to have it use the installed copy's settings instead." -Encoding utf8
-$portable = Join-Path $root "dist\FileLabs-$version-portable.zip"
-if (Test-Path $portable) { Remove-Item $portable -Force }
-# Windows' own tar writes "File Labs/…"; Windows PowerShell's ZipFile wrote "File Labs\…", which some unzippers don't take
-& "$env:SystemRoot\System32\tar.exe" -a -c -f $portable -C $stage 'File Labs'
-if ($LASTEXITCODE -ne 0) { throw "portable zip failed" }
-Remove-Item $stage -Recurse -Force
-Write-Host ("  portable:  {0} ({1:N1} MB)" -f $portable, ((Get-Item $portable).Length / 1MB)) -ForegroundColor Green

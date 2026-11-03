@@ -20,20 +20,20 @@
         </StackPanel>
         <!-- the places searched together: click for the list, to add one or take one out -->
         <Button x:Name="LocationsButton" Style="{StaticResource Ghost}" Click="Locations_Click" HorizontalContentAlignment="Left" ToolTip="Add a folder, or take one out">
-          <TextBlock><Run x:Name="FolderText" FontSize="14" FontWeight="SemiBold"/>  <Run FontFamily="Segoe Fluent Icons" FontSize="10" Foreground="#8A97AA" Text="&#xE70D;"/></TextBlock>
+          <TextBlock><Run x:Name="FolderText" FontSize="14" FontWeight="SemiBold"/>  <Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Foreground="#8A97AA" Text="&#xE70D;"/></TextBlock>
         </Button>
       </DockPanel>
       <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
           <Button Style="{StaticResource Tab}" MaxWidth="220" Padding="12,6" Margin="0,0,6,0" Click="SelectExtra_Click"
                   ToolTip="In every group, select all the copies but one: the oldest is kept">
-            <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE762;"/>  Select extra copies</TextBlock>
+            <TextBlock><Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE762;"/>  Select extra copies</TextBlock>
           </Button>
           <Button Style="{StaticResource Tab}" MaxWidth="220" Padding="12,6" Margin="0,0,6,0" Click="Move_Click" ToolTip="Move the selected copies to a folder you choose">
-            <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE8DE;"/>  Move to…</TextBlock>
+            <TextBlock><Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE8DE;"/>  Move to…</TextBlock>
           </Button>
           <Button Style="{StaticResource Tab}" MaxWidth="240" Padding="12,6" Click="Delete_Click" ToolTip="Send the selected copies to the Recycle Bin (Delete)">
-            <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE74D;"/>  Delete to Recycle Bin</TextBlock>
+            <TextBlock><Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE74D;"/>  Delete to Recycle Bin</TextBlock>
           </Button>
         </StackPanel>
         <TextBlock x:Name="Summary" Foreground="#8A97AA" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>

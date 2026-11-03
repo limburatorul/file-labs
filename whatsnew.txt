@@ -1,6 +1,12 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.69 | 2026-11-03 | Icons on every Windows
+File Labs's icons now show on Windows 10 too.
+- On a PC without Windows 11's icon font, every button, arrow and menu icon was an empty square. File Labs now falls back to the icon font Windows 10 has, so they all show; on Windows 11 nothing changes. Thanks to Rikus Lategan, who found the cause.
+**One way to install**
+- File Labs now comes only as an installer; the portable zip is gone from the releases. A portable copy you already have keeps working. To move to the installed one, copy what is in its Data folder to %APPDATA%\ProtagonistLabs\File Labs before you first start it.
+
 ## 1.0.68 | 2026-11-01 | Just start typing
 You no longer need to click the filter box first.
 - Type anywhere in the window and the letters land in the active pane's filter, as in Shelf. **Down** takes you to the list, **Esc** clears it, **Enter** searches every subfolder.

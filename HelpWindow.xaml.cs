@@ -52,7 +52,6 @@ public partial class HelpWindow : Window
             ("Ctrl+D", "Pin the folder (or the selected folders) to Quick access; drag a pinned folder to reorder, right-click it to move or remove it"),
             ("Quick access lists", "Several lists with names you choose: the ··· on Quick access' header, or a right-click on the header, switches between them and adds, renames, reorders or deletes them. Ctrl+D pins to the list shown"),
             ("Pin by dragging", "Drag a folder, a shortcut to one, or a tab onto Quick access: it is pinned where the line shows. Nothing is copied or moved"),
-            ("Portable copy", "The portable zip runs from any folder or stick: its settings stay in Data beside it and nothing is installed. Its updates open the release page; unpack the new zip over the folder"),
             ("Middle-click empty space", "With Settings → Middle-click autoscroll on: a round marker where you clicked, and the list scrolls toward the pointer, faster the further it is. A left or middle click stops it (or letting go, if you held the button). Settings can keep it to up and down"),
             ("\\\\server", "Type a server's name to see its shared folders; going up from a share comes back to that list"),
         }),
