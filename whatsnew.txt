@@ -1,30 +1,20 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
-## 1.0.69 | 2026-11-03 | Icons on every Windows
-File Labs's icons now show on Windows 10 too.
-- On a PC without Windows 11's icon font, every button, arrow and menu icon was an empty square. File Labs now falls back to the icon font Windows 10 has, so they all show; on Windows 11 nothing changes. Thanks to Rikus Lategan, who found the cause.
-**One way to install**
-- File Labs now comes only as an installer; the portable zip is gone from the releases. A portable copy you already have keeps working. To move to the installed one, copy what is in its Data folder to %APPDATA%\ProtagonistLabs\File Labs before you first start it.
-
-## 1.0.68 | 2026-11-01 | Just start typing
-You no longer need to click the filter box first.
-- Type anywhere in the window and the letters land in the active pane's filter, as in Shelf. **Down** takes you to the list, **Esc** clears it, **Enter** searches every subfolder.
-- This replaces the old jump to a name as you type: the list now narrows to what matches instead.
-- Space is still Quick view, and shortcuts work as before.
+## 1.0.70 | 2026-11-03 | Just start typing, and icons on every Windows
+Finding a file is now a matter of typing its name, nothing gets deleted for good without a question, and the icons show on Windows 10 too.
+**Filter as you type**
+- Type anywhere in the window and the letters land in the active pane's filter, as in Shelf. **Down** takes you to the list, **Esc** clears it, **Enter** searches every subfolder. This replaces the old jump to a name: the list now narrows to what matches. Space is still Quick view, and shortcuts work as before.
+- A filter stays with its folder: going to another folder, drive or tab clears it, refreshing keeps it. Before, it could follow you and show an empty list over a full folder.
+- While a filter is on, the bottom of the pane says how much it shows: "3 of 110 match “fra”". An **X** beside the funnel empties the filter in one click, and leaves search results if it was showing them.
 **Fixes**
 - On a drive with its Recycle Bin turned off in Windows, **Delete now asks first**. Before, the files were gone for good without a word. Find duplicates asks too.
-- After comparing two folders, the status line now names the right key: Ctrl+F5 copies the selection across, not F5.
-
-## 1.0.67 | 2026-11-01 | Buy me a pizza
-File Labs stays free and has no ads. If it saves you time and you'd like to say thanks:
-- Settings → About has a **Buy me a pizza** button. It's optional, it opens a page in your browser, and it goes toward code signing and a Steam listing.
-
-## 1.0.66 | 2026-10-30 | A filter stays with its folder
-**Fixes**
-- A filter no longer follows you to another folder, drive or tab, where it could show an empty list over a full folder. Going somewhere else clears it; refreshing the same folder keeps it.
-- While a filter is on, the bottom of the pane says how much it shows: "3 of 110 match “fra”", instead of what the folder holds.
-- An **X** beside the funnel button empties the filter box in one click, and leaves search results if it was showing them.
+- On a PC without Windows 11's icon font, every button, arrow and menu icon was an empty square. File Labs now falls back to the icon font Windows 10 has; on Windows 11 nothing changes. Thanks to Rikus Lategan, who found the cause.
+- After comparing two folders, the status line names the right key: Ctrl+F5 copies the selection across, not F5.
+**One way to install**
+- File Labs now comes only as an installer; the portable zip is gone from the releases. A portable copy you already have keeps working. To move to the installed one, copy what is in its Data folder to %APPDATA%\ProtagonistLabs\File Labs before you first start it.
+**Buy me a pizza**
+- File Labs stays free and has no ads. A red **Buy me a pizza** button now sits at the bottom of the sidebar, with a small nudge now and then. It's optional, it opens a page in your browser, and it goes toward code signing and a Steam listing.
 
 ## 1.0.65 | 2026-10-29 | Safer renames, honest transfers, an Undo that's sure
 The same user read 1.0.64's code and found what could still go wrong. All of it is fixed.
