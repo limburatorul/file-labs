@@ -178,6 +178,14 @@ public partial class App : Application
             File.WriteAllText(Path.Combine(src, "tree", "a.txt"), "hello");
             File.WriteAllBytes(Path.Combine(src, "tree", "sub", "b.bin"), new byte[3_000_000]);
 
+            // The MDL2 glyphs used for the window and sidebar controls must exist in the requested system font.
+            var iconFont = new System.Windows.Media.Typeface(new System.Windows.Media.FontFamily("Segoe MDL2 Assets"),
+                System.Windows.FontStyles.Normal, System.Windows.FontWeights.Normal, System.Windows.FontStretches.Normal);
+            Check(iconFont.TryGetGlyphTypeface(out var glyphs)
+                && "".All(glyph => glyphs.CharacterToGlyphMap.ContainsKey(glyph))
+                && new[] { 0xE713, 0xE897, 0xE789, 0xE895, 0xE7B8, 0xE81C, 0xE921, 0xE922, 0xE8BB }
+                    .All(code => glyphs.CharacterToGlyphMap.ContainsKey(code)), "MDL2 interface glyphs exist in the selected font");
+
             // copy a folder tree
             var j = Run(Ferry.Submit(new[] { Path.Combine(src, "tree") }, dst, move: false));
             Check(j.Phase == Phase.Done && j.DoneFiles == 2 && j.Errors.IsEmpty, "copy tree");

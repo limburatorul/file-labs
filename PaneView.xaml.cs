@@ -1447,7 +1447,7 @@ public partial class PaneView : UserControl
             var next = i + 1 < parts.Count ? parts[i + 1].Path : null;
             var chevron = new Button
             {
-                Content = new TextBlock { Text = "", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 8, Foreground = MainWindow.Hex("#80FFFFFF") },
+                Content = new TextBlock { Text = "", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 8, Foreground = MainWindow.Hex("#80FFFFFF") },
                 Style = (Style)FindResource("Chevron"), ToolTip = "Folders in " + parts[i].Name,
             };
             chevron.Click += (_, _) => ShowSubfolders(chevron, path, next);
@@ -1502,7 +1502,7 @@ public partial class PaneView : UserControl
             row.Children.Add(close);
             if (pins[i])
             {
-                var pin = new TextBlock { Text = "\uE718", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 10, Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center, Margin = new(6, 0, 2, 0) };
+                var pin = new TextBlock { Text = "\uE718", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 10, Opacity = 0.7, VerticalAlignment = VerticalAlignment.Center, Margin = new(6, 0, 2, 0) };
                 DockPanel.SetDock(pin, Dock.Right);
                 row.Children.Add(pin);
             }
@@ -2133,7 +2133,7 @@ public partial class PaneView : UserControl
         var reverse = new MenuItem
         {
             Header = sortDesc ? "Ascending" : "Descending",
-            Icon = new TextBlock { Text = sortDesc ? "" : "", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 12 },
+            Icon = new TextBlock { Text = sortDesc ? "" : "", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 12 },
         };
         reverse.Click += (_, _) => SetSort(sortKey, !sortDesc);
         yield return reverse;
@@ -2371,7 +2371,7 @@ public partial class PaneView : UserControl
             var mi = new MenuItem
             {
                 Header = m.name, InputGestureText = $"Ctrl+Shift+{Modes.Length - n++}",
-                Icon = new TextBlock { Text = m.glyph, FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 13 },
+                Icon = new TextBlock { Text = m.glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 13 },
                 FontWeight = mode == Mode ? FontWeights.SemiBold : FontWeights.Normal,
             };
             mi.Click += (_, _) => SetView(mode);
@@ -2490,7 +2490,7 @@ public partial class PaneView : UserControl
             var row = new DockPanel { LastChildFill = true };
             if (key == sortKey)
             {
-                var arrow = new TextBlock { Text = sortDesc ? "\uE74B" : "\uE74A", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 10, Margin = new(6, 2, 0, 0) };
+                var arrow = new TextBlock { Text = sortDesc ? "\uE74B" : "\uE74A", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 10, Margin = new(6, 2, 0, 0) };
                 DockPanel.SetDock(arrow, Dock.Right);
                 row.Children.Add(arrow);
             }

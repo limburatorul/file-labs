@@ -269,7 +269,7 @@ public partial class MainWindow
         media = new MediaElement { Source = new Uri(e.Path), LoadedBehavior = MediaState.Manual, UnloadedBehavior = MediaState.Close, Stretch = Stretch.Uniform };
         var slider = new Slider { IsMoveToPointEnabled = true, Margin = new(12, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
         var time = new TextBlock { Foreground = Hex("#B3FFFFFF"), VerticalAlignment = VerticalAlignment.Center, Typography = { NumeralAlignment = FontNumeralAlignment.Tabular } };
-        var play = new Button { Style = (Style)FindResource("Ghost"), Content = "", FontFamily = new FontFamily("Segoe Fluent Icons") };
+        var play = new Button { Style = (Style)FindResource("Ghost"), Content = "", FontFamily = new FontFamily("Segoe MDL2 Assets") };
         play.Click += (_, _) => TogglePlay();
         slider.PreviewMouseLeftButtonUp += (_, _) => media.Position = TimeSpan.FromSeconds(slider.Value);
         media.MediaOpened += (_, _) => { if (media.NaturalDuration.HasTimeSpan) slider.Maximum = media.NaturalDuration.TimeSpan.TotalSeconds; };
@@ -482,7 +482,7 @@ public partial class MainWindow
     static UIElement Summary(Entry e, string error = null)
     {
         var sp = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-        sp.Children.Add(new TextBlock { Text = e.Icon, FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 56, Foreground = e.IconBrush, HorizontalAlignment = HorizontalAlignment.Center });
+        sp.Children.Add(new TextBlock { Text = e.Icon, FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 56, Foreground = e.IconBrush, HorizontalAlignment = HorizontalAlignment.Center });
         sp.Children.Add(new TextBlock { Text = e.Name, FontSize = 16, FontWeight = FontWeights.SemiBold, Margin = new(0, 12, 0, 4), HorizontalAlignment = HorizontalAlignment.Center });
         var info = e.IsDir ? $"Folder · {e.SizeText}" : $"{Path.GetExtension(e.Name).TrimStart('.').ToUpperInvariant()} file · {e.SizeText}";
         sp.Children.Add(new TextBlock { Text = $"{info}\nModified {e.FullDate}", Foreground = Hex("#99FFFFFF"), TextAlignment = TextAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center });

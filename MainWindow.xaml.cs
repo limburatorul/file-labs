@@ -856,7 +856,7 @@ public partial class MainWindow : Window
     public static FrameworkElement ShellIcon(string path, string fallbackGlyph, double size, Thickness margin)
     {
         var box = new Grid { Width = size, Height = size, Margin = margin, VerticalAlignment = VerticalAlignment.Center };
-        var glyph = new TextBlock { Text = fallbackGlyph, FontFamily = new FontFamily("Segoe Fluent Icons"), Foreground = Hex("#F5C451"), FontSize = size * 0.9, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var glyph = new TextBlock { Text = fallbackGlyph, FontFamily = new FontFamily("Segoe MDL2 Assets"), Foreground = Hex("#F5C451"), FontSize = size * 0.9, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         box.Children.Add(glyph);
 
         void Show(ImageSource img)

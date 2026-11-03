@@ -23,7 +23,7 @@
            trimmed and the rename box scrolls to its end instead of running on, cut off, past the column -->
       <DockPanel>
         <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource CutDim}">
-          <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.9">
+          <TextBlock Text="{Binding Icon}" FontFamily="Segoe MDL2 Assets" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.9">
             <TextBlock.Visibility><Binding Path="NoSmallIcon"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility>
           </TextBlock>
           <Image Source="{Binding SmallIcon}" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -62,7 +62,7 @@
             <Viewbox.Visibility>
               <Binding Path="NoThumb"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding>
             </Viewbox.Visibility>
-            <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}"/>
+            <TextBlock Text="{Binding Icon}" FontFamily="Segoe MDL2 Assets" Foreground="{Binding IconBrush}"/>
           </Viewbox>
           <Image Source="{Binding Thumb}" Stretch="Uniform" StretchDirection="DownOnly" RenderOptions.BitmapScalingMode="HighQuality"/>
           <Image Source="{Binding Overlay}" Width="32" Height="32" HorizontalAlignment="Left" VerticalAlignment="Bottom" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -83,7 +83,7 @@
       <DockPanel Width="230">
         <Border DockPanel.Dock="Left" Width="6" Margin="0,0,6,0" CornerRadius="2" Background="{Binding AgeBrush}"/>
         <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource CutDim}">
-          <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.9">
+          <TextBlock Text="{Binding Icon}" FontFamily="Segoe MDL2 Assets" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.9">
             <TextBlock.Visibility><Binding Path="NoSmallIcon"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility>
           </TextBlock>
           <Image Source="{Binding SmallIcon}" RenderOptions.BitmapScalingMode="HighQuality"/>
@@ -127,7 +127,7 @@
         <Border DockPanel.Dock="Left" Width="4"/>
         <UniformGrid x:Name="TabStrip" DockPanel.Dock="Left" Rows="1"/>
         <Border x:Name="NewTabBox" DockPanel.Dock="Left" Padding="4,4,4,2">
-          <Button x:Name="NewTabButton" Style="{StaticResource Ghost}" Content="&#xE710;" FontFamily="Segoe Fluent Icons" FontSize="11"
+          <Button x:Name="NewTabButton" Style="{StaticResource Ghost}" Content="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="11"
                   ToolTip="New tab (Ctrl+T)" Click="NewTab_Click" VerticalAlignment="Center"/>
         </Border>
         <!-- under the window's buttons, when this pane is the one at the top right (MainWindow.PlaceCaption) -->
@@ -142,16 +142,16 @@
 
       <!-- Path: breadcrumbs, editable on click in empty area / Ctrl+L -->
       <DockPanel x:Name="PathBar" DockPanel.Dock="Top" Margin="8,4,8,0">
-        <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE72B;" FontFamily="Segoe Fluent Icons" FontSize="10" ToolTip="Back (Alt+Left) · middle-click: in a new tab" Click="Back_Click" Tag="back" PreviewMouseDown="Nav_MiddleClick"/>
-        <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE72A;" FontFamily="Segoe Fluent Icons" FontSize="10" ToolTip="Forward (Alt+Right) · middle-click: in a new tab" Click="Fwd_Click" Tag="fwd" PreviewMouseDown="Nav_MiddleClick"/>
-        <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE74A;" FontFamily="Segoe Fluent Icons" FontSize="10" ToolTip="Up (Backspace) · middle-click: in a new tab" Click="Up_Click" Tag="up" PreviewMouseDown="Nav_MiddleClick"/>
+        <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="10" ToolTip="Back (Alt+Left) · middle-click: in a new tab" Click="Back_Click" Tag="back" PreviewMouseDown="Nav_MiddleClick"/>
+        <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE72A;" FontFamily="Segoe MDL2 Assets" FontSize="10" ToolTip="Forward (Alt+Right) · middle-click: in a new tab" Click="Fwd_Click" Tag="fwd" PreviewMouseDown="Nav_MiddleClick"/>
+        <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE74A;" FontFamily="Segoe MDL2 Assets" FontSize="10" ToolTip="Up (Backspace) · middle-click: in a new tab" Click="Up_Click" Tag="up" PreviewMouseDown="Nav_MiddleClick"/>
         <Border DockPanel.Dock="Right" Width="200" Background="#12FFFFFF" CornerRadius="5" Margin="6,0,0,0"
                 ToolTip="Typing filters this folder. Enter searches every subfolder. * and ? work as wildcards; size:, within:, re: and content: narrow it (the button beside sets them)">
           <DockPanel>
             <!-- size, date, a regular expression, text inside files: written into the box as terms -->
-            <Button x:Name="SearchOptions" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE71C;" FontFamily="Segoe Fluent Icons" FontSize="11"
+            <Button x:Name="SearchOptions" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE71C;" FontFamily="Segoe MDL2 Assets" FontSize="11"
                     ToolTip="Search by size, date, a regular expression or text inside files" Click="SearchOptions_Click"/>
-            <Button x:Name="FilterClear" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="Segoe Fluent Icons" FontSize="10" Visibility="Collapsed"
+            <Button x:Name="FilterClear" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="10" Visibility="Collapsed"
                     ToolTip="Clear (Esc)" AutomationProperties.Name="Clear the filter" Click="FilterClear_Click"/>
             <Grid>
               <TextBlock x:Name="FilterHint" Text="Filter · Enter searches" Foreground="#66FFFFFF" Margin="8,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
@@ -213,13 +213,13 @@
         <!-- sorting, reachable in every view mode (the column headers only exist in Details) -->
         <Button x:Name="SortButton" DockPanel.Dock="Right" Style="{StaticResource Ghost}" FontSize="11" Click="SortButton_Click" ToolTip="Sort">
           <StackPanel Orientation="Horizontal">
-            <TextBlock x:Name="SortIcon" FontFamily="Segoe Fluent Icons" FontSize="12" Margin="0,1,6,0"/>
+            <TextBlock x:Name="SortIcon" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,1,6,0"/>
             <TextBlock x:Name="SortName"/>
           </StackPanel>
         </Button>
         <Button x:Name="ViewButton" DockPanel.Dock="Right" Style="{StaticResource Ghost}" FontSize="11" Click="ViewButton_Click" ToolTip="View (Ctrl+Shift+1…5)">
           <StackPanel Orientation="Horizontal">
-            <TextBlock x:Name="ViewIcon" FontFamily="Segoe Fluent Icons" FontSize="12" Margin="0,1,6,0"/>
+            <TextBlock x:Name="ViewIcon" FontFamily="Segoe MDL2 Assets" FontSize="12" Margin="0,1,6,0"/>
             <TextBlock x:Name="ViewName"/>
           </StackPanel>
         </Button>

@@ -127,13 +127,13 @@ public partial class MainWindow
 
         var chevron = new TextBlock
         {
-            Text = collapsed ? "" : "", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 9,
+            Text = collapsed ? "" : "", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 9,
             Foreground = Hex("#8A97AA"), Margin = new(0, 1, 7, 0), VerticalAlignment = VerticalAlignment.Center,
         };
         var title = new TextBlock { Text = section.Title, Foreground = (Brush)FindResource("Muted"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
         var grip = new TextBlock
         {
-            Text = "", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 11, Foreground = Hex("#59FFFFFF"),
+            Text = "", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 11, Foreground = Hex("#59FFFFFF"),
             VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right, Opacity = 0,
         };
 
@@ -145,7 +145,7 @@ public partial class MainWindow
             // Quick access lists (1.0.51): switch, add, rename, reorder and delete them from here, or by right-clicking the header
             var lists = new TextBlock
             {
-                Text = "", FontFamily = new FontFamily("Segoe Fluent Icons"), FontSize = 10, Foreground = Hex("#8A97AA"), Padding = new(6, 2, 6, 2),
+                Text = "", FontFamily = new FontFamily("Segoe MDL2 Assets"), FontSize = 10, Foreground = Hex("#8A97AA"), Padding = new(6, 2, 6, 2),
                 VerticalAlignment = VerticalAlignment.Center, Background = Brushes.Transparent, ToolTip = "Quick access lists: switch, add, rename, reorder, delete",
             };
             DockPanel.SetDock(lists, Dock.Right);

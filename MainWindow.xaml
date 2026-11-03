@@ -14,7 +14,7 @@
     <!-- minimize / maximize / close and the history button: Windows 11's sizes and glyphs -->
     <Style x:Key="Caption" TargetType="Button">
       <Setter Property="Foreground" Value="#D0FFFFFF"/>
-      <Setter Property="FontFamily" Value="Segoe Fluent Icons"/>
+      <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
       <Setter Property="FontSize" Value="10"/>
       <Setter Property="Width" Value="46"/>
       <Setter Property="Height" Value="32"/>
@@ -41,7 +41,7 @@
     </Style>
     <!-- the sidebar's bottom row: Drop bin, updates, what's new, help, settings as icons with tooltips -->
     <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource Ghost}">
-      <Setter Property="FontFamily" Value="Segoe Fluent Icons"/>
+      <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
       <Setter Property="FontSize" Value="14"/>
       <Setter Property="Foreground" Value="{StaticResource Muted}"/>
       <Setter Property="Width" Value="34"/>
@@ -58,7 +58,7 @@
       <Setter Property="FontSize" Value="11"/>
     </Style>
     <Style x:Key="StatIcon" TargetType="TextBlock">
-      <Setter Property="FontFamily" Value="Segoe Fluent Icons"/>
+      <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
       <Setter Property="FontSize" Value="18"/>
       <Setter Property="Foreground" Value="{StaticResource Muted}"/>
       <Setter Property="Margin" Value="0,5,12,0"/>
@@ -128,14 +128,14 @@
           <DockPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
               <Button Style="{StaticResource JobAction}" Visibility="{Binding Copying, Converter={StaticResource Vis}}" Click="JobPause_Click">
-                <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="{Binding PauseGlyph, Mode=OneWay}"/>  <Run Text="{Binding PauseText, Mode=OneWay}"/></TextBlock></Button>
+                <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="{Binding PauseGlyph, Mode=OneWay}"/>  <Run Text="{Binding PauseText, Mode=OneWay}"/></TextBlock></Button>
               <Button Style="{StaticResource JobAction}" Margin="0" Visibility="{Binding Active, Converter={StaticResource Vis}}" Click="JobCancel_Click">
-                <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE711;"/>  Cancel</TextBlock></Button>
+                <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE711;"/>  Cancel</TextBlock></Button>
               <Button Style="{StaticResource JobAction}" Visibility="{Binding CanUndo, Converter={StaticResource Vis}}" Click="JobUndo_Click"
                       ToolTip="Take back what this transfer did, also when it was cancelled or stopped halfway">
-                <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE7A7;"/>  Undo</TextBlock></Button>
+                <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE7A7;"/>  Undo</TextBlock></Button>
               <Button Style="{StaticResource JobAction}" Margin="0" Visibility="{Binding Finished, Converter={StaticResource Vis}}" Click="JobDismiss_Click">
-                <TextBlock><Run FontFamily="Segoe Fluent Icons" Text="&#xE73E;"/>  Dismiss</TextBlock></Button>
+                <TextBlock><Run FontFamily="Segoe MDL2 Assets" Text="&#xE73E;"/>  Dismiss</TextBlock></Button>
             </StackPanel>
             <TextBlock Text="{Binding Stats}" Foreground="#8A97AA" FontSize="11" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
           </DockPanel>
@@ -212,7 +212,7 @@
               Background="#0DFFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1" AllowDrop="True" DragOver="Bin_DragOver" Drop="Bin_Drop">
         <DockPanel>
           <DockPanel DockPanel.Dock="Top">
-            <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" FontFamily="Segoe Fluent Icons" FontSize="10" Content="&#xE711;"
+            <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" FontFamily="Segoe MDL2 Assets" FontSize="10" Content="&#xE711;"
                     ToolTip="Hide the Drop bin (what is in it stays)" AutomationProperties.Name="Hide the Drop bin" Click="BinButton_Click"/>
             <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" FontSize="11" Content="Clear" ToolTip="Empty the Drop bin (the files stay where they are)" Click="BinClear_Click"/>
             <TextBlock Text="Drop bin" FontWeight="SemiBold" VerticalAlignment="Center"/>
@@ -235,7 +235,7 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate>
                 <DockPanel Margin="0,1,0,1" ToolTip="{Binding Path}">
-                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="Segoe Fluent Icons" FontSize="9"
+                  <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="9"
                           ToolTip="Take it out of the bin" AutomationProperties.Name="{Binding RemoveName}" Click="BinRemove_Click"/>
                   <Border Width="16" Height="16" Margin="0,0,8,0" Loaded="BinIcon_Loaded"/>
                   <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
@@ -357,7 +357,7 @@
       <Border x:Name="PreviewPane" Grid.Column="2" Visibility="Collapsed" Background="#0DFFFFFF" CornerRadius="10" BorderThickness="1" BorderBrush="#1AFFFFFF" ClipToBounds="True">
         <DockPanel>
           <DockPanel x:Name="PreviewHeader" DockPanel.Dock="Top" Margin="12,6,6,4">
-            <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="Segoe Fluent Icons" FontSize="10"
+            <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="10"
                     ToolTip="Close the preview (Alt+P)" Click="Preview_Click"/>
             <TextBlock x:Name="PreviewTitle" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
           </DockPanel>
@@ -386,7 +386,7 @@
           <Button Style="{StaticResource Ghost}" Click="Preview_Click" ToolTip="Show the selected file beside the panes"><TextBlock><Run Foreground="{StaticResource Muted}">Alt+P</Run> Preview</TextBlock></Button>
           <!-- brings the Transfers window back; there while any copy or move is listed -->
           <Button x:Name="TransfersButton" Style="{StaticResource Ghost}" Click="Transfers_Click" Visibility="Collapsed" ToolTip="Show the copies and moves">
-            <TextBlock><Run FontFamily="Segoe Fluent Icons" Foreground="{DynamicResource Accent}" Text="&#xE8AB;"/> <Run x:Name="TransfersText" Text="Transfers"/></TextBlock></Button>
+            <TextBlock><Run FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource Accent}" Text="&#xE8AB;"/> <Run x:Name="TransfersText" Text="Transfers"/></TextBlock></Button>
         </StackPanel>
         <TextBlock x:Name="Status" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420" HorizontalAlignment="Right" Margin="12,0,0,0"/>
       </DockPanel>
