@@ -2526,11 +2526,9 @@ public partial class PaneView : UserControl
     /// The row under a click, or null for empty space. In Details that includes the strip right of the last
     /// column, as in Explorer: a full folder still has somewhere to click (and right-click) for the folder
     /// itself, so a paste or a new folder lands there and not in a subfolder that happened to be selected.
-    public Entry RowAt(DependencyObject source)
-    {
-        var row = FindRow(source);
-        return row != null && Mode == ViewMode.Details && Mouse.GetPosition(List).X + ScrollX > ((GridView)List.View).Columns.Sum(c => c.ActualWidth) + 8 ? null : row;
-    }
+    public Entry RowAt(DependencyObject source) => PastColumns(Mouse.GetPosition(List).X) ? null : FindRow(source);
+
+    bool PastColumns(double x) => Mode == ViewMode.Details && x + ScrollX > ((GridView)List.View).Columns.Sum(c => c.ActualWidth) + 8;
 
     /// How far the Details columns are scrolled sideways: pointer positions are in the list's own frame.
     double ScrollX => FindScroller(List)?.HorizontalOffset ?? 0;
@@ -2764,7 +2762,10 @@ public partial class PaneView : UserControl
     }
 
     // Drop on a folder row, or on a shortcut to a folder → into that folder; anywhere else → the folder this pane shows.
-    string DropTarget(DragEventArgs e) => FindRow(e.OriginalSource as DependencyObject)?.FolderTarget ?? Dir;
+    // In Details the strip right of the last column is "here", as for a click (RowAt): a full folder still has room to drop
+    // into itself. The pointer comes from the drag: Mouse.GetPosition doesn't follow one.
+    Entry DropRow(DragEventArgs e) => PastColumns(e.GetPosition(List).X) ? null : FindRow(e.OriginalSource as DependencyObject);
+    string DropTarget(DragEventArgs e) => DropRow(e)?.FolderTarget ?? Dir;
 
     void Drop_Over(object s, DragEventArgs e)
     {
@@ -2774,7 +2775,7 @@ public partial class PaneView : UserControl
         e.Effects = DropTarget(e) is var into && into != ThisPC ? ArchiveOf(into) is { } a ? (Archive.CanChange(a.Archive) && e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None)
                     : DropEffects(e, into) : DragDropEffects.None;
         // the folder it would go into lights up, in a colour apart from the selection's
-        var row = FindRow(e.OriginalSource as DependencyObject);
+        var row = DropRow(e);
         ShowDropRow(e.Effects != DragDropEffects.None && row?.FolderTarget != null ? row : null);
         e.Handled = true;
     }
