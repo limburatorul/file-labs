@@ -1,6 +1,12 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.71 | 2026-11-12 | Room to drop
+In Details, a full folder now has a place to drop files into itself.
+- Drop files on the empty space to the right of the Modified column and they land in the folder you're looking at. Before, they went into whatever folder was on that row.
+- Dropping on a row itself works as before: onto a folder, into that folder.
+- While you drag near the top or bottom of a short list, the folder under the pointer no longer flickers on and off.
+
 ## 1.0.70 | 2026-11-03 | Just start typing, and icons on every Windows
 Finding a file is now a matter of typing its name, nothing gets deleted for good without a question, and the icons show on Windows 10 too.
 **Filter as you type**
