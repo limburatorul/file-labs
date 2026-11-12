@@ -2931,7 +2931,8 @@ public partial class PaneView : UserControl
         sv.ScrollToVerticalOffset(sv.VerticalOffset + edgeSpeed * Math.Min(dt, 0.1));
         if (edgeDrag == null) return;
         List.UpdateLayout(); // the rows where this frame draws them (the layout pass this frame would run anyway)
-        var row = FindRow(List.InputHitTest(edgeAt) as DependencyObject);
+        // the same row a drop would pick (DropRow): past the columns there is none, or the two would light it in turn
+        var row = PastColumns(edgeAt.X) ? null : FindRow(List.InputHitTest(edgeAt) as DependencyObject);
         ShowDropRow(row?.FolderTarget is { } into && DropEffects(edgeDrag, into) != DragDropEffects.None ? row : null);
     }
 
