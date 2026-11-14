@@ -31,9 +31,10 @@
           <TextBlock Text="File Labs" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
           <TextBlock x:Name="VersionText" Classes="muted" FontSize="11" Margin="8,1,0,0" VerticalAlignment="Center"/>
         </DockPanel>
-        <DockPanel DockPanel.Dock="Bottom" Margin="8,4,8,8">
+        <DockPanel x:Name="BottomRow" DockPanel.Dock="Bottom" Margin="8,4,8,8">
           <Button x:Name="SettingsButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.Settings}" ToolTip.Tip="Settings (Ctrl+,)"/>
           <Button x:Name="HelpButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.Help}" ToolTip.Tip="Help: everything File Labs does (F1)"/>
+          <Button x:Name="UpdateButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.Download}" ToolTip.Tip="Check for updates (it also checks by itself every hour)"/>
           <Button x:Name="WhatsNewButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.WhatsNew}" ToolTip.Tip="What’s new"/>
           <Button x:Name="TrashButton" DockPanel.Dock="Left" Classes="ghost icon" HorizontalAlignment="Left" Content="{x:Static local:Glyph.Trash}" ToolTip.Tip="Trash"/>
           <Border/>

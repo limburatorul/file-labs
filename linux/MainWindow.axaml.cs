@@ -42,13 +42,15 @@ public partial class MainWindow : Window
             pane.FilesDropped += (files, into, move) => Submit(files, into, move);
             pane.ContextRequested += (x, row, at) => ShowContextMenu(x, row);
             pane.RenameCommitted += (x, e, name) => Rename(x, e, name);
-            pane.Opened += d => { Settings.AddRecent(Settings.RecentFolders, d, Settings.RecentMax); };
+            pane.Opened += d => { Settings.AddRecent(Settings.RecentFolders, d, Settings.RecentMax); if (pane == active) SyncTree(d); };
         }
         SetActive(Left);
         ApplyPanes();
         BuildSidebar();
         BuildCommandBar();
         WireWindow();
+        BuildBin();
+        StartUpdates();
         Ferry.Finished += job => Dispatcher.UIThread.Post(() => JobFinished(job));
         jobTimer.Tick += (_, _) => { foreach (var j in jobs.Where(j => j.Active)) j.Refresh(); };
         mountTimer.Tick += (_, _) => { var now = MountKey(); if (now != mountKey) { mountKey = now; BuildSidebar(); } };
@@ -90,6 +92,7 @@ public partial class MainWindow : Window
         Right.SetActive(p == Right);
         UpdateStats();
         if (Settings.Preview) ShowPreview();
+        SyncTree(p.Dir);
     }
 
     public void ApplyAccent()
@@ -271,6 +274,8 @@ public partial class MainWindow : Window
             drives.Children.Add(b);
         }
         SidebarHost.Children.Add(Section("drives", "Drives", drives));
+        SidebarHost.Children.Add(Section("folders", "Folders", BuildTree()));
+        if (active != null) Dispatcher.UIThread.Post(() => SyncTree(active.Dir), DispatcherPriority.Background);
     }
 
     void MovePin(string p, int by)
@@ -383,6 +388,7 @@ public partial class MainWindow : Window
         switch (e.Key)
         {
             case Key.F1: Open(() => new HelpWindow()); break;
+            case Key.F2 when shift: ComparePanes(); break;
             case Key.F2: active.BeginRename(); break;
             case Key.F3: active.OpenSelected(); break;
             case Key.F4 when !ctrl: if (active.Current is { IsDir: false } f) new EditorWindow(f.Path).Show(); break;
@@ -413,6 +419,9 @@ public partial class MainWindow : Window
             case Key.Z when ctrl: Undo(); break;
             case Key.H when ctrl: ToggleHidden(); break;
             case Key.D when ctrl: Pin(); break;
+            case Key.B when ctrl: if (active.Selected.Count > 0) AddToBin(active.Selected.Select(x => x.Path)); break;
+            case Key.Add when !ctrl: SelectByPattern(true); break; // the keypad's + and -, as on Windows: the others type into the filter
+            case Key.Subtract when !ctrl: SelectByPattern(false); break;
             case Key.P when ctrl: TogglePanes(); break;
             case Key.P when alt: TogglePreview(); break;
             case Key.R when ctrl: SizeCache.Clear(); active.Refresh(keepSelection: true); break;
@@ -790,7 +799,8 @@ public partial class MainWindow : Window
         MenuItem Item(string header, string glyph, string gesture, Action run, bool enabled = true)
         {
             var mi = new MenuItem { Header = header, IsEnabled = enabled, Icon = new TextBlock { Text = glyph, Classes = { "icon" }, FontSize = 14 } };
-            if (gesture != null) mi.InputGesture = KeyGesture.Parse(gesture);
+            // a key Avalonia can name shows as the gesture; others ("Num +") as text, never a crash
+            if (gesture != null) { try { mi.InputGesture = KeyGesture.Parse(gesture); } catch (ArgumentException) { mi.Header = $"{header}   ({gesture})"; } }
             mi.Click += (_, _) => run();
             return mi;
         }
@@ -803,6 +813,8 @@ public partial class MainWindow : Window
             menu.Items.Add(new Separator());
             menu.Items.Add(Item("Open terminal here", Glyph.Terminal, null, () => Shell.Terminal(p.Dir)));
             menu.Items.Add(Item("Pin to Quick access", Glyph.Pin, "Ctrl+D", Pin));
+            if (!Settings.SinglePane) menu.Items.Add(Item("Compare with the other pane", Glyph.Compare, "Shift+F2", ComparePanes));
+            menu.Items.Add(Item("Select by pattern…", Glyph.SelectAll, "Num +", () => SelectByPattern(true)));
             menu.Items.Add(Item("Find duplicates in this folder…", Glyph.Duplicates, null, () => Open(() => new DuplicatesWindow(p.Dir))));
             menu.Items.Add(Item(Settings.ShowHidden ? "Hide hidden files" : "Show hidden files", Glyph.Eye, "Ctrl+H", ToggleHidden));
             menu.Items.Add(Item("Refresh", Glyph.Refresh, "F5", () => p.Refresh(keepSelection: true)));
@@ -812,6 +824,7 @@ public partial class MainWindow : Window
         var first = sel[0];
         bool one = sel.Count == 1, dir = one && first.IsDir;
         menu.Items.Add(Item("Open", Glyph.OpenWith, "Enter", p.OpenSelected));
+        if (sel.All(x => !x.IsDir)) menu.Items.Add(OpenWithMenu(sel));
         if (dir) menu.Items.Add(Item("Open in new tab", Glyph.NewTab, null, () => p.NewTab(first.Path)));
         if (dir && !Settings.SinglePane) menu.Items.Add(Item("Open in other pane", Glyph.OtherPane, null, () => Other.Navigate(first.Path)));
         if (one && !first.IsDir) menu.Items.Add(Item("Quick View", Glyph.Eye, "Space", () => ShowQuickView(first)));
@@ -822,6 +835,7 @@ public partial class MainWindow : Window
         menu.Items.Add(Item("Copy", Glyph.Copy, "Ctrl+C", () => ClipboardPut(false)));
         if (dir) menu.Items.Add(Item("Paste into folder", Glyph.Paste, null, () => ClipboardPaste(first.Path)));
         menu.Items.Add(Item("Copy path", Glyph.Link, "Ctrl+Shift+C", () => CopyText(string.Join("\n", sel.Select(x => x.Path)))));
+        menu.Items.Add(Item("Add to Drop bin", Glyph.Bin, "Ctrl+B", () => AddToBin(sel.Select(x => x.Path))));
         if (!Settings.SinglePane)
         {
             menu.Items.Add(Item("Copy to other pane", Glyph.Copy, "Ctrl+F5", () => Transfer(false)));

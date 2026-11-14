@@ -113,7 +113,7 @@ static class Trash
     }
 
     public static IEnumerable<string> AllTrashes() =>
-        new[] { HomeTrash }.Concat(Mounts.Places().Select(m => Path.Combine(m.Point, $".Trash-{Uid}")).Where(Directory.Exists)).Distinct();
+        new[] { HomeTrash }.Concat(Mounts.All().Select(m => Path.Combine(m.Point, $".Trash-{Uid}")).Where(Directory.Exists)).Distinct(); // every mount: Put uses whichever the item was on
 
     /// Moves it into the Trash. Returns where it went (for Undo), or throws.
     public static string Put(string path)

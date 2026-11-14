@@ -64,7 +64,11 @@ public partial class PaneView : UserControl
     {
         InitializeComponent();
         List.ItemTemplate = (IDataTemplate)Resources["DetailsRow"];
-        List.SelectionChanged += (_, _) => { UpdateFooter(); Changed?.Invoke(this); };
+        List.SelectionChanged += (_, e) =>
+        {
+            foreach (var h in e.AddedItems.OfType<Entry>().Where(x => x.IsHeader).ToList()) List.SelectedItems?.Remove(h);
+            UpdateFooter(); Changed?.Invoke(this);
+        };
         List.DoubleTapped += (_, e) => { if (RowOf(e.Source) is { } r && !r.Renaming) OpenEntry(r); };
         List.AddHandler(PointerPressedEvent, List_PointerPressed, RoutingStrategies.Tunnel);
         List.AddHandler(PointerMovedEvent, List_PointerMoved, RoutingStrategies.Tunnel);
@@ -174,13 +178,32 @@ public partial class PaneView : UserControl
             ToolTip.SetTip(tab, tabs[i].Dir);
             tab.PointerEntered += (_, _) => { close.IsVisible = true; if (!on) tab.Background = Fmt.Brush("#0DFFFFFF"); };
             tab.PointerExited += (_, _) => { close.IsVisible = on; if (!on) tab.Background = Brushes.Transparent; };
+            double pressX = double.NaN;
             tab.PointerPressed += (_, e) =>
             {
                 var pt = e.GetCurrentPoint(tab).Properties;
                 if (pt.IsMiddleButtonPressed) CloseTab(index);
-                else if (pt.IsLeftButtonPressed) SwitchTab(index);
+                else if (pt.IsLeftButtonPressed) { SwitchTab(index); pressX = e.GetPosition(TabStrip).X; e.Pointer.Capture((IInputElement)TabStrip.Children[index]); }
                 e.Handled = true;
             };
+            // dragged along the row, it moves to where it is let go
+            tab.PointerReleased += (_, e) =>
+            {
+                if (double.IsNaN(pressX)) return;
+                double x = e.GetPosition(TabStrip).X, from = pressX; pressX = double.NaN;
+                e.Pointer.Capture(null);
+                if (Math.Abs(x - from) < 12) return;
+                int to = TabStrip.Children.Count - 1;
+                for (int k = 0; k < TabStrip.Children.Count; k++) if (x < TabStrip.Children[k].Bounds.X + TabStrip.Children[k].Bounds.Width / 2) { to = k; break; }
+                if (to == activeTab) return;
+                var moved = tabs[activeTab]; tabs.RemoveAt(activeTab); tabs.Insert(to, moved); activeTab = to;
+                BuildTabs();
+            };
+            // files dropped on a tab go into its folder
+            DragDrop.SetAllowDrop(tab, true);
+            var tabDir = tabs[i].Dir;
+            DragDrop.AddDragOverHandler(tab, (_, e) => { e.DragEffects = DropEffects(e, tabDir); e.Handled = true; });
+            DragDrop.AddDropHandler(tab, async (_, e) => await DropInto(e, tabDir));
             TabStrip.Children.Add(tab);
         }
     }
@@ -276,17 +299,37 @@ public partial class PaneView : UserControl
         }
         var sorted = view.ToList();
         sorted.Sort(new EntrySort(sortKey, sortDesc));
+        if (GroupByDate) sorted = Grouped(sorted);
         List.ItemsSource = sorted;
         EmptyText.Text = searchQuery != null ? "Searching…" : filterText != "" ? $"Nothing here matches “{filterText}”" : "This folder is empty";
-        EmptyText.IsVisible = sorted.Count(e => !e.IsUp) == 0;
+        EmptyText.IsVisible = sorted.Count(e => !e.IsUp && !e.IsHeader) == 0;
         if (keep is { Count: > 0 })
             foreach (var e in sorted.Where(e => keep.Contains(e.Name))) List.SelectedItems?.Add(e);
         var f = focus != null ? sorted.FirstOrDefault(e => e.Name == focus) : null;
-        f ??= List.SelectedItems?.Count > 0 ? null : sorted.FirstOrDefault(e => !e.IsUp) ?? sorted.FirstOrDefault();
+        f ??= List.SelectedItems?.Count > 0 ? null : sorted.FirstOrDefault(e => !e.IsUp && !e.IsHeader) ?? sorted.FirstOrDefault(e => !e.IsHeader);
         if (f != null) { if (keep == null || !keep.Contains(f.Name)) List.SelectedItem = f; List.ScrollIntoView(f); }
         UpdateFooter();
         UpdateSortButton();
         Changed?.Invoke(this);
+    }
+
+    // ---- Group by date (Details, per folder): a heading per group, newest first, as Explorer groups ----
+    public bool GroupByDate => Mode == ViewMode.Details && searchQuery == null && Settings.DateGroupFolders.Contains(T.Dir);
+    public void ToggleGroupByDate()
+    {
+        if (!Settings.DateGroupFolders.Remove(T.Dir)) { Settings.DateGroupFolders.Add(T.Dir); if (Mode != ViewMode.Details) SetView(ViewMode.Details); }
+        ShowItems(focus: Current?.Name);
+    }
+    static List<Entry> Grouped(List<Entry> sorted)
+    {
+        var now = DateTime.Now;
+        var list = sorted.Where(e => e.IsUp).ToList();
+        foreach (var g in sorted.Where(e => !e.IsUp).GroupBy(e => Entry.DateGroupOf(e.Modified, now)).OrderBy(g => g.Key))
+        {
+            list.Add(new Entry { Name = "\u0001" + g.Key, Path = "", Header = Entry.DateGroups[g.Key], HeaderCount = g.Count() });
+            list.AddRange(g);
+        }
+        return list;
     }
 
     static Regex Wildcard(string text)
@@ -496,6 +539,10 @@ public partial class PaneView : UserControl
             mi.Click += (_, _) => SetView(mode);
             menu.Items.Add(mi);
         }
+        menu.Items.Add(new Separator());
+        var group = new MenuItem { Header = "Group by date", Icon = new TextBlock { Text = Settings.DateGroupFolders.Contains(T.Dir) ? Glyph.Check : "", Classes = { "icon" } } };
+        group.Click += (_, _) => ToggleGroupByDate();
+        menu.Items.Add(group);
         menu.Open(at);
     }
 
@@ -571,7 +618,7 @@ public partial class PaneView : UserControl
     // ---- footer, drive ----
     void UpdateFooter()
     {
-        var shown = (List.ItemsSource as List<Entry>) ?? new();
+        var shown = ((List.ItemsSource as List<Entry>) ?? new()).Where(e => !e.IsHeader).ToList();
         int dirs = shown.Count(e => e.IsDir && !e.IsUp), files = shown.Count(e => !e.IsDir);
         var sel = Selected;
         string what = $"{dirs:N0} folder{(dirs == 1 ? "" : "s")} · {files:N0} file{(files == 1 ? "" : "s")}";
@@ -603,7 +650,28 @@ public partial class PaneView : UserControl
     }
 
     // ---- selection, focus, activity ----
-    public List<Entry> Selected => List.SelectedItems?.Cast<Entry>().Where(e => !e.IsUp).ToList() ?? new();
+    public List<Entry> Selected => List.SelectedItems?.Cast<Entry>().Where(e => !e.IsUp && !e.IsHeader).ToList() ?? new();
+
+    /// What matches the pattern ("*.jpg;*.png") is added to the selection, or taken out of it.
+    public void SelectMatching(string pattern, bool select)
+    {
+        var rxs = pattern.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                         .Select(p => new Regex("^" + Regex.Escape(p).Replace("\\*", ".*").Replace("\\?", ".") + "$", RegexOptions.IgnoreCase)).ToList();
+        int n = 0;
+        foreach (var e in ((List.ItemsSource as List<Entry>) ?? new()).Where(e => !e.IsUp && !e.IsHeader && rxs.Any(r => r.IsMatch(e.Name))))
+        {
+            bool has = List.SelectedItems?.Contains(e) ?? false;
+            if (select && !has) { List.SelectedItems?.Add(e); n++; } else if (!select && has) { List.SelectedItems?.Remove(e); n++; }
+        }
+        MainWindow.Say($"{(select ? "Selected" : "Deselected")} {n:N0} matching {pattern}");
+    }
+
+    public void SetSelection(Func<Entry, bool> which)
+    {
+        List.SelectedItems?.Clear();
+        foreach (var e in ((List.ItemsSource as List<Entry>) ?? new()).Where(e => !e.IsHeader && which(e))) List.SelectedItems?.Add(e);
+        if (List.SelectedItems?.Count > 0) List.ScrollIntoView(List.SelectedItems[0]);
+    }
     public Entry Current => List.SelectedItem as Entry;
     public void FocusList()
     {
@@ -619,7 +687,8 @@ public partial class PaneView : UserControl
         List.Classes.Set("inactive", !on);
     }
 
-    public void SelectAll() => List.SelectAll();
+    // everything but ".." and the group headings
+    public void SelectAll() => SetSelection(e => !e.IsUp);
     public void SelectNames(IEnumerable<string> names)
     {
         var set = names.ToHashSet(StringComparer.Ordinal);
@@ -638,6 +707,7 @@ public partial class PaneView : UserControl
 
     void OpenEntry(Entry e)
     {
+        if (e.IsHeader) return;
         if (e.IsUp) { GoUp(); return; }
         if (e.IsDir) { Navigate(e.Path); return; }
         if (Backups.Named(e.Path) || e.Ext is "zip") { MainWindow.Instance?.ShowQuickView(e); return; }

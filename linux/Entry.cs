@@ -21,6 +21,29 @@ public class Entry : INotifyPropertyChanged
         set { modified = value; Changed(nameof(Modified)); Changed(nameof(DateText)); Changed(nameof(Age)); Changed(nameof(AgeBrush)); Changed(nameof(AgeTextBrush)); Changed(nameof(Tip)); }
     }
     public bool IsUp => Name == "..";
+    /// A group's heading row (Group by date), not a file: it is never selected, counted or opened.
+    public string Header { get; init; }
+    public bool IsHeader => Header != null;
+    public bool IsFile => Header == null;
+    public int HeaderCount { get; init; }
+
+    /// Group by date (Details): Explorer's groups, newest first.
+    internal static readonly string[] DateGroups =
+        { "Today", "Yesterday", "Earlier this week", "Last week", "Earlier this month", "Last month", "Earlier this year", "A long time ago" };
+    internal static int DateGroupOf(DateTime t, DateTime now)
+    {
+        var day = now.Date;
+        if (t >= day) return 0;
+        if (t >= day.AddDays(-1)) return 1;
+        int back = ((int)day.DayOfWeek - (int)System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek + 7) % 7;
+        var week = day.AddDays(-back);
+        if (t >= week) return 2;
+        if (t >= week.AddDays(-7)) return 3;
+        var month = new DateTime(day.Year, day.Month, 1);
+        if (t >= month) return 4;
+        if (t >= month.AddMonths(-1)) return 5;
+        return t >= new DateTime(day.Year, 1, 1) ? 6 : 7;
+    }
     public string Location { get; init; } = ""; // search results: where it was found, relative to where the search started
     public string Where => Location == "" ? "" : "   in " + Location;
     public string FolderTarget => IsDir ? Path : null;
@@ -113,7 +136,7 @@ public class Entry : INotifyPropertyChanged
     }
     public string DateText => NoDate ? "" : Modified.ToString("yyyy-MM-dd  HH:mm");
 
-    public string Tip => IsUp ? null : string.Join("\n", new[]
+    public string Tip => IsUp || IsHeader ? null : string.Join("\n", new[]
     {
         Name, Location != "" ? "In: " + Location : null, "Type: " + Fmt.TypeName(Name, IsDir),
         size >= 0 ? "Size: " + Fmt.Size(size) : null, NoDate ? null : "Date modified: " + Modified.ToString("yyyy-MM-dd HH:mm:ss"),

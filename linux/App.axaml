@@ -129,7 +129,7 @@
     <!-- menus stay opaque: menus on glass become unreadable -->
     <Style Selector="ContextMenu">
       <Setter Property="Background" Value="#1C2029"/><Setter Property="BorderBrush" Value="#2EFFFFFF"/><Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="8"/><Setter Property="Padding" Value="0,4"/><Setter Property="MinWidth" Value="220"/>
+      <Setter Property="CornerRadius" Value="8"/><Setter Property="Padding" Value="0,4"/><Setter Property="MinWidth" Value="300"/>
       <Setter Property="Foreground" Value="#E8EEF6"/><Setter Property="FontSize" Value="12"/>
     </Style>
     <Style Selector="MenuFlyoutPresenter">
@@ -176,5 +176,11 @@
     <SolidColorBrush x:Key="ComboBoxBackground" Color="#12FFFFFF"/>
     <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#1C2029"/>
     <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#26FFFFFF"/>
+    <!-- submenus and every flyout menu: the same opaque card as the right-click menu -->
+    <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="#1C2029"/>
+    <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="#2EFFFFFF"/>
+    <CornerRadius x:Key="OverlayCornerRadius">8</CornerRadius>
+    <!-- the folder tree: rows as tight as the sidebar's other rows -->
+    <x:Double x:Key="TreeViewItemMinHeight">26</x:Double>
   </Application.Resources>
 </Application>

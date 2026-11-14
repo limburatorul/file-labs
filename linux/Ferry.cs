@@ -113,6 +113,7 @@ public class Job : INotifyPropertyChanged
     public string Title => Phase switch
     {
         Phase.Done when FailedFiles > 0 || SkippedFiles > 0 => $"{(IsMove ? "Moved" : "Copied")} {DoneFiles} of {TotalFiles + SkippedFiles} file(s) to {Destination}{Outcome}",
+        Phase.Done when TotalFiles == 0 => $"{(IsMove ? "Moved" : "Copied")} {Sources.Count} item(s) to {Destination}", // empty folders: no file to count
         Phase.Done => $"{(IsMove ? "Moved" : "Copied")} {TotalFiles} file(s) to {Destination}",
         Phase.Cancelled => $"Cancelled — {DoneFiles} of {TotalFiles + SkippedFiles} file(s) to {Destination}{Outcome}",
         Phase.Scanning => $"Scanning {Sources.Count} item(s)…",
