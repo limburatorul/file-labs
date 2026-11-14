@@ -1,6 +1,14 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.73 | 2026-11-15 | The same buttons on Linux
+Small fixes for the Linux version.
+**On Linux**
+- The buttons under the sidebar match Windows: the same icons in the same order, and the pizza drawn like the other icons.
+- After the AppImage updates itself, the old version closes completely instead of staying in the background until you quit.
+**On Windows**
+- Nothing changes in this version.
+
 ## 1.0.72 | 2026-11-15 | File Labs on Linux
 File Labs now runs on Linux too, with the same look and the same way of working.
 **On Linux**
