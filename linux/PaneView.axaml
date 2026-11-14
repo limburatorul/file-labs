@@ -1,0 +1,155 @@
+<!-- One pane, as on Windows (PaneView.xaml there): a card with browser-style tabs on a darker strip, the path as
+     crumbs (a click on its empty part or Ctrl+L edits it), the filter box, a drive bar that is also "this folder" for
+     drops, the list (Details, List or Icons) and a footer with the counts, the view and the sort. -->
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:FileExplorer" x:Class="FileExplorer.PaneView">
+  <UserControl.Resources>
+    <!-- Details: name with icon, type, size, modified (the age pill, then the date); widths from the header -->
+    <DataTemplate x:Key="DetailsRow" DataType="local:Entry">
+      <StackPanel Orientation="Horizontal" Background="Transparent">
+        <Border Width="6" CornerRadius="2" Background="{Binding AgeBrush}" Margin="-4,0,6,0"/>
+        <DockPanel Width="{Binding $parent[local:PaneView].Cols.Name}">
+          <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Opacity="{Binding IconOpacity}">
+            <TextBlock Classes="icon" Text="{Binding Icon}" Foreground="{Binding IconBrush}" FontSize="15" VerticalAlignment="Center" IsVisible="{Binding NoThumb}"/>
+            <Image Source="{Binding Thumb}" Stretch="Uniform"/>
+          </Grid>
+          <Grid>
+            <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding NotRenaming}">
+              <Run Text="{Binding Name, Mode=OneWay}"/><Run Text="{Binding Where, Mode=OneWay}" Foreground="#70FFFFFF" FontSize="11"/>
+            </TextBlock>
+            <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="2,0" Margin="-4,-2,0,-2" IsVisible="{Binding Renaming}">
+              <TextBox Classes="bare rename" Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" Tag="{Binding}"/>
+            </Border>
+          </Grid>
+        </DockPanel>
+        <TextBlock Width="{Binding $parent[local:PaneView].Cols.Type}" Text="{Binding Ext}" Opacity="0.55" Padding="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+        <TextBlock Width="{Binding $parent[local:PaneView].Cols.Size}" Text="{Binding SizeText}" Opacity="0.7" TextAlignment="Right" Padding="0,0,16,0" VerticalAlignment="Center"/>
+        <StackPanel Orientation="Horizontal" Width="{Binding $parent[local:PaneView].Cols.Modified}" Margin="10,0,0,0">
+          <Border Background="{Binding AgeBrush}" CornerRadius="3" Width="46" Margin="0,0,8,0" VerticalAlignment="Center">
+            <TextBlock Text="{Binding Age}" Foreground="{Binding AgeTextBrush}" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+          </Border>
+          <TextBlock Text="{Binding DateText}" Opacity="0.6" VerticalAlignment="Center"/>
+        </StackPanel>
+      </StackPanel>
+    </DataTemplate>
+    <!-- List: names in columns, each with its age bar -->
+    <DataTemplate x:Key="ListRow" DataType="local:Entry">
+      <DockPanel Width="230">
+        <Border DockPanel.Dock="Left" Width="6" Margin="0,0,6,0" CornerRadius="2" Background="{Binding AgeBrush}"/>
+        <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Opacity="{Binding IconOpacity}">
+          <TextBlock Classes="icon" Text="{Binding Icon}" Foreground="{Binding IconBrush}" FontSize="15" IsVisible="{Binding NoThumb}"/>
+          <Image Source="{Binding Thumb}" Stretch="Uniform"/>
+        </Grid>
+        <Grid>
+          <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding NotRenaming}"/>
+          <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="2,0" Margin="-4,-2,0,-2" IsVisible="{Binding Renaming}">
+            <TextBox Classes="bare rename" Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" Tag="{Binding}"/>
+          </Border>
+        </Grid>
+      </DockPanel>
+    </DataTemplate>
+    <!-- Icons: the thumbnail (or a dim glyph until it comes), the age bar, the name -->
+    <DataTemplate x:Key="TileRow" DataType="local:Entry">
+      <StackPanel Width="{Binding $parent[local:PaneView].TileWidth}">
+        <Grid Width="{Binding $parent[local:PaneView].TileSize}" Height="{Binding $parent[local:PaneView].TileSize}" HorizontalAlignment="Center" Opacity="{Binding IconOpacity}">
+          <Viewbox Margin="14" Opacity="0.4" IsVisible="{Binding NoThumb}">
+            <TextBlock Classes="icon" Text="{Binding Icon}" Foreground="{Binding IconBrush}"/>
+          </Viewbox>
+          <Image Source="{Binding Thumb}" Stretch="Uniform" StretchDirection="DownOnly"/>
+        </Grid>
+        <Border Height="5" Width="34" CornerRadius="2.5" Background="{Binding AgeBrush}" Margin="0,4,0,3" HorizontalAlignment="Center"/>
+        <Grid>
+          <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="34" FontSize="11.5" IsVisible="{Binding NotRenaming}"/>
+          <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="2,0" IsVisible="{Binding Renaming}">
+            <TextBox Classes="bare rename" Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" Tag="{Binding}" TextAlignment="Center"/>
+          </Border>
+        </Grid>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Border x:Name="Card" Background="#0DFFFFFF" CornerRadius="10" BorderThickness="1" BorderBrush="#1AFFFFFF" ClipToBounds="True">
+    <DockPanel>
+      <!-- tabs: the darker strip around them, the active one in the card's own colour with the accent along its top -->
+      <Grid x:Name="TabsArea" DockPanel.Dock="Top" Background="{DynamicResource TabStripBg}">
+        <DockPanel x:Name="TabBand" Background="Transparent" DragDrop.AllowDrop="True">
+          <Border DockPanel.Dock="Left" Width="4"/>
+          <StackPanel x:Name="TabStrip" DockPanel.Dock="Left" Orientation="Horizontal"/>
+          <Button x:Name="NewTabButton" DockPanel.Dock="Left" Classes="ghost" Margin="4,2,0,0" ToolTip.Tip="New tab (Ctrl+T)" VerticalAlignment="Center">
+            <TextBlock Classes="icon" Text="{x:Static local:Glyph.Add}" FontSize="14"/>
+          </Button>
+          <Border x:Name="CaptionSpace" DockPanel.Dock="Right" Width="0"/>
+          <Border x:Name="TabDragArea" Background="Transparent"/>
+        </DockPanel>
+      </Grid>
+
+      <!-- path: back, forward, up, the crumbs (or the box), the filter -->
+      <DockPanel x:Name="PathBar" DockPanel.Dock="Top" Margin="8,6,8,0">
+        <Button x:Name="BackButton" DockPanel.Dock="Left" Classes="ghost" ToolTip.Tip="Back (Alt+Left)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Back}" FontSize="13"/></Button>
+        <Button x:Name="FwdButton" DockPanel.Dock="Left" Classes="ghost" ToolTip.Tip="Forward (Alt+Right)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Forward}" FontSize="13"/></Button>
+        <Button x:Name="UpButton" DockPanel.Dock="Left" Classes="ghost" ToolTip.Tip="Up (Backspace)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Up}" FontSize="13"/></Button>
+        <Border DockPanel.Dock="Right" Width="200" Background="#12FFFFFF" CornerRadius="5" Margin="6,0,0,0"
+                ToolTip.Tip="Typing filters this folder. Enter searches every subfolder. * and ? work as wildcards">
+          <DockPanel>
+            <Button x:Name="FilterClear" DockPanel.Dock="Right" Classes="ghost" IsVisible="False" ToolTip.Tip="Clear (Esc)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Close}" FontSize="11"/></Button>
+            <TextBlock DockPanel.Dock="Right" Classes="icon" Text="{x:Static local:Glyph.Filter}" Foreground="#66FFFFFF" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <Grid>
+              <TextBlock x:Name="FilterHint" Text="Type to filter · Enter searches" Foreground="#66FFFFFF" FontSize="12" Margin="8,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+              <TextBox x:Name="FilterBox" Classes="bare" Margin="6,2" FontSize="12"/>
+            </Grid>
+          </DockPanel>
+        </Border>
+        <Grid>
+          <Border x:Name="CrumbArea" Background="Transparent">
+            <StackPanel x:Name="Crumbs" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"/>
+          </Border>
+          <TextBox x:Name="PathBox" Classes="bare" IsVisible="False" Margin="4,2" FontSize="12"/>
+        </Grid>
+      </DockPanel>
+
+      <!-- the drive's fill, and a place for this folder: drop here and it goes in here, whatever is selected -->
+      <Border x:Name="FolderStrip" DockPanel.Dock="Top" Padding="10,7,10,5" Background="Transparent" CornerRadius="4" Margin="4,0"
+              DragDrop.AllowDrop="True" ToolTip.Tip="Drop here to put files in this folder · click to clear the selection">
+        <DockPanel>
+          <TextBlock x:Name="DriveInfoText" DockPanel.Dock="Right" Foreground="#80FFFFFF" FontSize="11" Margin="10,0,0,0"/>
+          <Grid VerticalAlignment="Center" Height="3">
+            <Border Background="#1AFFFFFF" CornerRadius="1.5"/>
+            <Border x:Name="UsedBar" Background="{DynamicResource Accent}" CornerRadius="1.5" HorizontalAlignment="Left" Width="0"/>
+          </Grid>
+        </DockPanel>
+      </Border>
+
+      <DockPanel DockPanel.Dock="Bottom" Margin="14,2,8,5">
+        <Button x:Name="SortButton" DockPanel.Dock="Right" Classes="ghost" FontSize="11" ToolTip.Tip="Sort">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock x:Name="SortIcon" Classes="icon" FontSize="12" Margin="0,1,6,0" VerticalAlignment="Center"/>
+            <TextBlock x:Name="SortName" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+        <Button x:Name="ViewButton" DockPanel.Dock="Right" Classes="ghost" FontSize="11" ToolTip.Tip="View (Ctrl+Shift+1…5)">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock x:Name="ViewIcon" Classes="icon" FontSize="12" Margin="0,1,6,0" VerticalAlignment="Center"/>
+            <TextBlock x:Name="ViewName" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
+        <TextBlock x:Name="Footer" Foreground="#80FFFFFF" FontSize="11" VerticalAlignment="Center"/>
+      </DockPanel>
+
+      <DockPanel>
+        <!-- Details' header: the columns, each edge a grip; a click sorts -->
+        <Grid x:Name="Header" DockPanel.Dock="Top" Margin="4,0" Height="28">
+          <Border BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1"/>
+          <StackPanel x:Name="HeaderCells" Orientation="Horizontal" Margin="10,0,0,0"/>
+        </Grid>
+        <Panel>
+          <ListBox x:Name="List" Classes="files" SelectionMode="Multiple" Margin="4,2,4,0"
+                   DragDrop.AllowDrop="True" ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+          <Canvas x:Name="MarqueeLayer" IsHitTestVisible="False" ClipToBounds="True" Margin="4,2,4,0">
+            <Border x:Name="Marquee" Background="{DynamicResource AccentSoft}" BorderBrush="{DynamicResource AccentEdge}" BorderThickness="1" CornerRadius="2" IsVisible="False"/>
+          </Canvas>
+          <TextBlock x:Name="EmptyText" Foreground="#59FFFFFF" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" IsHitTestVisible="False"/>
+        </Panel>
+      </DockPanel>
+    </DockPanel>
+  </Border>
+</UserControl>

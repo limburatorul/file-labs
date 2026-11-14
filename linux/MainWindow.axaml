@@ -1,0 +1,134 @@
+<!-- The window, as on Windows (MainWindow.xaml there): no system title bar; the sidebar with the app's name, Quick
+     access, the places and the drives; two panes whose tabs are the top row, the window's buttons at its right end; the
+     three cards (drive, folder, selection) and the command bar under them. -->
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:FileExplorer" x:Class="FileExplorer.MainWindow"
+        Title="File Labs" Width="1400" Height="860" MinWidth="760" MinHeight="480"
+        WindowDecorations="None" Background="#14171E" Foreground="#E8E8E8" FontSize="12" Icon="avares://filelabs/Assets/filelabs.png">
+  <Window.Styles>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="#08FFFFFF"/><Setter Property="BorderBrush" Value="#14FFFFFF"/>
+      <Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="10"/><Setter Property="Padding" Value="12,9,14,9"/>
+    </Style>
+    <Style Selector="TextBlock.statValue"><Setter Property="FontSize" Value="20"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+    <Style Selector="TextBlock.statSub"><Setter Property="Foreground" Value="{DynamicResource Muted}"/><Setter Property="FontSize" Value="11"/></Style>
+    <Style Selector="TextBlock.statIcon"><Setter Property="FontFamily" Value="avares://filelabs/Assets#FluentSystemIcons-Regular"/><Setter Property="FontSize" Value="22"/>
+      <Setter Property="Foreground" Value="{DynamicResource Muted}"/><Setter Property="Margin" Value="0,0,12,0"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+    <Style Selector="Border.sideHeader"><Setter Property="Background" Value="Transparent"/><Setter Property="CornerRadius" Value="5"/></Style>
+    <Style Selector="Border.sideHeader:pointerover"><Setter Property="Background" Value="#10FFFFFF"/></Style>
+    <Style Selector="Button.bar"><Setter Property="FontSize" Value="11"/></Style>
+  </Window.Styles>
+
+  <Panel>
+    <Image x:Name="BgImage" Stretch="UniformToFill" IsHitTestVisible="False" IsVisible="False"/>
+    <Border x:Name="BgShade" IsHitTestVisible="False" IsVisible="False"/>
+
+    <Grid x:Name="Root" ColumnDefinitions="270,5,*">
+      <!-- sidebar -->
+      <DockPanel x:Name="SidebarPanel" Background="#40000000">
+        <DockPanel x:Name="Caption" DockPanel.Dock="Top" Margin="18,13,8,0" Height="26" Background="Transparent">
+          <Image Source="avares://filelabs/Assets/filelabs.png" Width="16" Height="16" Margin="0,0,10,0"/>
+          <TextBlock Text="File Labs" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+          <TextBlock x:Name="VersionText" Classes="muted" FontSize="11" Margin="8,1,0,0" VerticalAlignment="Center"/>
+        </DockPanel>
+        <DockPanel DockPanel.Dock="Bottom" Margin="8,4,8,8">
+          <Button x:Name="SettingsButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.Settings}" ToolTip.Tip="Settings (Ctrl+,)"/>
+          <Button x:Name="HelpButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.Help}" ToolTip.Tip="Help: everything File Labs does (F1)"/>
+          <Button x:Name="WhatsNewButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.WhatsNew}" ToolTip.Tip="What’s new"/>
+          <Button x:Name="TrashButton" DockPanel.Dock="Left" Classes="ghost icon" HorizontalAlignment="Left" Content="{x:Static local:Glyph.Trash}" ToolTip.Tip="Trash"/>
+          <Border/>
+        </DockPanel>
+        <!-- the same red pizza button in every free app -->
+        <Button x:Name="PizzaButton" DockPanel.Dock="Bottom" Margin="8,4,8,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                Background="#D63A3A" Foreground="White" FontWeight="SemiBold" CornerRadius="5" Padding="7,6" Cursor="Hand"
+                Content="🍕 Buy me a pizza" ToolTip.Tip="Optional. It goes toward code signing and a Steam listing."/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,12">
+          <StackPanel x:Name="SidebarHost"/>
+        </ScrollViewer>
+      </DockPanel>
+      <GridSplitter Grid.Column="1" Background="Transparent" ResizeDirection="Columns"/>
+
+      <!-- panes, cards, command bar -->
+      <Grid Grid.Column="2" Margin="10,8,10,0" RowDefinitions="*,Auto,Auto">
+        <Grid x:Name="PaneArea" ColumnDefinitions="*,0,0">
+          <Grid x:Name="PaneGrid" ColumnDefinitions="*,10,*">
+            <local:PaneView x:Name="Left"/>
+            <GridSplitter x:Name="PaneSplitter" Grid.Column="1" Background="Transparent" ResizeDirection="Columns"/>
+            <local:PaneView x:Name="Right" Grid.Column="2"/>
+          </Grid>
+          <GridSplitter x:Name="PreviewSplitter" Grid.Column="1" Background="Transparent" ResizeDirection="Columns" IsVisible="False"/>
+          <Border x:Name="PreviewPane" Grid.Column="2" IsVisible="False" Background="#0DFFFFFF" CornerRadius="10" BorderThickness="1" BorderBrush="#1AFFFFFF" ClipToBounds="True">
+            <DockPanel>
+              <DockPanel DockPanel.Dock="Top" Margin="12,6,6,4">
+                <Button x:Name="PreviewClose" DockPanel.Dock="Right" Classes="ghost" ToolTip.Tip="Close the preview (Alt+P)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Close}" FontSize="11"/></Button>
+                <TextBlock x:Name="PreviewTitle" Classes="muted" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+              </DockPanel>
+              <ContentControl x:Name="PreviewBody"/>
+            </DockPanel>
+          </Border>
+        </Grid>
+
+        <Grid x:Name="StatsRow" Grid.Row="1" Margin="0,10,0,0" ColumnDefinitions="1.25*,10,*,10,*">
+          <Border Classes="card">
+            <DockPanel>
+              <TextBlock x:Name="DriveIcon" Classes="statIcon" Text="{x:Static local:Glyph.Drive}"/>
+              <StackPanel VerticalAlignment="Center">
+                <DockPanel>
+                  <TextBlock x:Name="DrivePct" DockPanel.Dock="Right" Classes="statSub"/>
+                  <TextBlock Classes="statSub"><Run x:Name="StatDrive" FontWeight="SemiBold" Foreground="#E8EEF6"/><Run x:Name="StatFs"/></TextBlock>
+                </DockPanel>
+                <TextBlock TextTrimming="CharacterEllipsis"><Run x:Name="StatFree" FontSize="20" FontWeight="SemiBold"/><Run Text="  free" Foreground="#8CFFFFFF" FontSize="11"/><Run x:Name="StatUsed" Foreground="#8CFFFFFF" FontSize="11"/></TextBlock>
+                <Grid Height="4" Margin="0,5,0,0">
+                  <Border Background="#12FFFFFF" CornerRadius="2"/>
+                  <Border x:Name="DriveFill" CornerRadius="2" Background="{DynamicResource Accent}" HorizontalAlignment="Left" Width="0"/>
+                </Grid>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <Border Grid.Column="2" Classes="card">
+            <DockPanel>
+              <TextBlock Classes="statIcon" Text="{x:Static local:Glyph.Folder}" Foreground="#60A5FA"/>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="This folder" Classes="statSub"/>
+                <TextBlock x:Name="StatFolder" Classes="statValue"/>
+                <TextBlock x:Name="StatFolderSub" Classes="statSub"/>
+                <Grid x:Name="KindBar" Height="4" Margin="0,5,0,0" Background="#12FFFFFF"/>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <Border Grid.Column="4" Classes="card">
+            <DockPanel>
+              <TextBlock x:Name="SelIcon" Classes="statIcon" Text="{x:Static local:Glyph.Selection}"/>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock x:Name="SelTitle" Classes="statSub"/>
+                <TextBlock x:Name="SelValue" Classes="statValue" TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="SelSub" Classes="statSub" TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+        </Grid>
+
+        <DockPanel Grid.Row="2" Margin="0,6,0,6">
+          <StackPanel x:Name="CommandBar" DockPanel.Dock="Left" Orientation="Horizontal"/>
+          <TextBlock x:Name="Status" Classes="muted" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" HorizontalAlignment="Right" Margin="12,0,0,0"/>
+        </DockPanel>
+      </Grid>
+
+      <!-- the window's buttons, over the right end of the tab row -->
+      <StackPanel x:Name="CaptionButtons" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,12,0">
+        <Button x:Name="HistoryButton" Classes="caption" Width="40" Content="{x:Static local:Glyph.History}" ToolTip.Tip="Recent folders and closed tabs (Ctrl+Shift+T reopens the last closed tab)"/>
+        <Button x:Name="MinButton" Classes="caption" Content="{x:Static local:Glyph.Minimize}" ToolTip.Tip="Minimize"/>
+        <Button x:Name="MaxButton" Classes="caption" Content="{x:Static local:Glyph.Maximize}" ToolTip.Tip="Maximize"/>
+        <Button x:Name="CloseButton" Classes="caption close" Content="{x:Static local:Glyph.Close}" ToolTip.Tip="Close"/>
+      </StackPanel>
+    </Grid>
+
+    <!-- resize grips: the window has no system frame -->
+    <Border x:Name="GripW" Width="5" HorizontalAlignment="Left" Background="Transparent" Cursor="SizeWestEast"/>
+    <Border x:Name="GripE" Width="5" HorizontalAlignment="Right" Background="Transparent" Cursor="SizeWestEast"/>
+    <Border x:Name="GripN" Height="4" VerticalAlignment="Top" Background="Transparent" Cursor="SizeNorthSouth"/>
+    <Border x:Name="GripS" Height="5" VerticalAlignment="Bottom" Background="Transparent" Cursor="SizeNorthSouth"/>
+    <Border x:Name="GripSE" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="Transparent" Cursor="BottomRightCorner"/>
+    <Border x:Name="GripSW" Width="12" Height="12" HorizontalAlignment="Left" VerticalAlignment="Bottom" Background="Transparent" Cursor="BottomLeftCorner"/>
+  </Panel>
+</Window>

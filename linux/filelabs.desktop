@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=File Labs
+GenericName=File Manager
+Comment=Two-pane file manager whose copies ask about conflicts once
+Exec=filelabs %U
+Icon=filelabs
+Terminal=false
+Categories=System;FileTools;FileManager;Utility;
+MimeType=inode/directory;
+Keywords=files;folders;explorer;manager;copy;dual-pane;
+StartupWMClass=filelabs

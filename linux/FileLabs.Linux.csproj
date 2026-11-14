@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- File Labs for Linux: the same two-pane file manager as on Windows, in .NET 10 + Avalonia (the WPF window can't run
+       on Linux). The parts that don't touch the platform are the Windows files themselves (Compile Link below); the rest
+       is written for Linux here. linux/build.sh publishes it self-contained and packs the AppImage. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>filelabs</AssemblyName>
+    <RootNamespace>FileExplorer</RootNamespace>
+    <Version>1.0.71</Version>
+    <Product>File Labs</Product>
+    <Company>Protagonist Labs</Company>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+    <PackageReference Include="System.IO.Hashing" Version="10.0.12" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- shared with Windows as they are -->
+    <Compile Include="..\SizeCache.cs" Link="Shared\SizeCache.cs" />
+    <Compile Include="..\Backups.cs" Link="Shared\Backups.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\FluentSystemIcons-Regular.ttf" />
+    <AvaloniaResource Include="Assets\filelabs.png" />
+    <EmbeddedResource Include="..\whatsnew.txt" Link="whatsnew.txt" />
+  </ItemGroup>
+</Project>

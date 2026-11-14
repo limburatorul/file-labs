@@ -1,0 +1,180 @@
+<!-- File Labs' Windows look (App.xaml there): dark glass panels, the accent from Settings, 10 px cards, quiet ghost buttons,
+     browser-style tabs, the age bar on every row, opaque menus. Linux draws no acrylic behind most windows (and text over a
+     half-done blur fringes), so the window is the Windows tint made opaque. -->
+<Application xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="FileExplorer.App" RequestedThemeVariant="Dark">
+  <Application.Styles>
+    <FluentTheme/>
+
+    <!-- text: Segoe UI isn't on Linux; the desktop's own sans follows -->
+    <Style Selector="Window"><Setter Property="FontFamily" Value="Segoe UI, Inter, Noto Sans, Adwaita Sans, Cantarell, DejaVu Sans, sans-serif"/></Style>
+    <Style Selector="TextBlock.icon"><Setter Property="FontFamily" Value="avares://filelabs/Assets#FluentSystemIcons-Regular"/></Style>
+    <Style Selector="Run.icon"><Setter Property="FontFamily" Value="avares://filelabs/Assets#FluentSystemIcons-Regular"/></Style>
+    <Style Selector="TextBlock.muted"><Setter Property="Foreground" Value="{DynamicResource Muted}"/></Style>
+
+    <!-- Ghost: transparent until the pointer is on it -->
+    <Style Selector="Button.ghost">
+      <Setter Property="Foreground" Value="#D0FFFFFF"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="7,4"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="CornerRadius" Value="5"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.ghost /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="Transparent"/></Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#14FFFFFF"/><Setter Property="Foreground" Value="#D0FFFFFF"/>
+    </Style>
+    <Style Selector="Button.ghost:pressed /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#22FFFFFF"/></Style>
+    <Style Selector="Button.side"><Setter Property="HorizontalContentAlignment" Value="Left"/><Setter Property="HorizontalAlignment" Value="Stretch"/></Style>
+    <Style Selector="Button.icon">
+      <Setter Property="FontFamily" Value="avares://filelabs/Assets#FluentSystemIcons-Regular"/>
+      <Setter Property="FontSize" Value="16"/>
+      <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
+      <Setter Property="Width" Value="34"/>
+      <Setter Property="Height" Value="30"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Tab: a small toggle, "on" = Classes.on -->
+    <Style Selector="Button.tab">
+      <Setter Property="Foreground" Value="#80FFFFFF"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Padding" Value="9,3"/>
+    </Style>
+    <Style Selector="Button.tab.on /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#1AFFFFFF"/><Setter Property="Foreground" Value="#F0FFFFFF"/>
+    </Style>
+
+    <!-- the transfer window's buttons: filled, labelled; .on is the accent one -->
+    <Style Selector="Button.job">
+      <Setter Property="Foreground" Value="#F0FFFFFF"/>
+      <Setter Property="Background" Value="#1FFFFFFF"/>
+      <Setter Property="BorderBrush" Value="#26FFFFFF"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="7"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Padding" Value="14,7"/>
+      <Setter Property="MinHeight" Value="34"/>
+      <Setter Property="Margin" Value="0,0,8,0"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="Button.job:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#33FFFFFF"/><Setter Property="BorderBrush" Value="#26FFFFFF"/><Setter Property="Foreground" Value="#F0FFFFFF"/>
+    </Style>
+    <Style Selector="Button.job.on /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentSelect}"/><Setter Property="BorderBrush" Value="{DynamicResource Accent}"/>
+      <Setter Property="Foreground" Value="{DynamicResource AccentSelectText}"/>
+    </Style>
+    <Style Selector="Button.choice"><Setter Property="Padding" Value="8,4"/><Setter Property="MinHeight" Value="28"/><Setter Property="FontSize" Value="12"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="Margin" Value="0,0,6,0"/></Style>
+
+    <!-- the window's own buttons -->
+    <Style Selector="Button.caption">
+      <Setter Property="FontFamily" Value="avares://filelabs/Assets#FluentSystemIcons-Regular"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Width" Value="46"/><Setter Property="Height" Value="32"/>
+      <Setter Property="Foreground" Value="#D0FFFFFF"/><Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/><Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Focusable" Value="False"/>
+    </Style>
+    <Style Selector="Button.caption:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#18FFFFFF"/><Setter Property="Foreground" Value="White"/></Style>
+    <Style Selector="Button.caption.close:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#C42B1C"/></Style>
+
+    <!-- text boxes without a frame (path, filter, rename) -->
+    <Style Selector="TextBox.bare">
+      <Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Foreground" Value="#F0FFFFFF"/><Setter Property="MinHeight" Value="0"/><Setter Property="Padding" Value="2,2"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="CaretBrush" Value="White"/>
+      <Setter Property="SelectionBrush" Value="{DynamicResource AccentSoft}"/>
+    </Style>
+    <Style Selector="TextBox.bare:focus /template/ Border#PART_BorderElement"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/></Style>
+    <Style Selector="TextBox.bare:pointerover /template/ Border#PART_BorderElement"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/></Style>
+
+    <!-- thin bars -->
+    <Style Selector="ProgressBar">
+      <Setter Property="Height" Value="4"/><Setter Property="MinHeight" Value="0"/><Setter Property="Maximum" Value="1"/>
+      <Setter Property="Background" Value="#1AFFFFFF"/><Setter Property="Foreground" Value="{DynamicResource Accent}"/><Setter Property="CornerRadius" Value="2"/>
+    </Style>
+
+    <!-- toggles: on Windows every CheckBox is drawn as a switch; here Settings uses Avalonia's ToggleSwitch, in the accent -->
+    <Style Selector="ToggleSwitch"><Setter Property="Foreground" Value="#E8EEF6"/></Style>
+    <Style Selector="ToggleSwitch:checked /template/ Border#SwitchKnobBounds"><Setter Property="Background" Value="{DynamicResource Accent}"/></Style>
+
+    <!-- the file rows (Details, List and Icons): hover, selection in the accent, the drop target brighter -->
+    <Style Selector="ListBox.files"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Padding" Value="0"/></Style>
+    <Style Selector="ListBox.files ListBoxItem">
+      <Setter Property="Padding" Value="{DynamicResource RowPad}"/><Setter Property="Margin" Value="0"/><Setter Property="MinHeight" Value="0"/>
+      <Setter Property="CornerRadius" Value="2"/><Setter Property="Foreground" Value="#E8EEF6"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    </Style>
+    <Style Selector="ListBox.files ListBoxItem:nth-child(2n)"><Setter Property="Background" Value="#08FFFFFF"/></Style>
+    <Style Selector="ListBox.files ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#10FFFFFF"/></Style>
+    <Style Selector="ListBox.files ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentSelect}"/><Setter Property="Foreground" Value="{DynamicResource AccentSelectText}"/>
+    </Style>
+    <Style Selector="ListBox.files ListBoxItem:selected:focus /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource AccentSelect}"/></Style>
+    <Style Selector="ListBox.files ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource AccentSelect}"/></Style>
+    <Style Selector="ListBox.files ListBoxItem.drop /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="{DynamicResource AccentEdge}"/></Style>
+    <Style Selector="ListBox.files ListBoxItem.dim"><Setter Property="Opacity" Value="0.45"/></Style>
+    <Style Selector="ListBox.files.inactive ListBoxItem:not(:selected)"><Setter Property="Opacity" Value="0.82"/></Style>
+    <Style Selector="ListBox.tiles ListBoxItem"><Setter Property="Padding" Value="6"/><Setter Property="Margin" Value="2"/><Setter Property="CornerRadius" Value="3"/></Style>
+    <Style Selector="ListBox.tiles ListBoxItem:nth-child(2n)"><Setter Property="Background" Value="Transparent"/></Style>
+
+    <!-- scrollbars: a thin translucent thumb, as on Windows -->
+    <Style Selector="ScrollBar"><Setter Property="AllowAutoHide" Value="True"/></Style>
+
+    <!-- menus stay opaque: menus on glass become unreadable -->
+    <Style Selector="ContextMenu">
+      <Setter Property="Background" Value="#1C2029"/><Setter Property="BorderBrush" Value="#2EFFFFFF"/><Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/><Setter Property="Padding" Value="0,4"/><Setter Property="MinWidth" Value="220"/>
+      <Setter Property="Foreground" Value="#E8EEF6"/><Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="MenuFlyoutPresenter">
+      <Setter Property="Background" Value="#1C2029"/><Setter Property="BorderBrush" Value="#2EFFFFFF"/><Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="8"/><Setter Property="Padding" Value="0,4"/>
+    </Style>
+    <Style Selector="MenuItem"><Setter Property="Foreground" Value="#E8EEF6"/><Setter Property="Padding" Value="10,5"/><Setter Property="Margin" Value="4,0"/><Setter Property="CornerRadius" Value="5"/></Style>
+    <Style Selector="MenuItem:pointerover /template/ Border#PART_LayoutRoot"><Setter Property="Background" Value="{DynamicResource AccentSelect}"/></Style>
+    <Style Selector="MenuItem:selected /template/ Border#PART_LayoutRoot"><Setter Property="Background" Value="{DynamicResource AccentSelect}"/></Style>
+    <Style Selector="MenuItem /template/ TextBlock#PART_InputGestureText"><Setter Property="Foreground" Value="#6E7A8C"/></Style>
+    <Style Selector="Separator"><Setter Property="Background" Value="#1FFFFFFF"/><Setter Property="Margin" Value="12,4"/><Setter Property="Height" Value="1"/></Style>
+
+    <Style Selector="ToolTip">
+      <Setter Property="Background" Value="#1C2029"/><Setter Property="BorderBrush" Value="#2EFFFFFF"/><Setter Property="Foreground" Value="#E8EEF6"/>
+      <Setter Property="CornerRadius" Value="6"/><Setter Property="FontSize" Value="12"/>
+    </Style>
+  </Application.Styles>
+  <Application.Resources>
+    <!-- the accent and its three transparencies: MainWindow.ApplyAccent sets all four from Settings -->
+    <SolidColorBrush x:Key="Accent" Color="#4C8DFF"/>
+    <SolidColorBrush x:Key="AccentEdge" Color="#A64C8DFF"/>
+    <SolidColorBrush x:Key="AccentSelect" Color="#2F4E84"/>
+    <SolidColorBrush x:Key="AccentSelectText" Color="White"/>
+    <SolidColorBrush x:Key="AccentSoft" Color="#454C8DFF"/>
+    <SolidColorBrush x:Key="Muted" Color="#8CFFFFFF"/>
+    <SolidColorBrush x:Key="TabStripBg" Color="#2E000000"/>
+    <Thickness x:Key="RowPad">8,3</Thickness>
+    <CornerRadius x:Key="ControlCornerRadius">6</CornerRadius>
+    <!-- Fluent's own controls in the same palette (dialogs, Settings) -->
+    <SolidColorBrush x:Key="ButtonBackground" Color="#1FFFFFFF"/>
+    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#26FFFFFF"/>
+    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#26FFFFFF"/>
+    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#40FFFFFF"/>
+    <SolidColorBrush x:Key="ButtonForeground" Color="#F0FFFFFF"/>
+    <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="White"/>
+    <SolidColorBrush x:Key="TextControlBackground" Color="#12FFFFFF"/>
+    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#1AFFFFFF"/>
+    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#12FFFFFF"/>
+    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#26FFFFFF"/>
+    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#4C8DFF"/>
+    <SolidColorBrush x:Key="TextControlForeground" Color="#F0FFFFFF"/>
+    <SolidColorBrush x:Key="TextControlForegroundFocused" Color="White"/>
+    <SolidColorBrush x:Key="ComboBoxBackground" Color="#12FFFFFF"/>
+    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#1C2029"/>
+    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#26FFFFFF"/>
+  </Application.Resources>
+</Application>
