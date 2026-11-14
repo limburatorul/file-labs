@@ -180,7 +180,6 @@ public partial class MainWindow : Window
         SettingsButton.Click += (_, _) => Dialog(() => new SettingsWindow());
         HelpButton.Click += (_, _) => Open(() => new HelpWindow());
         WhatsNewButton.Click += (_, _) => Open(() => new WhatsNewWindow());
-        TrashButton.Click += (_, _) => Open(() => new TrashWindow());
         PizzaButton.Click += (_, _) => Shell.Open("https://buymeacoffee.com/protagonistlabs?utm_source=filelabs-linux&utm_medium=app&utm_campaign=pizza");
         PreviewClose.Click += (_, _) => TogglePreview();
     }

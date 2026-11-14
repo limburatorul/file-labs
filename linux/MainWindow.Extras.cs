@@ -31,7 +31,7 @@ public partial class MainWindow
         binButton.Click += (_, _) => binPanel.IsVisible = !binPanel.IsVisible;
         BinDrop(binButton);
         DockPanel.SetDock(binButton, Dock.Left);
-        BottomRow.Children.Insert(BottomRow.Children.IndexOf(TrashButton) + 1, binButton);
+        BottomRow.Children.Insert(0, binButton);
 
         binSummary = new TextBlock { Foreground = (IBrush)Application.Current!.FindResource("Muted"), FontSize = 11, Margin = new(0, 2, 0, 6), TextWrapping = TextWrapping.Wrap };
         binList = new ListBox { Classes = { "files" }, MaxHeight = 190, ItemsSource = bin };

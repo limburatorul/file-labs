@@ -34,15 +34,20 @@
         <DockPanel x:Name="BottomRow" DockPanel.Dock="Bottom" Margin="8,4,8,8">
           <Button x:Name="SettingsButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.Settings}" ToolTip.Tip="Settings (Ctrl+,)"/>
           <Button x:Name="HelpButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.Help}" ToolTip.Tip="Help: everything File Labs does (F1)"/>
-          <Button x:Name="UpdateButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.Download}" ToolTip.Tip="Check for updates (it also checks by itself every hour)"/>
           <Button x:Name="WhatsNewButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.WhatsNew}" ToolTip.Tip="What’s new"/>
-          <Button x:Name="TrashButton" DockPanel.Dock="Left" Classes="ghost icon" HorizontalAlignment="Left" Content="{x:Static local:Glyph.Trash}" ToolTip.Tip="Trash"/>
+          <Button x:Name="UpdateButton" DockPanel.Dock="Right" Classes="ghost icon" Content="{x:Static local:Glyph.Update}" ToolTip.Tip="Check for updates (it also checks by itself every hour)"/>
           <Border/>
         </DockPanel>
         <!-- the same red pizza button in every free app -->
         <Button x:Name="PizzaButton" DockPanel.Dock="Bottom" Margin="8,4,8,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                 Background="#D63A3A" Foreground="White" FontWeight="SemiBold" CornerRadius="5" Padding="7,6" Cursor="Hand"
-                Content="🍕 Buy me a pizza" ToolTip.Tip="Optional. It goes toward code signing and a Steam listing."/>
+                ToolTip.Tip="Optional. It goes toward code signing and a Steam listing.">
+          <!-- the pizza as an outline glyph, as Windows draws it, not the desktop's colour emoji -->
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Classes="icon" Text="{x:Static local:Glyph.Pizza}" FontSize="14" VerticalAlignment="Center"/>
+            <TextBlock Text="Buy me a pizza" VerticalAlignment="Center"/>
+          </StackPanel>
+        </Button>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,12">
           <StackPanel x:Name="SidebarHost"/>
         </ScrollViewer>

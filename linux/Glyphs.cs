@@ -39,12 +39,12 @@ static class Glyph
     public const string Pause = "\uF5A1"; // pause
     public const string Restore = "\uF19F"; // arrow_reset
     public const string Paste = "\uF2D5"; // clipboard_paste
-    public const string WhatsNew = "\uEB33"; // sparkle
+    public const string WhatsNew = "\uF537"; // megaphone
     public const string Undo = "\uF199"; // arrow_undo
     public const string OpenWith = "\uF582"; // open
     public const string Eye = "\uE5F2"; // eye
     public const string EyeOff = "\uE5F5"; // eye_off
-    public const string Bin = "\uED9E"; // tray_item_add
+    public const string Bin = "\uF139"; // archive
     public const string Warning = "\uF869"; // warning
     public const string Shield = "\uF6BE"; // shield
     public const string Desktop = "\uF359"; // desktop
@@ -53,7 +53,9 @@ static class Glyph
     public const string History = "\uF47E"; // history
     public const string Clock = "\uF2DD"; // clock
     public const string Download = "\uF150"; // arrow_download
-    public const string Help = "\uF63D"; // question_circle
+    public const string Help = "\uF638"; // question
+    public const string Update = "\uF190"; // arrow_sync
+    public const string Pizza = "\uE670"; // food_pizza
     public const string Compare = "\uEB60"; // split_vertical
     public const string OtherPane = "\uE8BD"; // panel_right
     public const string Transfers = "\uF18D"; // arrow_swap
