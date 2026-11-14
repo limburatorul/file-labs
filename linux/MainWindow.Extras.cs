@@ -406,6 +406,8 @@ public partial class MainWindow
         { if (manual) Say("Couldn't check for updates: " + ex.Message); }
     }
 
+    [System.Runtime.InteropServices.DllImport("libc")] static extern int fcntl(int fd, int cmd, int arg);
+
     async Task InstallUpdate()
     {
         var me = Environment.GetEnvironmentVariable("APPIMAGE");
@@ -424,6 +426,11 @@ public partial class MainWindow
             File.SetUnixFileMode(tmp, File.GetUnixFileMode(me));
             File.Move(tmp, me, overwrite: true);
             SaveState();
+            // the AppImage runtime leaves us its keep-alive pipe and a descriptor on its mount without close-on-exec: the
+            // restarted copy would inherit them and keep the old image mounted (and its runtime running) while it lives.
+            // .NET's own descriptors are close-on-exec already, so marking every one above stderr changes nothing else.
+            foreach (var fd in Directory.GetFileSystemEntries("/proc/self/fd")) // not GetFiles: it skips links to folders
+                if (int.TryParse(Path.GetFileName(fd), out var n) && n > 2) fcntl(n, 2 /* F_SETFD */, 1 /* FD_CLOEXEC */);
             Process.Start(new ProcessStartInfo(me) { UseShellExecute = false });
             Close();
         }
