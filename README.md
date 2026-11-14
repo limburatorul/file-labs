@@ -1,6 +1,10 @@
 # File Labs
 
-A free, dual-pane file manager for Windows 11, with a copy engine that shows what it is doing.
+A free, dual-pane file manager for Windows 11 and Linux, with a copy engine that shows what it is doing.
+
+**Linux** (since 1.0.72): `linux/` is the same app in .NET 10 and Avalonia, with the Windows look. Download
+`filelabs-<version>-x86_64.AppImage` from the releases, `chmod +x` it and run it, or unpack the tarball. Built and
+tested on CachyOS with KDE Plasma (Wayland); `linux/build.sh` builds both on a Linux machine with the .NET 10 SDK.
 
 - **Two panes, with tabs** — browser-style tabs in each pane, `Tab` to switch panes,
   `Ctrl+U` to swap them, drag and drop between panes and to/from Explorer (the wheel scrolls the list

@@ -1,6 +1,18 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.72 | 2026-11-15 | File Labs on Linux
+File Labs now runs on Linux too, with the same look and the same way of working.
+**On Linux**
+- An AppImage for 64-bit PCs: download it, make it executable, run it. A tarball is there too.
+- Two panes with tabs, Details, List and Icons, folder sizes, filtering as you type and search, Quick View and the preview pane.
+- Copies and moves go through the same engine: one scan, one question for all the conflicts, pause, cancel, Undo, and verification if you want it.
+- Delete goes to your desktop's Trash, and copy and paste work both ways with Dolphin and Nautilus.
+- Open with lists the apps your desktop has for the file, and File Labs can be your default file manager.
+- The AppImage updates itself after asking, checked against what GitHub publishes.
+**On Windows**
+- Nothing changes in this version.
+
 ## 1.0.71 | 2026-11-12 | Room to drop
 In Details, a full folder now has a place to drop files into itself.
 - Drop files on the empty space to the right of the Modified column and they land in the folder you're looking at. Before, they went into whatever folder was on that row.
