@@ -45,7 +45,7 @@ public static class Settings
     public static double SidebarWidth = 270;
     public static readonly Dictionary<string, List<string>> Tabs = new();
     public static readonly Dictionary<string, int> ActiveTab = new();
-    public static readonly Dictionary<string, ViewMode> Views = new();
+    public static readonly Dictionary<string, ViewMode> FolderViews = new(); // folder → its view; absent = Details
     public static readonly Dictionary<string, (string Key, bool Desc)> FolderSorts = new();
     public static readonly HashSet<string> SidebarCollapsed = new();
     public static readonly HashSet<string> DateGroupFolders = new();
@@ -99,7 +99,8 @@ public static class Settings
                         case "sidebarcollapsed": SidebarCollapsed.Clear(); SidebarCollapsed.UnionWith(v.Split(',').Where(x => x != "")); break;
                         case var t when t.StartsWith("tabs."): Tabs[t[5..]] = v.Split('|').Where(x => x != "").ToList(); break;
                         case var a when a.StartsWith("activetab.") && int.TryParse(v, out var ai): ActiveTab[a[10..]] = ai; break;
-                        case var w when w.StartsWith("view.") && Enum.TryParse<ViewMode>(v, out var vm): Views[w[5..]] = vm; break;
+                        // folderview=IconsL|/home/me/Photos — the path last, as in sort. The old per-pane view.Left/Right are dropped.
+                        case "folderview" when v.Split('|', 2) is [var fm, var fp] && Enum.TryParse<ViewMode>(fm, out var vm) && fp != "": FolderViews[fp] = vm; break;
                         case "sort" when v.Split('|', 3) is [var sk, var sd, var sp] && Entry.SortKeys.Contains(sk) && sp != "": FolderSorts[sp] = (sk, sd == "1"); break;
                         case "groupdate" when v != "": DateGroupFolders.Add(v); break;
                     }
@@ -143,7 +144,7 @@ public static class Settings
         yield return $"sidebarcollapsed={string.Join(',', SidebarCollapsed)}";
         foreach (var (k, v) in Tabs) yield return $"tabs.{k}={string.Join('|', v)}";
         foreach (var (k, v) in ActiveTab) yield return $"activetab.{k}={v}";
-        foreach (var (k, v) in Views) yield return $"view.{k}={v}";
+        foreach (var (p, v) in FolderViews) yield return $"folderview={v}|{p}";
         foreach (var (p, (k, d)) in FolderSorts) yield return $"sort={k}|{(d ? 1 : 0)}|{p}";
         foreach (var g in DateGroupFolders) yield return $"groupdate={g}";
     }

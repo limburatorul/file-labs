@@ -79,7 +79,7 @@ public static class Settings
     public static Rect? WindowBounds;                                  // restore bounds
     public static bool Maximized;
     public static readonly Dictionary<string, double> ColumnWidths = new(); // "Size" → 80
-    public static readonly Dictionary<string, PaneView.ViewMode> Views = new();
+    public static readonly Dictionary<string, PaneView.ViewMode> FolderViews = new(StringComparer.OrdinalIgnoreCase); // folder → its view; absent = Details
     public static readonly Dictionary<string, List<string>> Tabs = new();   // "Left" → folders open in that pane
     public static readonly Dictionary<string, int> ActiveTab = new(); // "Left" → Details
     public static readonly Dictionary<string, List<int>> Pins = new(); // "Left" → indexes of pinned tabs
@@ -170,7 +170,8 @@ public static class Settings
                 case var k when k.StartsWith("tabs.") && v != "": Tabs[k[5..]] = v.Split('|').Where(x => x != "").ToList(); break;
                 case var k when k.StartsWith("activetab.") && int.TryParse(v, out var ai): ActiveTab[k[10..]] = ai; break;
                 case var k when k.StartsWith("pins."): Pins[k[5..]] = v.Split(',').Select(x => int.TryParse(x, out var n) ? n : -1).Where(n => n >= 0).ToList(); break;
-                case var k when k.StartsWith("view.") && Enum.TryParse<PaneView.ViewMode>(v, out var vm): Views[k[5..]] = vm; break;
+                // folderview=IconsL|D:\Photos — the path last, as in sort. The old per-pane view.Left/view.Right are dropped.
+                case "folderview" when v.Split('|', 2) is [var fm, var fp] && Enum.TryParse<PaneView.ViewMode>(fm, out var vm) && fp != "": FolderViews[fp] = vm; break;
                 case var k when k.StartsWith("col.") && double.TryParse(v, CultureInfo.InvariantCulture, out var cw) && double.IsFinite(cw): ColumnWidths[k[4..]] = Math.Clamp(cw, k == "col.Name" ? 30 : 0, 4000); break; // a column squeezed shut stays shut (Rico, 1.0.53)
                 // sort=Modified|1|D:\Photos — the path last: it may hold anything but |
                 case "sort" when v.Split('|', 3) is [var sk, var sd, var sp] && PaneView.SortKeys.Contains(sk) && sp != "": FolderSorts[sp] = (sk, sd == "1"); break;
@@ -247,7 +248,7 @@ public static class Settings
             $"maximized={(Maximized ? 1 : 0)}",
             WindowBounds is { } r ? $"window={r.ToString(CultureInfo.InvariantCulture)}" : "",
         }.Concat(ColumnWidths.Select(c => $"col.{c.Key}={c.Value.ToString(CultureInfo.InvariantCulture)}"))
-         .Concat(Views.Select(v => $"view.{v.Key}={v.Value}"))
+         .Concat(FolderViews.Select(v => $"folderview={v.Value}|{v.Key}"))
          .Concat(Tabs.Select(t => $"tabs.{t.Key}={string.Join("|", t.Value)}"))
          .Concat(ActiveTab.Select(a => $"activetab.{a.Key}={a.Value}"))
          .Concat(Pins.Select(p => $"pins.{p.Key}={string.Join(",", p.Value)}"))

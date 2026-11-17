@@ -258,7 +258,8 @@ public partial class PaneView : UserControl
         InitializeComponent();
         details = List.View;
         SetSort(sortKey, sortDesc);
-        Loaded += (_, _) => SetView(Settings.Views.TryGetValue(Name, out var v) ? v : ViewMode.Details);        List.GotKeyboardFocus += (_, _) => Activated?.Invoke();
+        Loaded += (_, _) => SetView(FolderView(Dir));
+        List.GotKeyboardFocus += (_, _) => Activated?.Invoke();
         PreviewMouseDown += (_, _) => Activated?.Invoke(); // anywhere in the pane: tabs, path, list
         renameTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(GetDoubleClickTime()) };
         renameTimer.Tick += (_, _) => ClickRename();
@@ -664,6 +665,8 @@ public partial class PaneView : UserControl
         // each folder keeps the order it was last sorted in; the rest are by name. Set before its rows are shown.
         var (key, desc) = Settings.FolderSorts.TryGetValue(path, out var sort) ? sort : ("Name", false);
         if (key != sortKey || desc != sortDesc) ShowSort(key, desc);
+        // and the view it was last seen in (a photo folder's big icons stay there); the rest open in Details
+        if (IsLoaded && FolderView(path) is var fv && fv != Mode) SetView(fv);
         if (searchQuery != null) { searchQuery = null; searchMore = null; FilterBox.Text = ""; } // the query would hide most of the new folder
         // A filter belongs to the folder it was typed in: carried along (another folder, a drive, another tab) it showed an
         // empty list over a full folder. Reading the same folder again keeps it.
@@ -2204,6 +2207,14 @@ public partial class PaneView : UserControl
     ViewBase details;
     public ViewMode Mode { get; private set; } = ViewMode.Details;
 
+    // Each folder keeps its own view, like its sort: only the ones not in Details are written down
+    static ViewMode FolderView(string path) => Settings.FolderViews.TryGetValue(path, out var v) ? v : ViewMode.Details;
+    void RememberView(ViewMode mode)
+    {
+        if (Dir == "") return;
+        if (mode == ViewMode.Details) Settings.FolderViews.Remove(Dir); else Settings.FolderViews[Dir] = mode;
+    }
+
     /// In Details, a thin line down the list where the Name column ends: right of it, a press on any row starts a
     /// selection rectangle instead of picking up the file (Drag_Down), and the line shows where that begins.
     void PlaceNameEdge()
@@ -2222,7 +2233,7 @@ public partial class PaneView : UserControl
         PlaceNameEdge();
         var m = Modes.First(x => x.mode == mode);
         ViewIcon.Text = m.glyph; ViewName.Text = m.name;
-        Settings.Views[Name] = mode;
+        RememberView(mode);
         var sel = List.SelectedItem;
         // Template, item style and panel are three separate changes, and the list would rebuild its
         // containers after each one. Detached from its items it rebuilds once, when they come back.
@@ -2339,7 +2350,7 @@ public partial class PaneView : UserControl
             Mode = mode;
             var m = Modes.First(x => x.mode == mode);
             ViewIcon.Text = m.glyph; ViewName.Text = m.name;
-            Settings.Views[Name] = mode;
+            RememberView(mode);
         }
         StartThumbs(); // a bigger size may want the larger thumbnails; ones already big enough are kept
     }

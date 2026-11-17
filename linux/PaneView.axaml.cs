@@ -114,7 +114,7 @@ public partial class PaneView : UserControl
         if (saved.Count == 0) saved.Add(fallback);
         foreach (var d in saved) tabs.Add(new Tab { Dir = d });
         activeTab = Math.Clamp(Settings.ActiveTab.GetValueOrDefault(name), 0, tabs.Count - 1);
-        SetView(Settings.Views.TryGetValue(name, out var v) ? v : ViewMode.Details, save: false);
+        SetView(FolderView(T.Dir), save: false);
         Load(T.Dir, null);
         BuildTabs();
     }
@@ -234,6 +234,8 @@ public partial class PaneView : UserControl
         T.Dir = dir;
         if (!sameFolder) { FilterBox.Text = ""; searchQuery = null; searchCts?.Cancel(); }
         if (Settings.FolderSorts.TryGetValue(dir, out var s)) (sortKey, sortDesc) = s; else (sortKey, sortDesc) = ("Name", false);
+        // and the view it was last seen in (a photo folder's big icons stay there); the rest open in Details
+        if (FolderView(dir) is var fv && fv != Mode) SetView(fv, save: false);
         BuildCrumbs();
         Watch(dir);
         Opened?.Invoke(dir);
@@ -512,6 +514,9 @@ public partial class PaneView : UserControl
     };
     public string ViewModeName => Modes.First(x => x.mode == Mode).name;
 
+    // Each folder keeps its own view, like its sort: only the ones not in Details are written down
+    static ViewMode FolderView(string dir) => Settings.FolderViews.TryGetValue(dir, out var v) ? v : ViewMode.Details;
+
     public void SetView(ViewMode mode, bool save = true)
     {
         Mode = mode;
@@ -525,7 +530,7 @@ public partial class PaneView : UserControl
         ViewName.Text = ViewModeName;
         TileSize = mode switch { ViewMode.IconsXL => 192, ViewMode.IconsL => 112, _ => 64 };
         TileWidth = TileSize + 28;
-        if (save) { Settings.Views[Name] = mode; StartThumbs(); }
+        if (save) { if (mode == ViewMode.Details) Settings.FolderViews.Remove(T.Dir); else Settings.FolderViews[T.Dir] = mode; StartThumbs(); }
     }
 
     void ShowViewMenu(Control at)
