@@ -1,6 +1,13 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.74 | 2026-11-18 | Each folder keeps its own view
+Zoom into a folder of photos and only that folder stays zoomed.
+- Every folder remembers its own view: Details, List or Icons in any size, set from the menu, with Ctrl+Shift+1 to 5 or with Ctrl and the mouse wheel.
+- Leave a photo folder in large thumbnails and the folders you open next come up in Details. Go back and the thumbnails are still there.
+- Folders you never changed open in Details. The old one-view-per-pane setting is dropped, so after the update everything starts in Details once.
+- The same on Windows and on Linux.
+
 ## 1.0.73 | 2026-11-15 | The same buttons on Linux
 Small fixes for the Linux version.
 **On Linux**
