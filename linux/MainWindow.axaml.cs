@@ -220,7 +220,11 @@ public partial class MainWindow : Window
             quick.Children.Add(b);
         }
         if (Settings.QuickAccess.Count == 0) quick.Children.Add(new TextBlock { Text = "Ctrl+D pins a folder here", Foreground = F.Brush("#59FFFFFF"), FontSize = 11, Margin = new(8, 2, 0, 0) });
-        SidebarHost.Children.Add(Section("quick", "Quick access", quick));
+        // Quick access lists (as on Windows): switch, add, rename, reorder and delete them from the button on the header
+        var lists = new Button { Classes = { "ghost" }, Padding = new(6, 1), Content = new TextBlock { Text = Glyph.ListView, Classes = { "icon" }, FontSize = 11, Foreground = F.Brush("#8A97AA") } };
+        ToolTip.SetTip(lists, "Quick access lists: switch, add, rename, reorder, delete");
+        lists.Click += (_, _) => QuickListsMenu().Open(lists);
+        SidebarHost.Children.Add(Section("quick", Settings.CurrentQuickList.Name, quick, lists));
 
         var home = PaneView.Home;
         var places = new StackPanel();
@@ -274,7 +278,64 @@ public partial class MainWindow : Window
         }
         SidebarHost.Children.Add(Section("drives", "Drives", drives));
         SidebarHost.Children.Add(Section("folders", "Folders", BuildTree()));
-        if (active != null) Dispatcher.UIThread.Post(() => SyncTree(active.Dir), DispatcherPriority.Background);
+        if (active != null) Dispatcher.UIThread.Post(() => SyncTree(active.Dir, reveal: false), DispatcherPriority.Background);
+    }
+
+    ContextMenu QuickListsMenu()
+    {
+        var m = new ContextMenu();
+        var lists = Settings.QuickLists;
+        var current = Settings.CurrentQuickList;
+        int at = lists.IndexOf(current);
+        for (int i = 0; i < lists.Count; i++)
+        {
+            int index = i;
+            var item = new MenuItem { Header = lists[i].Name, FontWeight = lists[i] == current ? FontWeight.SemiBold : FontWeight.Normal,
+                                      Icon = lists[i] == current ? new TextBlock { Text = Glyph.Check, Classes = { "icon" } } : null };
+            ToolTip.SetTip(item, $"{lists[i].Folders.Count} folder{(lists[i].Folders.Count == 1 ? "" : "s")}");
+            item.Click += (_, _) => SwitchQuickList(index);
+            m.Items.Add(item);
+        }
+        m.Items.Add(new Separator());
+        MenuItem Do(string header, string glyph, Action run, bool enabled = true)
+        {
+            var item = new MenuItem { Header = header, IsEnabled = enabled, Icon = new TextBlock { Text = glyph, Classes = { "icon" } } };
+            item.Click += (_, _) => run();
+            m.Items.Add(item);
+            return item;
+        }
+        Do("New list…", Glyph.Add, async () =>
+        {
+            if (await Dialogs.Ask(this, "New Quick access list", "Name of the list", "New list") is not { Length: > 0 } name) return;
+            lists.Insert(at + 1, new Settings.QuickList { Name = name.Trim() });
+            SwitchQuickList(at + 1);
+        });
+        Do($"Rename “{current.Name}”…", Glyph.Rename, async () =>
+        {
+            if (await Dialogs.Ask(this, "Rename list", "Name of the list", current.Name) is not { Length: > 0 } name) return;
+            current.Name = name.Trim();
+            SwitchQuickList(at);
+        });
+        Do("Move list up", Glyph.Up, () => MoveQuickList(at, at - 1), at > 0);
+        Do("Move list down", Glyph.Down, () => MoveQuickList(at, at + 1), at < lists.Count - 1);
+        Do($"Delete “{current.Name}”…", Glyph.Delete, async () =>
+        {
+            if (current.Folders.Count > 0 && !await Dialogs.Confirm(this, $"Delete the list “{current.Name}”?",
+                    $"Its {current.Folders.Count} folder{(current.Folders.Count == 1 ? "" : "s")} leave Quick access; the folders themselves stay where they are.")) return;
+            lists.Remove(current);
+            SwitchQuickList(Math.Min(at, lists.Count - 1));
+        }, lists.Count > 1);
+        return m;
+    }
+
+    void SwitchQuickList(int index) { Settings.ShownQuickList = index; Settings.Save(); BuildSidebar(); }
+
+    void MoveQuickList(int from, int to)
+    {
+        var list = Settings.QuickLists[from];
+        Settings.QuickLists.RemoveAt(from);
+        Settings.QuickLists.Insert(to, list);
+        SwitchQuickList(to);
     }
 
     void MovePin(string p, int by)
@@ -285,15 +346,21 @@ public partial class MainWindow : Window
         Settings.Save(); BuildSidebar();
     }
 
-    Control Section(string key, string title, Control content)
+    Control Section(string key, string title, Control content, Control extra = null)
     {
         bool collapsed = Settings.SidebarCollapsed.Contains(key);
         var chevron = new TextBlock { Text = collapsed ? Glyph.ChevronRight : Glyph.ChevronDown, Classes = { "icon" }, FontSize = 10, Foreground = F.Brush("#8A97AA"), Margin = new(0, 1, 7, 0), VerticalAlignment = VerticalAlignment.Center };
         var header = new Border
         {
             Classes = { "sideHeader" }, Padding = new(8, 5), Margin = new(0, 0, 0, 2), Cursor = new Cursor(StandardCursorType.Hand),
-            Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { chevron, new TextBlock { Text = title, Foreground = (IBrush)Application.Current!.FindResource("Muted"), FontSize = 11 } } },
+            Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { chevron, new TextBlock { Text = title, Foreground = (IBrush)Application.Current!.FindResource("Muted"), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis } } },
         };
+        if (extra != null)
+        {
+            extra.HorizontalAlignment = HorizontalAlignment.Right; extra.VerticalAlignment = VerticalAlignment.Center;
+            var row = header.Child; header.Child = null;
+            header.Child = new Grid { Children = { row, extra } };
+        }
         content.IsVisible = !collapsed;
         header.PointerPressed += (_, _) =>
         {
@@ -454,7 +521,7 @@ public partial class MainWindow : Window
         foreach (var d in dirs) if (!Settings.QuickAccess.Contains(d)) Settings.QuickAccess.Add(d);
         Settings.Save();
         BuildSidebar();
-        Say(dirs.Count == 1 ? $"Pinned {Path.GetFileName(dirs[0])} to Quick access" : $"Pinned {dirs.Count} folders");
+        Say(dirs.Count == 1 ? $"Pinned {Path.GetFileName(dirs[0])} to {Settings.CurrentQuickList.Name}" : $"Pinned {dirs.Count} folders to {Settings.CurrentQuickList.Name}");
     }
 
     void ShowHistory(Control at)

@@ -81,7 +81,7 @@
               <StackPanel VerticalAlignment="Center">
                 <DockPanel>
                   <TextBlock x:Name="DrivePct" DockPanel.Dock="Right" Classes="statSub"/>
-                  <TextBlock Classes="statSub"><Run x:Name="StatDrive" FontWeight="SemiBold" Foreground="#E8EEF6"/><Run x:Name="StatFs"/></TextBlock>
+                  <TextBlock Classes="statSub" TextTrimming="CharacterEllipsis"><Run x:Name="StatDrive" FontWeight="SemiBold" Foreground="#E8EEF6"/><Run x:Name="StatFs"/></TextBlock>
                 </DockPanel>
                 <TextBlock TextTrimming="CharacterEllipsis"><Run x:Name="StatFree" FontSize="20" FontWeight="SemiBold"/><Run Text="  free" Foreground="#8CFFFFFF" FontSize="11"/><Run x:Name="StatUsed" Foreground="#8CFFFFFF" FontSize="11"/></TextBlock>
                 <Grid Height="4" Margin="0,5,0,0">

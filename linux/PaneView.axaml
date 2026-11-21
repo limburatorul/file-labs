@@ -79,40 +79,46 @@
     <DockPanel>
       <!-- tabs: the darker strip around them, the active one in the card's own colour with the accent along its top -->
       <Grid x:Name="TabsArea" DockPanel.Dock="Top" Background="{DynamicResource TabStripBg}">
-        <DockPanel x:Name="TabBand" Background="Transparent" DragDrop.AllowDrop="True">
+        <DockPanel x:Name="TabBand" Background="Transparent" DragDrop.AllowDrop="True" ClipToBounds="True">
+          <!-- docked first, so a narrow pane gives the window's buttons their room before the tabs take it -->
+          <Border x:Name="CaptionSpace" DockPanel.Dock="Right" Width="0"/>
           <Border DockPanel.Dock="Left" Width="4"/>
-          <StackPanel x:Name="TabStrip" DockPanel.Dock="Left" Orientation="Horizontal"/>
+          <StackPanel x:Name="TabStrip" DockPanel.Dock="Left" Orientation="Horizontal" ClipToBounds="True"/>
           <Button x:Name="NewTabButton" DockPanel.Dock="Left" Classes="ghost" Margin="4,2,0,0" ToolTip.Tip="New tab (Ctrl+T)" VerticalAlignment="Center">
             <TextBlock Classes="icon" Text="{x:Static local:Glyph.Add}" FontSize="14"/>
           </Button>
-          <Border x:Name="CaptionSpace" DockPanel.Dock="Right" Width="0"/>
           <Border x:Name="TabDragArea" Background="Transparent"/>
         </DockPanel>
       </Grid>
 
       <!-- path: back, forward, up, the crumbs (or the box), the filter -->
-      <DockPanel x:Name="PathBar" DockPanel.Dock="Top" Margin="8,6,8,0">
-        <Button x:Name="BackButton" DockPanel.Dock="Left" Classes="ghost" ToolTip.Tip="Back (Alt+Left)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Back}" FontSize="13"/></Button>
-        <Button x:Name="FwdButton" DockPanel.Dock="Left" Classes="ghost" ToolTip.Tip="Forward (Alt+Right)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Forward}" FontSize="13"/></Button>
-        <Button x:Name="UpButton" DockPanel.Dock="Left" Classes="ghost" ToolTip.Tip="Up (Backspace)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Up}" FontSize="13"/></Button>
-        <Border DockPanel.Dock="Right" Width="200" Background="#12FFFFFF" CornerRadius="5" Margin="6,0,0,0"
+      <!-- a grid, so on a narrow pane the filter takes its share instead of a fixed 200 drawn over the arrows -->
+      <Grid x:Name="PathBar" DockPanel.Dock="Top" Margin="8,6,8,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="2*"/><ColumnDefinition Width="*" MaxWidth="206"/>
+        </Grid.ColumnDefinitions>
+        <Button x:Name="BackButton" Classes="ghost" ToolTip.Tip="Back (Alt+Left)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Back}" FontSize="13"/></Button>
+        <Button x:Name="FwdButton" Grid.Column="1" Classes="ghost" ToolTip.Tip="Forward (Alt+Right)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Forward}" FontSize="13"/></Button>
+        <Button x:Name="UpButton" Grid.Column="2" Classes="ghost" ToolTip.Tip="Up (Backspace)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Up}" FontSize="13"/></Button>
+        <Border Grid.Column="4" Background="#12FFFFFF" CornerRadius="5" Margin="6,0,0,0"
                 ToolTip.Tip="Typing filters this folder. Enter searches every subfolder. * and ? work as wildcards">
           <DockPanel>
             <Button x:Name="FilterClear" DockPanel.Dock="Right" Classes="ghost" IsVisible="False" ToolTip.Tip="Clear (Esc)"><TextBlock Classes="icon" Text="{x:Static local:Glyph.Close}" FontSize="11"/></Button>
             <TextBlock DockPanel.Dock="Right" Classes="icon" Text="{x:Static local:Glyph.Filter}" Foreground="#66FFFFFF" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <Grid>
-              <TextBlock x:Name="FilterHint" Text="Type to filter · Enter searches" Foreground="#66FFFFFF" FontSize="12" Margin="8,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+              <TextBlock x:Name="FilterHint" Text="Type to filter · Enter searches" Foreground="#66FFFFFF" FontSize="12" Margin="8,0" VerticalAlignment="Center" IsHitTestVisible="False" TextTrimming="CharacterEllipsis"/>
               <TextBox x:Name="FilterBox" Classes="bare" Margin="6,2" FontSize="12"/>
             </Grid>
           </DockPanel>
         </Border>
-        <Grid>
+        <Grid Grid.Column="3">
           <Border x:Name="CrumbArea" Background="Transparent">
             <StackPanel x:Name="Crumbs" Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True"/>
           </Border>
           <TextBox x:Name="PathBox" Classes="bare" IsVisible="False" Margin="4,2" FontSize="12"/>
         </Grid>
-      </DockPanel>
+      </Grid>
 
       <!-- the drive's fill, and a place for this folder: drop here and it goes in here, whatever is selected -->
       <Border x:Name="FolderStrip" DockPanel.Dock="Top" Padding="10,7,10,5" Background="Transparent" CornerRadius="4" Margin="4,0"

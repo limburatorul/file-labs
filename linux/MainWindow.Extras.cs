@@ -342,7 +342,7 @@ public partial class MainWindow
 
     bool syncing;
     /// Opens the tree down to the folder shown, from Home when it is inside Home.
-    void SyncTree(string dir)
+    void SyncTree(string dir, bool reveal = true)
     {
         if (tree == null || !tree.IsEffectivelyVisible) return;
         syncing = true;
@@ -361,7 +361,7 @@ public partial class MainWindow
                     node = next;
                 }
             tree.SelectedItem = node;
-            node.BringIntoView();
+            if (reveal) node.BringIntoView(); // a rebuilt sidebar stays where it was scrolled
         }
         finally { syncing = false; }
     }

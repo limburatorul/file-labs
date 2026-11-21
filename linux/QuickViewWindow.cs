@@ -48,6 +48,8 @@ sealed class QuickViewWindow : Window
     }
 
     static readonly HashSet<string> Pictures = new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp" };
+    static readonly HashSet<string> Videos = new(StringComparer.OrdinalIgnoreCase) { ".mp4", ".m4v", ".mov", ".avi", ".mkv", ".webm", ".mpg", ".mpeg", ".3gp", ".ts", ".ogv", ".wmv" };
+    static readonly HashSet<string> Sounds = new(StringComparer.OrdinalIgnoreCase) { ".mp3", ".wav", ".m4a", ".aac", ".flac", ".ogg", ".opus", ".wma" };
     static readonly HashSet<string> Texty = new(StringComparer.OrdinalIgnoreCase)
     {
         ".txt", ".md", ".log", ".cs", ".js", ".ts", ".py", ".json", ".xml", ".html", ".css", ".xaml", ".axaml", ".sh", ".conf", ".ini", ".toml",
@@ -61,6 +63,7 @@ sealed class QuickViewWindow : Window
             if (e.IsDir) return Text(FolderListing(e.Path));
             var ext = Path.GetExtension(e.Name);
             if (Pictures.Contains(ext)) return Picture(e.Path, small ? 900 : 2000);
+            if ((Videos.Contains(ext) || Sounds.Contains(ext)) && MediaView.TryCreate(e.Path, Videos.Contains(ext), play: !small, why => Summary(e, why ?? "")) is { } media) return media;
             if (ext.Equals(".pdf", StringComparison.OrdinalIgnoreCase) && PdfPage(e.Path) is { } page) return page;
             if (Backups.Named(e.Path) && Backups.Inspect(e.Path, details: true) is { } b)
                 return Text($"{b.App} backup{(b.Made is { } m ? $", made {m:yyyy-MM-dd HH:mm}" : "")}{(b.Encrypted ? " (password protected)" : "")}\n\n" + string.Join("\n", b.Rows.Select(r => $"{r.Name}: {r.Value}")));

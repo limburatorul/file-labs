@@ -1,0 +1,29 @@
+# Maintainer: Protagonist Labs <hello@protagonistlabs.app>
+# The AUR package filelabs-bin: the self-contained release tarball from GitHub, installed like the .deb and .rpm.
+# linux/package.sh fills pkgver and the checksum for each release.
+pkgname=filelabs-bin
+pkgver=0
+pkgrel=1
+pkgdesc="Two-pane file manager whose copies ask about conflicts once"
+arch=('x86_64')
+url="https://protagonistlabs.app/filelabs/"
+license=('LicenseRef-Proprietary')
+depends=('libx11' 'libxrandr' 'libxi' 'libxcursor' 'libice' 'libsm' 'fontconfig' 'libglvnd' 'gcc-libs')
+optdepends=('gst-plugins-good: video and music in Quick View'
+            'poppler: the first page of a PDF in Quick View'
+            'xdg-utils: Open with and the default file manager')
+provides=('filelabs')
+conflicts=('filelabs')
+options=('!strip' '!debug') # a .NET single-file bundle: stripping cuts the bundle off
+source=("filelabs-$pkgver-linux-x64.tar.gz::https://github.com/limburatorul/file-labs/releases/download/v$pkgver/filelabs-$pkgver-linux-x64.tar.gz")
+noextract=("filelabs-$pkgver-linux-x64.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+    install -d "$pkgdir/opt/filelabs" "$pkgdir/usr/bin"
+    tar -xzf "$srcdir/filelabs-$pkgver-linux-x64.tar.gz" -C "$pkgdir/opt/filelabs"
+    chmod 755 "$pkgdir/opt/filelabs/filelabs"
+    ln -s /opt/filelabs/filelabs "$pkgdir/usr/bin/filelabs"
+    install -Dm644 "$pkgdir/opt/filelabs/filelabs.desktop" "$pkgdir/usr/share/applications/filelabs.desktop"
+    install -Dm644 "$pkgdir/opt/filelabs/filelabs.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/filelabs.png"
+}

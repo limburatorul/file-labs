@@ -2,9 +2,12 @@
 
 A free, dual-pane file manager for Windows 11 and Linux, with a copy engine that shows what it is doing.
 
-**Linux** (since 1.0.72): `linux/` is the same app in .NET 10 and Avalonia, with the Windows look. Download
-`filelabs-<version>-x86_64.AppImage` from the releases, `chmod +x` it and run it, or unpack the tarball. Built and
-tested on CachyOS with KDE Plasma (Wayland); `linux/build.sh` builds both on a Linux machine with the .NET 10 SDK.
+**Linux** (since 1.0.72): `linux/` is the same app in .NET 10 and Avalonia, with the Windows look. From the releases:
+`filelabs_<version>_amd64.deb` for Debian, Ubuntu and Mint, `filelabs-<version>-1.x86_64.rpm` for Fedora,
+`filelabs-bin-<version>-1-x86_64.pkg.tar.zst` for Arch (`pacman -U`), or `filelabs-<version>-x86_64.AppImage` for any
+distribution (`chmod +x` it and run it; it updates itself). Tested on CachyOS (KDE Plasma, Wayland), Fedora (GNOME,
+Wayland) and Linux Mint (Cinnamon, X11). `linux/build.sh` builds it on a Linux machine with the .NET 10 SDK, and
+`linux/package.sh` makes the packages that machine's tools can make.
 
 - **Two panes, with tabs** — browser-style tabs in each pane, `Tab` to switch panes,
   `Ctrl+U` to swap them, drag and drop between panes and to/from Explorer (the wheel scrolls the list

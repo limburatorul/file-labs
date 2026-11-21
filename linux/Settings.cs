@@ -38,7 +38,32 @@ public static class Settings
     public const int RecentMax = 20, DestinationsMax = 8;
     public static List<string> RecentFolders = new();
     public static List<string> RecentDestinations = new();
-    public static List<string> QuickAccess = new();
+    // Quick access lists, as on Windows: quickaccess.txt holds "# Name" headers, each followed by its folders; one list
+    // named "Quick access" is written without a header, which is also how a file from before the lists reads.
+    public sealed class QuickList { public string Name; public List<string> Folders = new(); }
+    public const string FirstQuickList = "Quick access";
+    public static List<QuickList> QuickLists = new() { new() { Name = FirstQuickList } };
+    public static int ShownQuickList; // the list the sidebar shows
+    public static QuickList CurrentQuickList => QuickLists[Math.Clamp(ShownQuickList, 0, QuickLists.Count - 1)];
+    public static List<string> QuickAccess => CurrentQuickList.Folders; // Ctrl+D pins to it
+
+    public static List<QuickList> ParseQuickLists(IEnumerable<string> lines)
+    {
+        var lists = new List<QuickList>();
+        foreach (var line in lines.Where(l => l.Trim() != ""))
+            if (line.StartsWith("# ") && line[2..].Trim() is { Length: > 0 } name) lists.Add(new QuickList { Name = name });
+            else
+            {
+                if (lists.Count == 0) lists.Add(new QuickList { Name = FirstQuickList });
+                if (!lists[^1].Folders.Contains(line)) lists[^1].Folders.Add(line);
+            }
+        if (lists.Count == 0) lists.Add(new QuickList { Name = FirstQuickList });
+        return lists;
+    }
+
+    public static IEnumerable<string> QuickListLines(List<QuickList> lists) =>
+        lists is [{ Name: FirstQuickList } only] ? only.Folders : lists.SelectMany(q => q.Folders.Prepend("# " + q.Name));
+
     public static double Split = 0.5;
     public static bool Maximized;
     public static (double X, double Y, double W, double H)? WindowBounds;
@@ -96,6 +121,7 @@ public static class Settings
                             if (n[2] > 200 && n[3] > 150) WindowBounds = (n[0], n[1], n[2], n[3]);
                             break;
                         case "sidebar": SidebarWidth = D(v, 160, 600, SidebarWidth); break;
+                        case "quicklist" when int.TryParse(v, out var ql) && ql >= 0: ShownQuickList = ql; break;
                         case "sidebarcollapsed": SidebarCollapsed.Clear(); SidebarCollapsed.UnionWith(v.Split(',').Where(x => x != "")); break;
                         case var t when t.StartsWith("tabs."): Tabs[t[5..]] = v.Split('|').Where(x => x != "").ToList(); break;
                         case var a when a.StartsWith("activetab.") && int.TryParse(v, out var ai): ActiveTab[a[10..]] = ai; break;
@@ -105,7 +131,7 @@ public static class Settings
                         case "groupdate" when v != "": DateGroupFolders.Add(v); break;
                     }
                 }
-            if (File.Exists(QuickFile)) QuickAccess = File.ReadAllLines(QuickFile).Where(x => x.Trim() != "").Distinct().ToList();
+            if (File.Exists(QuickFile)) QuickLists = ParseQuickLists(File.ReadAllLines(QuickFile));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { } // unreadable: the defaults
     }
@@ -141,6 +167,7 @@ public static class Settings
         yield return $"maximized={(Maximized ? 1 : 0)}";
         if (WindowBounds is { } b) yield return $"window={N(b.X)},{N(b.Y)},{N(b.W)},{N(b.H)}";
         yield return $"sidebar={N(SidebarWidth)}";
+        yield return $"quicklist={ShownQuickList}";
         yield return $"sidebarcollapsed={string.Join(',', SidebarCollapsed)}";
         foreach (var (k, v) in Tabs) yield return $"tabs.{k}={string.Join('|', v)}";
         foreach (var (k, v) in ActiveTab) yield return $"activetab.{k}={v}";
@@ -162,7 +189,7 @@ public static class Settings
         {
             Directory.CreateDirectory(Dir);
             WriteAllLines(FilePath, Lines());
-            WriteAllLines(QuickFile, QuickAccess);
+            WriteAllLines(QuickFile, QuickListLines(QuickLists));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
