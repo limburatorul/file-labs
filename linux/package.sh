@@ -53,7 +53,7 @@ Name:           filelabs
 Version:        $V
 Release:        1
 Summary:        $SUMMARY
-License:        Proprietary
+License:        MIT
 URL:            $URL
 BuildArch:      x86_64
 AutoReqProv:    no

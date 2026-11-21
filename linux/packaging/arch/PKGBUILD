@@ -7,7 +7,7 @@ pkgrel=1
 pkgdesc="Two-pane file manager whose copies ask about conflicts once"
 arch=('x86_64')
 url="https://protagonistlabs.app/filelabs/"
-license=('LicenseRef-Proprietary')
+license=('MIT')
 depends=('libx11' 'libxrandr' 'libxi' 'libxcursor' 'libice' 'libsm' 'fontconfig' 'libglvnd' 'gcc-libs')
 optdepends=('gst-plugins-good: video and music in Quick View'
             'poppler: the first page of a PDF in Quick View'

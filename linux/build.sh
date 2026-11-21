@@ -29,4 +29,4 @@ fi
 ARCH=x86_64 "$TOOL" --appimage-extract-and-run "$APP" "$OUT/filelabs-$V-x86_64.AppImage"
 # the .deb, .rpm and Arch package this machine can make (package.sh); the others on their own distros
 bash package.sh
-sha256sum "$OUT"/filelabs-$V-* "$OUT"/filelabs_${V}_* "$OUT"/filelabs-bin-$V-* 2>/dev/null
+(shopt -s nullglob; sha256sum "$OUT"/filelabs-$V-* "$OUT"/filelabs_${V}_* "$OUT"/filelabs-bin-$V-*)
