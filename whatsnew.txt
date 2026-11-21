@@ -1,6 +1,17 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.75 | 2026-11-21 | Packages for Linux, and video in Quick View
+File Labs on Linux catches up with Windows and installs the way your distribution expects.
+**On Linux**
+- A .deb for Debian, Ubuntu and Mint, an .rpm for Fedora and a package for Arch, next to the AppImage.
+- Video and music play in Quick View and the preview pane, with pause and a seek bar, using the codecs your desktop already has.
+- Several Quick access lists, as on Windows: switch, add, rename and reorder them from the button on the section's header.
+- On a screen set to 200%, File Labs now follows the desktop's scale instead of staying small.
+- In a narrow window the tabs, the filter box and the drive card no longer draw over each other.
+**On Windows**
+- Nothing changes in this version.
+
 ## 1.0.74 | 2026-11-18 | Each folder keeps its own view
 Zoom into a folder of photos and only that folder stays zoomed.
 - Every folder remembers its own view: Details, List or Icons in any size, set from the menu, with Ctrl+Shift+1 to 5 or with Ctrl and the mouse wheel.
