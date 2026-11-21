@@ -1,3 +1,3 @@
 linux/*.sh text eol=lf
 linux/*.desktop text eol=lf
-linux/PKGBUILD text eol=lf
+linux/**/PKGBUILD text eol=lf
