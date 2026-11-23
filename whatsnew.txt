@@ -1,6 +1,13 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.77 | 2026-11-23 | Straight to the icons
+The first steps from Details to the icons are smooth now too.
+**On Windows**
+- Ctrl and the mouse wheel from Details go to the icons in one step instead of stopping at each view on the way; the rest of the spin grows the icons smoothly.
+- The icon views come up in about half the time.
+- On Linux nothing changes in this version.
+
 ## 1.0.76 | 2026-11-23 | A smooth switch to icons
 Going from Details to icons no longer stutters.
 **On Windows**
