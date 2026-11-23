@@ -227,6 +227,8 @@
       </DockPanel>
 
       <Grid>
+      <!-- the view just left, as a still picture over the list while the new one is built under it (SetView) -->
+      <Image x:Name="ViewShot" Panel.ZIndex="2" IsHitTestVisible="False" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"/>
       <!-- drag-to-select rectangle, drawn over the list so the rows never move under it -->
       <Canvas x:Name="MarqueeLayer" Panel.ZIndex="1" IsHitTestVisible="False" Margin="4,0" ClipToBounds="True">
         <!-- Details: where Name ends. A press right of it, on any row, starts a selection rectangle (PlaceNameEdge) -->

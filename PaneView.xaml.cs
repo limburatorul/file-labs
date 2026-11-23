@@ -8,6 +8,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace FileExplorer;
@@ -2235,6 +2236,11 @@ public partial class PaneView : UserControl
         ViewIcon.Text = m.glyph; ViewName.Text = m.name;
         RememberView(mode);
         var sel = List.SelectedItem;
+        // 1.0.76: the switch rebuilds the whole list in one frame (about 200 ms with 200 photos), and a fade begun before that
+        // frame lost its start to it, then the tiles filled in one by one. Now the view being left stays on screen as a
+        // still picture while the new one is built under it, and gives way to it once it is drawn with its thumbnails.
+        bool crossFade = Motion.On && IsVisible && List.ActualWidth > 0 && List.ActualHeight > 0;
+        if (crossFade) HoldPicture();
         // Template, item style and panel are three separate changes, and the list would rebuild its
         // containers after each one. Detached from its items it rebuilds once, when they come back.
         var source = List.ItemsSource;
@@ -2268,13 +2274,61 @@ public partial class PaneView : UserControl
             List.ItemsPanel = new ItemsPanelTemplate(panel);
             ScrollViewer.SetHorizontalScrollBarVisibility(List, list ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled);
             ScrollViewer.SetVerticalScrollBarVisibility(List, list ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto);
-            StartThumbs();
+            Dispatcher.BeginInvoke(StartThumbs, DispatcherPriority.Loaded); // once the tiles on screen exist: those first
         }
         if (mode == ViewMode.Details) ScrollViewer.SetVerticalScrollBarVisibility(List, ScrollBarVisibility.Auto);
         List.ItemsSource = source;
         List.SelectedItem = sel;
         if (sel != null) List.ScrollIntoView(sel);
-        FadeInList(); // the rows come back in one go; the fade covers the reflow
+        if (crossFade) Reveal(++switchVersion); else FadeInList();
+    }
+
+    int switchVersion;
+
+    /// The list as it looks now, laid over it, and the list itself hidden until Reveal.
+    void HoldPicture()
+    {
+        // the list's whole area as it is on screen: in the middle of another switch (a fast Ctrl+wheel spin) that is the
+        // picture still fading out with the list fading in, so the next one carries on from exactly what shows
+        var area = (FrameworkElement)List.Parent;
+        var dpi = VisualTreeHelper.GetDpi(area);
+        var shot = new RenderTargetBitmap((int)Math.Ceiling(area.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(area.ActualHeight * dpi.DpiScaleY),
+                                          dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
+        // through a brush: Render(area) would draw it at its offset in the pane, as far down as the path bar is tall
+        var dv = new DrawingVisual();
+        using (var dc = dv.RenderOpen()) dc.DrawRectangle(new VisualBrush(area), null, new Rect(0, 0, area.ActualWidth, area.ActualHeight));
+        shot.Render(dv);
+        shot.Freeze();
+        ViewShot.BeginAnimation(OpacityProperty, null);
+        ViewShot.RenderTransform = new ScaleTransform();
+        ViewShot.Source = shot;
+        ViewShot.Opacity = 1;
+        ViewShot.Visibility = Visibility.Visible;
+        List.BeginAnimation(OpacityProperty, null);
+        List.Opacity = 0;
+    }
+
+    /// Once the new view has had its first layout and the thumbnails of the tiles on screen are in (250 ms at most, so a
+    /// slow disk doesn't hold the switch), the picture fades out, growing a little, as the new view fades in.
+    async void Reveal(int version)
+    {
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
+        var until = DateTime.UtcNow.AddMilliseconds(250);
+        while (version == switchVersion && DateTime.UtcNow < until && Mode is not (ViewMode.Details or ViewMode.List)
+               && TilePanel() is { } panel && panel.Children.OfType<FrameworkElement>().Any(c => c.DataContext is Entry { IsUp: false } e && !thumbTried.ContainsKey(e)))
+            await Task.Delay(15);
+        if (version != switchVersion) return; // another switch took over
+        var d = new Duration(TimeSpan.FromMilliseconds(220));
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var listIn = new DoubleAnimation(0, 1, d) { EasingFunction = ease };
+        listIn.Completed += (_, _) => { if (version != switchVersion) return; List.Opacity = 1; List.BeginAnimation(OpacityProperty, null); };
+        List.BeginAnimation(OpacityProperty, listIn);
+        var shotOut = new DoubleAnimation(1, 0, d) { EasingFunction = ease };
+        shotOut.Completed += (_, _) => { if (version != switchVersion) return; ViewShot.Visibility = Visibility.Collapsed; ViewShot.Source = null; };
+        ViewShot.BeginAnimation(OpacityProperty, shotOut);
+        var grow = new DoubleAnimation(1, 1.03, d) { EasingFunction = ease };
+        ((ScaleTransform)ViewShot.RenderTransform).BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+        ((ScaleTransform)ViewShot.RenderTransform).BeginAnimation(ScaleTransform.ScaleYProperty, grow);
     }
 
     // Windows' Details template draws two white 1 px lines in the square where both scroll bars meet: a bright
@@ -2358,20 +2412,26 @@ public partial class PaneView : UserControl
     void ApplyIconSize()
     {
         List.Tag = iconSize;
-        if (FindPanel(List) is { } panel)
+        if (TilePanel() is { } panel)
         {
             panel.TileWidth = iconSize + 32;
             panel.TileHeight = iconSize + 62;
         }
-        static TileVirtualizer FindPanel(DependencyObject d)
+    }
+
+    /// The icon views' panel, with the tiles on screen as its children; null in Details.
+    TileVirtualizer TilePanel()
+    {
+        static TileVirtualizer Find(DependencyObject d)
         {
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(d); i++)
             {
                 var c = VisualTreeHelper.GetChild(d, i);
-                if ((c as TileVirtualizer ?? FindPanel(c)) is { } p) return p;
+                if ((c as TileVirtualizer ?? Find(c)) is { } p) return p;
             }
             return null;
         }
+        return Find(List);
     }
 
     /// The five view modes, largest first, for the Windows menu's View submenu.
@@ -2487,19 +2547,30 @@ public partial class PaneView : UserControl
         // an image already fetched at a larger size is kept instead of being asked for again.
         int size = iconSize <= 96 ? 128 : 256;
         var todo = view?.Cast<Entry>().Where(e => !e.IsUp).Take(3000).ToList() ?? new();
-        var t = new Thread(() =>
+        // the tiles on screen first, so a switch shows whole tiles (Reveal waits for them), then the rest in list order
+        var onScreen = TilePanel()?.Children.OfType<FrameworkElement>().Select(c => c.DataContext).OfType<Entry>().ToHashSet() ?? new();
+        todo = todo.Where(onScreen.Contains).Concat(todo.Where(e => !onScreen.Contains(e))).ToList();
+        thumbTried.Clear();
+        // three at a time: the shell's thumbnailer is mostly waiting on the disk (16 ms a photo when Windows has none cached)
+        var queue = new System.Collections.Concurrent.ConcurrentQueue<Entry>(todo);
+        for (int w = 0; w < 3; w++)
         {
-            foreach (var e in todo)
+            var t = new Thread(() =>
             {
-                if (cts.IsCancellationRequested) return;
-                if (e.Thumb != null && e.ThumbSize >= size) continue; // the one we have is big enough
-                var img = Thumbnails.Get(e.Path, size, stamp: e.Modified.Ticks);
-                if (img != null) Dispatcher.BeginInvoke(() => { e.ThumbSize = size; e.Thumb = img; });
-            }
-        }) { IsBackground = true };
-        t.SetApartmentState(ApartmentState.STA);
-        t.Start();
+                while (!cts.IsCancellationRequested && queue.TryDequeue(out var e))
+                {
+                    var img = e.Thumb != null && e.ThumbSize >= size ? null : Thumbnails.Get(e.Path, size, stamp: e.Modified.Ticks); // the one we have may be big enough
+                    if (img != null) Dispatcher.BeginInvoke(() => { e.ThumbSize = size; e.Thumb = img; thumbTried[e] = 0; }, DispatcherPriority.Background); // after drawing and input
+                    else thumbTried[e] = 0;
+                }
+            }) { IsBackground = true };
+            t.SetApartmentState(ApartmentState.STA);
+            t.Start();
+        }
     }
+
+    // the entries whose thumbnail was looked for since the last StartThumbs: set, or none to be had (Reveal waits on them)
+    readonly System.Collections.Concurrent.ConcurrentDictionary<Entry, byte> thumbTried = new();
 
     // Arrow on the sorted column: ↑ ascending, ↓ descending.
     readonly Dictionary<GridViewColumn, string> colKey = new();
