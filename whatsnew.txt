@@ -1,6 +1,15 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.76 | 2026-11-23 | A smooth switch to icons
+Going from Details to icons no longer stutters.
+**On Windows**
+- The view you leave stays still while the new one is built, then fades into it, with the pictures already in place instead of filling in one by one.
+- The thumbnails on screen load first, three at a time, so a folder of photos shows up whole sooner.
+- Ctrl and the mouse wheel step through Details, List and the icons with the same fade at every step.
+**On Linux**
+- The .rpm and Arch packages name File Labs' licence correctly: MIT.
+
 ## 1.0.75 | 2026-11-21 | Packages for Linux, and video in Quick View
 File Labs on Linux catches up with Windows and installs the way your distribution expects.
 **On Linux**
