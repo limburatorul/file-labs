@@ -18,6 +18,25 @@
         </Setter.Value>
       </Setter>
     </Style>
+    <!-- the rename box, made only for the item being renamed (F2): one in every row and tile cost about a third of
+         building the icon views (1.0.77) -->
+    <DataTemplate x:Key="RenameBox">
+      <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
+        <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
+                 SelectionBrush="{DynamicResource Accent}" SelectionOpacity="0.45" IsInactiveSelectionHighlightEnabled="True"
+                 Loaded="Rename_Shown" PreviewKeyDown="Rename_KeyDown" LostKeyboardFocus="Rename_Done" Tag="{Binding}"/>
+      </Border>
+    </DataTemplate>
+    <Style x:Key="RenameSlot" TargetType="ContentControl">
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="IsTabStop" Value="False"/>
+      <Style.Triggers>
+        <DataTrigger Binding="{Binding Renaming}" Value="True">
+          <Setter Property="Content" Value="{Binding}"/>
+          <Setter Property="ContentTemplate" Value="{StaticResource RenameBox}"/>
+        </DataTrigger>
+      </Style.Triggers>
+    </Style>
     <DataTemplate x:Key="NameCell">
       <!-- a DockPanel, not a horizontal StackPanel: the name gets the column's width, so a long name is
            trimmed and the rename box scrolls to its end instead of running on, cut off, past the column -->
@@ -32,12 +51,7 @@
         <Grid>
           <!-- not hit-testable: a right-click landing on one of its Runs made the list drop a multi-selection -->
           <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility><Run Text="{Binding Name, Mode=OneWay}"/><Run Text="{Binding Where, Mode=OneWay}" Foreground="#70FFFFFF" FontSize="11"/></TextBlock>
-          <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
-            <Border.Visibility><Binding Path="Renaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></Border.Visibility>
-            <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
-                     SelectionBrush="{DynamicResource Accent}" SelectionOpacity="0.45" IsInactiveSelectionHighlightEnabled="True"
-                     IsVisibleChanged="Rename_Shown" PreviewKeyDown="Rename_KeyDown" LostKeyboardFocus="Rename_Done" Tag="{Binding}"/>
-          </Border>
+          <ContentControl Style="{StaticResource RenameSlot}"/>
         </Grid>
       </DockPanel>
     </DataTemplate>
@@ -70,12 +84,7 @@
         <Border Height="5" Width="34" CornerRadius="2.5" Background="{Binding AgeBrush}" Margin="0,4,0,3" HorizontalAlignment="Center"/>
         <Grid>
           <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="34" FontSize="11.5"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility></TextBlock>
-          <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
-            <Border.Visibility><Binding Path="Renaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></Border.Visibility>
-            <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
-                     SelectionBrush="{DynamicResource Accent}" SelectionOpacity="0.45" IsInactiveSelectionHighlightEnabled="True"
-                     IsVisibleChanged="Rename_Shown" PreviewKeyDown="Rename_KeyDown" LostKeyboardFocus="Rename_Done" Tag="{Binding}"/>
-          </Border>
+          <ContentControl Style="{StaticResource RenameSlot}"/>
         </Grid>
       </StackPanel>
     </DataTemplate>
@@ -91,12 +100,7 @@
         </Grid>
         <Grid>
           <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility></TextBlock>
-          <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
-            <Border.Visibility><Binding Path="Renaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></Border.Visibility>
-            <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
-                     SelectionBrush="{DynamicResource Accent}" SelectionOpacity="0.45" IsInactiveSelectionHighlightEnabled="True"
-                     IsVisibleChanged="Rename_Shown" PreviewKeyDown="Rename_KeyDown" LostKeyboardFocus="Rename_Done" Tag="{Binding}"/>
-          </Border>
+          <ContentControl Style="{StaticResource RenameSlot}"/>
         </Grid>
       </DockPanel>
     </DataTemplate>

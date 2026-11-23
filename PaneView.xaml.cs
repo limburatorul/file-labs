@@ -1878,12 +1878,16 @@ public partial class PaneView : UserControl
 
     TextBox renameBox;
 
-    // When the row's box appears, not when it is loaded: the box is built with the row, hidden, long before
-    // F2, so focusing it on Loaded did nothing and the keys kept going to the list.
-    void Rename_Shown(object s, DependencyPropertyChangedEventArgs e)
+    // The box is made only for the item being renamed (RenameSlot in PaneView.xaml), so its Loaded is the moment it
+    // appears; its Tag may be bound a moment later, hence the one retry.
+    void Rename_Shown(object s, RoutedEventArgs e)
     {
         var box = (TextBox)s;
-        if (!box.IsVisible || box.Tag is not Entry { Renaming: true }) return;
+        if (box.Tag is not Entry { Renaming: true })
+        {
+            if (e != null) Dispatcher.BeginInvoke(() => Rename_Shown(box, null), DispatcherPriority.Loaded);
+            return;
+        }
         renameBox = box;
         box.Text = ((Entry)box.Tag).Name; // not what was typed last time: an edit cancelled with Esc stays in the box
         box.Focus();
@@ -2369,24 +2373,26 @@ public partial class PaneView : UserControl
             if (!zoomGliding) { zoomGliding = true; CompositionTarget.Rendering += Glide; }
             return;
         }
+        // 1.0.77: a spin across Details, List and the icons is gathered and becomes one view change, 120 ms after its last
+        // notch. One notch at a time, each a rebuild of the list with its own cross-fade, they piled up and stuttered.
+        // Up from Details or List it stops at M icons and the rest of the spin grows the icons in place, like in the icons.
         zoomSteps += step;
-        zoomTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(160) };
+        zoomTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
         if (zoomTimer.Tag == null)
         {
             zoomTimer.Tag = "hooked";
             zoomTimer.Tick += (_, _) =>
             {
-                int one = Math.Sign(zoomSteps);
-                zoomSteps -= one;
-                int next = Math.Clamp(Array.IndexOf(ZoomOrder, Mode) + one, 0, ZoomOrder.Length - 1);
-                if (ZoomOrder[next] != Mode) SetView(ZoomOrder[next]);
-                else zoomSteps = 0;
-                // once in the icons, the rest of the spin resizes them
-                if (zoomSteps != 0 && Mode is ViewMode.IconsM) { int rest = zoomSteps; zoomSteps = 0; Zoom(rest); }
-                if (zoomSteps == 0) zoomTimer.Stop();
+                zoomTimer.Stop();
+                int steps = zoomSteps; zoomSteps = 0;
+                int at = Array.IndexOf(ZoomOrder, Mode), icons = Array.IndexOf(ZoomOrder, ViewMode.IconsM);
+                int to = Math.Clamp(at + steps, 0, at < icons ? icons : ZoomOrder.Length - 1);
+                if (ZoomOrder[to] != Mode) SetView(ZoomOrder[to]);
+                int rest = steps - (to - at);
+                if (rest > 0 && Mode is ViewMode.IconsM) Zoom(rest);
             };
         }
-        if (!zoomTimer.IsEnabled) zoomTimer.Start();
+        zoomTimer.Stop(); zoomTimer.Start(); // from the last notch
     }
 
     void Glide(object s, EventArgs e)
