@@ -176,6 +176,7 @@ public partial class MainWindow : Window
         int dark = Themes.Current.Light ? 0 : 1, backdrop = Backdrop;
         DwmSetWindowAttribute(hwnd, 20, ref dark, sizeof(int));     // dark title bar
         DwmSetWindowAttribute(hwnd, 38, ref backdrop, sizeof(int)); // DWMWA_SYSTEMBACKDROP_TYPE: 1 none, 2 mica, 3 acrylic
+        int corner = Themes.Current.Radius == 0 ? 1 : 0; DwmSetWindowAttribute(hwnd, 33, ref corner, sizeof(int)); // DWMWA_WINDOW_CORNER_PREFERENCE: 1 square
     }
 
     // Sync apps announce status changes through SHChangeNotify ("this item's icon changed"), which is
@@ -254,6 +255,7 @@ public partial class MainWindow : Window
         int b = Backdrop, dark = Themes.Current.Light ? 0 : 1;
         DwmSetWindowAttribute(h, 20, ref dark, sizeof(int));
         DwmSetWindowAttribute(h, 38, ref b, sizeof(int));
+        int corner = Themes.Current.Radius == 0 ? 1 : 0; DwmSetWindowAttribute(h, 33, ref corner, sizeof(int)); // DWMWA_WINDOW_CORNER_PREFERENCE: 1 square
     }
 
     public void ApplyAppearance()
@@ -343,6 +345,7 @@ public partial class MainWindow : Window
         Themes.Apply(Settings.Theme);
         foreach (Window w in Application.Current.Windows) SetBackdrop(w);
         Themes.Strip(CaptionButtons); Themes.Strip(Left.TabBand); Themes.Strip(Right.TabBand);
+        Left.UpdateStripShape(); Right.UpdateStripShape(); // the tab band is drawn in code, with the old theme's corners
         ApplyAppearance();
         BuildSidebar();
         shownDrives = new(); RefreshDrives(); // the drive rows are built in code, in the old theme's colours

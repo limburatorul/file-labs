@@ -1672,14 +1672,17 @@ public partial class PaneView : UserControl
 
     // The strip, minus the active tab. Built by hand rather than stretched, so the corner radii stay
     // round whatever the tab width is.
-    const double TabRadius = 8, TabFlare = 8, StripTop = 4;
-    void UpdateStripShape()
+    const double StripTop = 4;
+    // the theme's corners: Windows 98 squares the band and its tabs off
+    static double TabRadius => 8 * Themes.Current.Radius;
+    static double TabFlare => 8 * Themes.Current.Radius;
+    internal void UpdateStripShape()
     {
         double w = TabBand.ActualWidth, h = TabBand.ActualHeight;
         if (w <= 0 || h <= 0) return;
         StripShape.Width = w; StripShape.Height = h;
 
-        var band = new RectangleGeometry(new Rect(0, 0, w, h), 9, 9);
+        var band = new RectangleGeometry(new Rect(0, 0, w, h), 9 * Themes.Current.Radius, 9 * Themes.Current.Radius);
         Geometry shape = band;
         if (tab >= 0 && tab < TabStrip.Children.Count && TabStrip.Children[tab] is FrameworkElement activeTab)
         {
