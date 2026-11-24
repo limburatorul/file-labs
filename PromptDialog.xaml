@@ -3,11 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Width="440" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Background="Transparent"
-        Foreground="#E8EEF6" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12">
-  <Grid x:Name="Root" Background="#B30A0D13">
+        Foreground="{DynamicResource cFFE8EEF6}" FontFamily="{DynamicResource UiFont}" FontSize="12">
+  <Grid x:Name="Root" Background="{DynamicResource cB30A0D13}">
     <StackPanel Margin="18,16,18,14">
-      <TextBlock x:Name="Label" Foreground="#8A97AA" Margin="2,0,0,8"/>
-      <Border Background="#12FFFFFF" CornerRadius="6" Padding="10,7" BorderBrush="#2EFFFFFF" BorderThickness="1">
+      <TextBlock x:Name="Label" Foreground="{DynamicResource cFF8A97AA}" Margin="2,0,0,8"/>
+      <Border Background="{DynamicResource c12FFFFFF}" CornerRadius="{DynamicResource r6}" Padding="10,7" BorderBrush="{DynamicResource e2EFFFFFF}" BorderThickness="1">
         <TextBox x:Name="Input" Style="{StaticResource Bare}" FontSize="13" KeyDown="Input_KeyDown"/>
       </Border>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">

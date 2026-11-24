@@ -28,6 +28,7 @@ public partial class SettingsWindow : Window
                 slider.Value = value;
                 e.Handled = true;
             };
+        BuildThemes();
         BuildSwatches();
         BuildWheel();
         AboutText.Text = $"File Labs {typeof(App).Assembly.GetName().Version?.ToString(3)} · Protagonist Labs\n" +
@@ -78,7 +79,7 @@ public partial class SettingsWindow : Window
     // Windows integration is left out: it changes Windows (the default file manager, Win+E, sign-in), not File Labs.
     internal static readonly string[] AppearanceKeys =
     {
-        "backdrop", "opacity", "bgimage", "bgopacity", "bgblur", "bgbright", "accent", "accentstrength", "rowpad", "textscale",
+        "theme", "backdrop", "opacity", "bgimage", "bgopacity", "bgblur", "bgbright", "accent", "accentstrength", "rowpad", "textscale",
         "scale.sidebar", "scale.tabs", "scale.path", "scale.list", "singlepane", "closeemptypane", "stats", "animations", "smoothscroll",
         "autoscroll", "autoscrollx",
     };
@@ -96,8 +97,71 @@ public partial class SettingsWindow : Window
 
     void ResetSection_Click(object s, RoutedEventArgs e)
     {
-        var (keys, card) = s == ResetAppearance ? (AppearanceKeys, "Appearance") : s == ResetFiles ? (FilesKeys, "Files") : (TransfersKeys, "Transfers");
+        if (s == ResetAppearance) { Reset(AppearanceKeys, "Reset Appearance to its defaults?", "The settings on the Appearance and Layout and motion pages change, the theme included."); return; }
+        var (keys, card) = s == ResetFiles ? (FilesKeys, "Files") : (TransfersKeys, "Transfers");
         Reset(keys, $"Reset {card} to its defaults?", $"Only the settings in the {card} card change.");
+    }
+
+    // A card per theme: a small window in its own colours (ground, sidebar, tab strip, a selected row) and its name.
+    void BuildThemes()
+    {
+        foreach (var t in Themes.All)
+        {
+            System.Windows.Media.Color Ground(System.Windows.Media.Color c, string dark) => t.Light ? c : (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(dark);
+            System.Windows.Media.Brush Solid(System.Windows.Media.Color c) => new System.Windows.Media.SolidColorBrush(c);
+            var accent = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(t.Accent ?? "#4C8DFF");
+            System.Windows.Media.Brush Of(string key, System.Windows.Media.Brush otherwise) => t.Brushes.TryGetValue(key, out var make) ? make() : otherwise;
+            var fg = Solid(Ground(t.Fg, "#E8EEF6"));
+            var grid = new System.Windows.Controls.Grid { Width = 128, Height = 76 };
+            grid.ColumnDefinitions.Add(new() { Width = new GridLength(34) });
+            grid.ColumnDefinitions.Add(new());
+            grid.RowDefinitions.Add(new() { Height = new GridLength(14) });
+            grid.RowDefinitions.Add(new());
+            var top = new System.Windows.Controls.Border { Background = Of("TabStripBg", Solid(Ground(t.Shade, "#14171D"))) };
+            System.Windows.Controls.Grid.SetColumnSpan(top, 2);
+            var side = new System.Windows.Controls.Border { Background = Of("SidebarBg", Solid(Ground(System.Windows.Media.Color.FromArgb(255, (byte)(t.Surface.R * 0.93), (byte)(t.Surface.G * 0.93), (byte)(t.Surface.B * 0.93)), "#16191F"))) };
+            System.Windows.Controls.Grid.SetRow(side, 1);
+            var rows = new System.Windows.Controls.StackPanel { Margin = new Thickness(6, 6, 6, 0) };
+            for (int i = 0; i < 4; i++)
+                rows.Children.Add(new System.Windows.Controls.Border
+                {
+                    Height = 9, Margin = new Thickness(0, 0, 0, 3), CornerRadius = new CornerRadius(2 * t.Radius),
+                    Background = i == 1 ? Solid(accent) : null,
+                    Child = new System.Windows.Controls.Border { Height = 2, Width = 30 + 9 * (i % 3), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(4, 0, 0, 0), Background = i == 1 ? System.Windows.Media.Brushes.White : fg, Opacity = 0.8 },
+                });
+            System.Windows.Controls.Grid.SetRow(rows, 1); System.Windows.Controls.Grid.SetColumn(rows, 1);
+            grid.Children.Add(top); grid.Children.Add(side); grid.Children.Add(rows);
+            var picture = new System.Windows.Controls.Border
+            {
+                Child = grid, Background = Solid(Ground(t.Surface, "#0F131B")), CornerRadius = new CornerRadius(6 * t.Radius), ClipToBounds = true,
+                BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(0x40, 0x80, 0x80, 0x80)), BorderThickness = new Thickness(1),
+            };
+            var card = new System.Windows.Controls.StackPanel();
+            card.Children.Add(picture);
+            card.Children.Add(new System.Windows.Controls.TextBlock { Text = t.Name, Margin = new Thickness(0, 5, 0, 1), HorizontalAlignment = HorizontalAlignment.Center });
+            var b = new System.Windows.Controls.Button { Content = card, Style = (Style)FindResource("Tab"), CommandParameter = t.Id, MaxWidth = 160, Padding = new Thickness(0), Margin = new Thickness(0, 0, 4, 4), ToolTip = t.Name };
+            b.Click += (_, _) =>
+            {
+                Settings.Theme = (string)b.CommandParameter;
+                Settings.Save();
+                main.ApplyTheme();
+                Root.Background = MainWindow.Tint();
+                Refresh();
+            };
+            ThemeCards.Children.Add(b);
+        }
+    }
+
+    // The settings were one long column; since 1.0.78 they are pages, picked from the list on the left.
+    void Nav_Click(object s, RoutedEventArgs e)
+    {
+        int at = Nav.Children.IndexOf((UIElement)s);
+        for (int i = 0; i < Nav.Children.Count; i++)
+        {
+            ((System.Windows.Controls.Button)Nav.Children[i]).Tag = i == at ? "on" : null;
+            Pages.Children[i].Visibility = i == at ? Visibility.Visible : Visibility.Collapsed;
+        }
+        Scroller.ScrollToTop();
     }
 
     void Reset(IEnumerable<string> keys, string question, string detail)
@@ -377,6 +441,7 @@ public partial class SettingsWindow : Window
 
     void Refresh()
     {
+        foreach (System.Windows.Controls.Button b in ThemeCards.Children) b.Tag = (string)b.CommandParameter == Settings.Theme ? "on" : null;
         BdAcrylic.Tag = Settings.Backdrop == 3 ? "on" : null;
         BdMica.Tag = Settings.Backdrop == 2 ? "on" : null;
         BdSolid.Tag = Settings.Backdrop == 1 ? "on" : null;

@@ -124,9 +124,12 @@ public class Entry : INotifyPropertyChanged
         }
     }
     public Brush AgeBrush { get { if (NoDate) return Brushes.Transparent; var b = new SolidColorBrush(AgeColor); b.Freeze(); return b; } }
+    // text on the age badge's own colour, the same in every theme
+    static readonly Brush DarkOnAge = Frozen(Color.FromArgb(0xE6, 0x11, 0x11, 0x11)), LightOnAge = Frozen(Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF));
+    static Brush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
     public Brush AgeTextBrush
     {
-        get { var c = AgeColor; return 0.299 * c.R + 0.587 * c.G + 0.114 * c.B > 140 ? MainWindow.Hex("#E6111111") : MainWindow.Hex("#E6FFFFFF"); }
+        get { var c = AgeColor; return 0.299 * c.R + 0.587 * c.G + 0.114 * c.B > 140 ? DarkOnAge : LightOnAge; }
     }
     public string Age
     {
@@ -260,6 +263,7 @@ public partial class PaneView : UserControl
         details = List.View;
         SetSort(sortKey, sortDesc);
         Loaded += (_, _) => SetView(FolderView(Dir));
+        Loaded += (_, _) => Themes.Strip(TabBand);
         List.GotKeyboardFocus += (_, _) => Activated?.Invoke();
         PreviewMouseDown += (_, _) => Activated?.Invoke(); // anywhere in the pane: tabs, path, list
         renameTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(GetDoubleClickTime()) };
@@ -434,8 +438,8 @@ public partial class PaneView : UserControl
         isActivePane = on;
         if (Card.Background != cardFill) { Card.Background = cardFill; Card.BorderBrush = cardEdge; Glow.BorderBrush = glowColor; }
         var accent = ((SolidColorBrush)Application.Current.Resources["AccentEdge"]).Color;
-        Animate(cardFill, ((SolidColorBrush)MainWindow.Hex(on ? "#12FFFFFF" : "#0A000000")).Color);
-        Animate(cardEdge, on ? accent : Color.FromArgb(0x0F, 255, 255, 255));
+        Animate(cardFill, Themes.Current.Field ?? ((SolidColorBrush)MainWindow.Hex(on ? "#12FFFFFF" : "#0A000000")).Color);
+        Animate(cardEdge, on ? accent : Themes.Map(Color.FromArgb(0x0F, 255, 255, 255)));
         glowColor.Color = Color.FromRgb(accent.R, accent.G, accent.B); // a discreet glow around the active pane only
         var glowTo = on ? 0.7 : 0;
         if (Motion.On) Glow.BeginAnimation(OpacityProperty, new DoubleAnimation(glowTo, Quick) { EasingFunction = Ease });

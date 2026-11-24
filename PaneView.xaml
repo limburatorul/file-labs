@@ -8,11 +8,11 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="4" Padding="3,5">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource r4}" Padding="3,5">
               <ContentPresenter VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c14FFFFFF}"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -21,8 +21,8 @@
     <!-- the rename box, made only for the item being renamed (F2): one in every row and tile cost about a third of
          building the icon views (1.0.77) -->
     <DataTemplate x:Key="RenameBox">
-      <Border Background="#F2151A22" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="3" Padding="4,1" Margin="-4,-1,0,-1">
-        <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="#FFFFFF" FontWeight="SemiBold"
+      <Border Background="{DynamicResource cF2151A22}" BorderBrush="{DynamicResource Accent}" BorderThickness="1.5" CornerRadius="{DynamicResource r3}" Padding="4,1" Margin="-4,-1,0,-1">
+        <TextBox Text="{Binding Name, Mode=OneWay}" Style="{StaticResource Bare}" Foreground="{DynamicResource cFFFFFFFF}" FontWeight="SemiBold"
                  SelectionBrush="{DynamicResource Accent}" SelectionOpacity="0.45" IsInactiveSelectionHighlightEnabled="True"
                  Loaded="Rename_Shown" PreviewKeyDown="Rename_KeyDown" LostKeyboardFocus="Rename_Done" Tag="{Binding}"/>
       </Border>
@@ -50,7 +50,7 @@
         </Grid>
         <Grid>
           <!-- not hit-testable: a right-click landing on one of its Runs made the list drop a multi-selection -->
-          <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility><Run Text="{Binding Name, Mode=OneWay}"/><Run Text="{Binding Where, Mode=OneWay}" Foreground="#70FFFFFF" FontSize="11"/></TextBlock>
+          <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility><Run Text="{Binding Name, Mode=OneWay}"/><Run Text="{Binding Where, Mode=OneWay}" Foreground="{DynamicResource c70FFFFFF}" FontSize="11"/></TextBlock>
           <ContentControl Style="{StaticResource RenameSlot}"/>
         </Grid>
       </DockPanel>
@@ -60,7 +60,7 @@
     </DataTemplate>
     <DataTemplate x:Key="DateCell">
       <StackPanel Orientation="Horizontal">
-        <Border Background="{Binding AgeBrush}" CornerRadius="3" Width="46" Margin="0,0,8,0">
+        <Border Background="{Binding AgeBrush}" CornerRadius="{DynamicResource r3}" Width="46" Margin="0,0,8,0">
           <TextBlock Text="{Binding Age}" Foreground="{Binding AgeTextBrush}" FontSize="11" FontWeight="SemiBold"
                      HorizontalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
         </Border>
@@ -81,7 +81,7 @@
           <Image Source="{Binding Thumb}" Stretch="Uniform" StretchDirection="DownOnly" RenderOptions.BitmapScalingMode="HighQuality"/>
           <Image Source="{Binding Overlay}" Width="32" Height="32" HorizontalAlignment="Left" VerticalAlignment="Bottom" RenderOptions.BitmapScalingMode="HighQuality"/>
         </Grid>
-        <Border Height="5" Width="34" CornerRadius="2.5" Background="{Binding AgeBrush}" Margin="0,4,0,3" HorizontalAlignment="Center"/>
+        <Border Height="5" Width="34" CornerRadius="{DynamicResource r2p5}" Background="{Binding AgeBrush}" Margin="0,4,0,3" HorizontalAlignment="Center"/>
         <Grid>
           <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="34" FontSize="11.5"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility></TextBlock>
           <ContentControl Style="{StaticResource RenameSlot}"/>
@@ -90,7 +90,7 @@
     </DataTemplate>
     <DataTemplate x:Key="ListCell">
       <DockPanel Width="230">
-        <Border DockPanel.Dock="Left" Width="6" Margin="0,0,6,0" CornerRadius="2" Background="{Binding AgeBrush}"/>
+        <Border DockPanel.Dock="Left" Width="6" Margin="0,0,6,0" CornerRadius="{DynamicResource r2}" Background="{Binding AgeBrush}"/>
         <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource CutDim}">
           <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.9">
             <TextBlock.Visibility><Binding Path="NoSmallIcon"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility>
@@ -110,10 +110,10 @@
   <!-- The active pane's glow: its edge again, thicker and blurred, under the card. Kept apart from the
        card so the blur touches only this line — an effect on the card would render the whole list
        through it, on every scroll. -->
-  <Border x:Name="Glow" CornerRadius="10" BorderThickness="2.5" Opacity="0" IsHitTestVisible="False">
+  <Border x:Name="Glow" CornerRadius="{DynamicResource r10}" BorderThickness="2.5" Opacity="0" IsHitTestVisible="False">
     <Border.Effect><BlurEffect Radius="12"/></Border.Effect>
   </Border>
-  <Border x:Name="Card" Background="#0DFFFFFF" CornerRadius="10" BorderThickness="1" BorderBrush="#1AFFFFFF">
+  <Border x:Name="Card" Background="{DynamicResource c0DFFFFFF}" CornerRadius="{DynamicResource r10}" BorderThickness="1" BorderBrush="{DynamicResource e1AFFFFFF}">
     <DockPanel>
       <!-- Tabs -->
       <!-- tabs share the row equally (browser-style): full width until they don't fit, then all shrink -->
@@ -126,7 +126,7 @@
            The cut-out shows the panel's own surface, so the active tab always matches it exactly. -->
       <!-- in a Canvas so its size (set by hand from the band's) never feeds back into the row's height:
            otherwise a strip drawn for three rows of tabs kept the row that tall after the pane widened -->
-      <Canvas><Path x:Name="StripShape" Fill="{StaticResource TabStripBg}"/></Canvas>
+      <Canvas><Path x:Name="StripShape" Fill="{DynamicResource TabStripBg}"/></Canvas>
       <DockPanel x:Name="TabBand" AllowDrop="True" Background="Transparent" SizeChanged="TabBand_SizeChanged" MouseDown="TabBand_MouseDown" DragOver="Tabs_DragOver" DragLeave="Tabs_DragLeave" Drop="Tabs_Drop">
         <Border DockPanel.Dock="Left" Width="4"/>
         <UniformGrid x:Name="TabStrip" DockPanel.Dock="Left" Rows="1"/>
@@ -140,7 +140,7 @@
       </DockPanel>
       <!-- where a dragged tab would land; an overlay, so the tabs never move under the pointer -->
       <Canvas IsHitTestVisible="False">
-        <Border x:Name="TabDropLine" Width="3" CornerRadius="1.5" Background="{DynamicResource Accent}" Visibility="Collapsed"/>
+        <Border x:Name="TabDropLine" Width="3" CornerRadius="{DynamicResource r1p5}" Background="{DynamicResource Accent}" Visibility="Collapsed"/>
       </Canvas>
       </Grid>
 
@@ -149,7 +149,7 @@
         <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" ToolTip="Back (Alt+Left) · middle-click: in a new tab" Click="Back_Click" Tag="back" PreviewMouseDown="Nav_MiddleClick"/>
         <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE72A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" ToolTip="Forward (Alt+Right) · middle-click: in a new tab" Click="Fwd_Click" Tag="fwd" PreviewMouseDown="Nav_MiddleClick"/>
         <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE74A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" ToolTip="Up (Backspace) · middle-click: in a new tab" Click="Up_Click" Tag="up" PreviewMouseDown="Nav_MiddleClick"/>
-        <Border DockPanel.Dock="Right" Width="200" Background="#12FFFFFF" CornerRadius="5" Margin="6,0,0,0"
+        <Border DockPanel.Dock="Right" Width="200" Background="{DynamicResource c12FFFFFF}" CornerRadius="{DynamicResource r5}" Margin="6,0,0,0"
                 ToolTip="Typing filters this folder. Enter searches every subfolder. * and ? work as wildcards; size:, within:, re: and content: narrow it (the button beside sets them)">
           <DockPanel>
             <!-- size, date, a regular expression, text inside files: written into the box as terms -->
@@ -158,7 +158,7 @@
             <Button x:Name="FilterClear" DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Visibility="Collapsed"
                     ToolTip="Clear (Esc)" AutomationProperties.Name="Clear the filter" Click="FilterClear_Click"/>
             <Grid>
-              <TextBlock x:Name="FilterHint" Text="Type to filter · Enter searches" Foreground="#66FFFFFF" Margin="8,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+              <TextBlock x:Name="FilterHint" Text="Type to filter · Enter searches" Foreground="{DynamicResource c66FFFFFF}" Margin="8,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
               <TextBox x:Name="FilterBox" Style="{StaticResource Bare}" Margin="6,3" TextChanged="Filter_Changed"/>
             </Grid>
           </DockPanel>
@@ -172,9 +172,9 @@
           <!-- folder suggestions while typing a path; it opens the way Windows opens menus (fade, slide or none) -->
           <Popup x:Name="Suggest" PlacementTarget="{Binding ElementName=PathBox}" Placement="Bottom" AllowsTransparency="True" StaysOpen="True"
                  PopupAnimation="{DynamicResource {x:Static SystemParameters.MenuPopupAnimationKey}}">
-            <Border Background="#F2161B24" BorderBrush="#2EFFFFFF" BorderThickness="1" CornerRadius="6" Padding="3"
+            <Border Background="{DynamicResource cF2161B24}" BorderBrush="{DynamicResource e2EFFFFFF}" BorderThickness="1" CornerRadius="{DynamicResource r6}" Padding="3"
                     MinWidth="{Binding ActualWidth, ElementName=PathBox}">
-              <ListBox x:Name="SuggestList" Focusable="False" Background="Transparent" BorderThickness="0" Foreground="#E8EEF6"
+              <ListBox x:Name="SuggestList" Focusable="False" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource cFFE8EEF6}"
                        MaxHeight="320" PreviewMouseLeftButtonDown="Suggest_MouseDown">
                 <ListBox.ItemContainerStyle>
                   <Style TargetType="ListBoxItem">
@@ -182,9 +182,9 @@
                     <Setter Property="Template">
                       <Setter.Value>
                         <ControlTemplate TargetType="ListBoxItem">
-                          <Border x:Name="Bd" Padding="8,4" CornerRadius="4" Background="Transparent"><ContentPresenter/></Border>
+                          <Border x:Name="Bd" Padding="8,4" CornerRadius="{DynamicResource r4}" Background="Transparent"><ContentPresenter/></Border>
                           <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#1AFFFFFF"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c1AFFFFFF}"/></Trigger>
                             <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/><Setter Property="Foreground" Value="{DynamicResource AccentSelectText}"/></Trigger>
                           </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -200,15 +200,15 @@
 
       <!-- Drive usage. Also a place for the current folder itself, between the address bar and the files:
            drop here and it goes into this folder whatever is selected, click here and the selection clears. -->
-      <Border x:Name="FolderStrip" DockPanel.Dock="Top" Padding="10,6,10,4" Background="Transparent" CornerRadius="4" Margin="4,0"
+      <Border x:Name="FolderStrip" DockPanel.Dock="Top" Padding="10,6,10,4" Background="Transparent" CornerRadius="{DynamicResource r4}" Margin="4,0"
               AllowDrop="True" ToolTip="Drop here to put files in this folder · click to clear the selection"
               MouseLeftButtonDown="FolderStrip_Click" DragEnter="FolderStrip_DragEnter" DragLeave="FolderStrip_DragLeave">
       <DockPanel>
-        <TextBlock x:Name="DriveInfoText" DockPanel.Dock="Right" Foreground="#80FFFFFF" FontSize="11" Margin="10,0,0,0"
+        <TextBlock x:Name="DriveInfoText" DockPanel.Dock="Right" Foreground="{DynamicResource c80FFFFFF}" FontSize="11" Margin="10,0,0,0"
                    Typography.NumeralAlignment="Tabular"/>
         <Grid VerticalAlignment="Center" Height="3">
-          <Border Background="#1AFFFFFF" CornerRadius="1.5"/>
-          <Border x:Name="UsedBar" Background="{DynamicResource Accent}" CornerRadius="1.5" HorizontalAlignment="Left"/>
+          <Border Background="{DynamicResource c1AFFFFFF}" CornerRadius="{DynamicResource r1p5}"/>
+          <Border x:Name="UsedBar" Background="{DynamicResource Accent}" CornerRadius="{DynamicResource r1p5}" HorizontalAlignment="Left"/>
         </Grid>
       </DockPanel>
       </Border>
@@ -227,7 +227,7 @@
             <TextBlock x:Name="ViewName"/>
           </StackPanel>
         </Button>
-        <TextBlock x:Name="Footer" Foreground="#80FFFFFF" FontSize="11" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
+        <TextBlock x:Name="Footer" Foreground="{DynamicResource c80FFFFFF}" FontSize="11" VerticalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
       </DockPanel>
 
       <Grid>
@@ -236,14 +236,14 @@
       <!-- drag-to-select rectangle, drawn over the list so the rows never move under it -->
       <Canvas x:Name="MarqueeLayer" Panel.ZIndex="1" IsHitTestVisible="False" Margin="4,0" ClipToBounds="True">
         <!-- Details: where Name ends. A press right of it, on any row, starts a selection rectangle (PlaceNameEdge) -->
-        <Rectangle x:Name="NameEdge" Width="1" Fill="#18FFFFFF" Visibility="Collapsed"/>
-        <Border x:Name="Marquee" Background="{DynamicResource AccentSoft}" BorderBrush="{DynamicResource AccentEdge}" BorderThickness="1" CornerRadius="2" Visibility="Collapsed"/>
+        <Rectangle x:Name="NameEdge" Width="1" Fill="{DynamicResource c18FFFFFF}" Visibility="Collapsed"/>
+        <Border x:Name="Marquee" Background="{DynamicResource AccentSoft}" BorderBrush="{DynamicResource AccentEdge}" BorderThickness="1" CornerRadius="{DynamicResource r2}" Visibility="Collapsed"/>
         <!-- middle-click autoscroll: where the click was, as in a browser; the arrows say which ways it scrolls -->
         <Grid x:Name="AutoscrollMark" Width="30" Height="30" Visibility="Collapsed">
-          <Ellipse Fill="#D91A1F29" Stroke="#B3FFFFFF" StrokeThickness="1.5"/>
-          <Path x:Name="AutoscrollUpDown" Fill="#E6FFFFFF" Data="M15,4.5 L19,9.5 L11,9.5 Z M15,25.5 L19,20.5 L11,20.5 Z"/>
-          <Path x:Name="AutoscrollSides" Fill="#E6FFFFFF" Data="M4.5,15 L9.5,11 L9.5,19 Z M25.5,15 L20.5,11 L20.5,19 Z"/>
-          <Ellipse Width="4" Height="4" Fill="#E6FFFFFF"/>
+          <Ellipse Fill="{DynamicResource cD91A1F29}" Stroke="{DynamicResource cB3FFFFFF}" StrokeThickness="1.5"/>
+          <Path x:Name="AutoscrollUpDown" Fill="{DynamicResource cE6FFFFFF}" Data="M15,4.5 L19,9.5 L11,9.5 Z M15,25.5 L19,20.5 L11,20.5 Z"/>
+          <Path x:Name="AutoscrollSides" Fill="{DynamicResource cE6FFFFFF}" Data="M4.5,15 L9.5,11 L9.5,19 Z M25.5,15 L20.5,11 L20.5,19 Z"/>
+          <Ellipse Width="4" Height="4" Fill="{DynamicResource cE6FFFFFF}"/>
         </Grid>
       </Canvas>
       <!-- ScrollUnit=Pixel keeps virtualization but scrolls smoothly instead of jumping a row at a time -->
@@ -261,8 +261,8 @@
                     <DataTrigger Binding="{Binding Name}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger> <!-- the ".." group -->
                   </Style.Triggers></Style></DockPanel.Style>
                   <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" FontSize="12"/>
-                  <TextBlock Text="{Binding ItemCount}" Foreground="#8A97AA" FontSize="11" Margin="8,0,10,0" VerticalAlignment="Center"/>
-                  <Border Height="1" Background="#1FFFFFFF" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding ItemCount}" Foreground="{DynamicResource cFF8A97AA}" FontSize="11" Margin="8,0,10,0" VerticalAlignment="Center"/>
+                  <Border Height="1" Background="{DynamicResource c1FFFFFFF}" VerticalAlignment="Center"/>
                 </DockPanel>
               </DataTemplate>
             </GroupStyle.HeaderTemplate>

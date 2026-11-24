@@ -52,6 +52,7 @@ public partial class MainWindow : Window
         };
         Closed += (_, _) => tray?.Dispose(); // or the icon lingers until the pointer passes over it
         SourceInitialized += (_, _) => { ApplyAcrylic(this); WatchShellChanges(); };
+        Loaded += (_, _) => Themes.Strip(CaptionButtons);
         StartUpdateChecks();
         Motion.Nudge(PizzaButton, this);
 
@@ -172,7 +173,7 @@ public partial class MainWindow : Window
         HwndSource.FromHwnd(hwnd).CompositionTarget.BackgroundColor = Colors.Transparent;
         var m = new Margins { L = -1, R = -1, T = -1, B = -1 };
         DwmExtendFrameIntoClientArea(hwnd, ref m);
-        int dark = 1, backdrop = Settings.Backdrop;
+        int dark = Themes.Current.Light ? 0 : 1, backdrop = Backdrop;
         DwmSetWindowAttribute(hwnd, 20, ref dark, sizeof(int));     // dark title bar
         DwmSetWindowAttribute(hwnd, 38, ref backdrop, sizeof(int)); // DWMWA_SYSTEMBACKDROP_TYPE: 1 none, 2 mica, 3 acrylic
     }
@@ -240,13 +241,18 @@ public partial class MainWindow : Window
     }
 
     public static Brush Tint() =>
-        new SolidColorBrush(Color.FromArgb((byte)(Settings.Backdrop == 1 ? 255 : Settings.Opacity * 2.55), 0x0A, 0x0D, 0x13));
+        new SolidColorBrush(Color.FromArgb((byte)(Backdrop == 1 ? 255 : Settings.Opacity * 2.55), 0x0A, 0x0D, 0x13) is var c && Themes.Current.Light
+            ? Color.FromArgb(c.A, Themes.Current.Surface.R, Themes.Current.Surface.G, Themes.Current.Surface.B) : c);
+
+    /// The backdrop in use: the classic themes are opaque, whatever Settings says.
+    static int Backdrop => Themes.Current.Solid ? 1 : Settings.Backdrop;
 
     public static void SetBackdrop(Window w)
     {
         var h = new WindowInteropHelper(w).Handle;
         if (h == IntPtr.Zero) return;
-        int b = Settings.Backdrop;
+        int b = Backdrop, dark = Themes.Current.Light ? 0 : 1;
+        DwmSetWindowAttribute(h, 20, ref dark, sizeof(int));
         DwmSetWindowAttribute(h, 38, ref b, sizeof(int));
     }
 
@@ -307,6 +313,8 @@ public partial class MainWindow : Window
     /// where black reads better (a light accent at a high strength); one of the two always reaches 4.5:1 (WCAG AA).
     internal static (Color Fill, Color Text) Selection(Color accent, double strength)
     {
+        // a light theme selects with the accent itself, as Windows 98, XP and macOS do
+        if (Themes.Current.Light) return (accent, Contrast(Colors.White, accent) >= Contrast(Colors.Black, accent) ? Colors.White : Colors.Black);
         double a = Math.Clamp(0x73 * strength, 12, 255) / 255;
         byte Mix(byte x, byte ground) => (byte)Math.Round(x * a + ground * (1 - a));
         var fill = Color.FromRgb(Mix(accent.R, 0x18), Mix(accent.G, 0x1A), Mix(accent.B, 0x20));
@@ -325,8 +333,21 @@ public partial class MainWindow : Window
         return (Math.Max(lx, ly) + 0.05) / (Math.Min(lx, ly) + 0.05);
     }
 
+    // a theme brings its own accent until one is picked (the default blue counts as none picked)
     public static Color AccentColor =>
-        ((SolidColorBrush)Hex(Settings.Accent)).Color;
+        (Color)ColorConverter.ConvertFromString(Settings.Accent == "#4C8DFF" && Themes.Current.Accent != null ? Themes.Current.Accent : Settings.Accent);
+
+    /// Settings → Appearance → Theme: every key repainted, the glass and title bar told, the code-built parts rebuilt.
+    public void ApplyTheme()
+    {
+        Themes.Apply(Settings.Theme);
+        foreach (Window w in Application.Current.Windows) SetBackdrop(w);
+        Themes.Strip(CaptionButtons); Themes.Strip(Left.TabBand); Themes.Strip(Right.TabBand);
+        ApplyAppearance();
+        BuildSidebar();
+        shownDrives = new(); RefreshDrives(); // the drive rows are built in code, in the old theme's colours
+        RefreshPanes();
+    }
 
     public void RefreshPanes()
     {
@@ -899,7 +920,13 @@ public partial class MainWindow : Window
     // Parsed once per colour and frozen: rows ask for their icon and age colours as they are built, and a fresh
     // parse per row was part of drawing the first lists (1.0.44). Frozen brushes are also cheaper to draw.
     static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Brush> hexBrushes = new();
-    public static Brush Hex(string c) => hexBrushes.GetOrAdd(c, k => { var b = (Brush)new BrushConverter().ConvertFrom(k); b.Freeze(); return b; });
+    // in the current theme's colours (Themes.Map): the cache is per theme, keyed "theme|#colour"
+    public static Brush Hex(string c) => hexBrushes.GetOrAdd(Themes.Current.Id + "|" + c, _ =>
+    {
+        var b = new SolidColorBrush(Themes.Map(((SolidColorBrush)new BrushConverter().ConvertFrom(c)).Color));
+        b.Freeze();
+        return b;
+    });
 
     public static string Fmt(long b)
     {

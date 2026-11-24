@@ -126,6 +126,7 @@ public partial class App : Application
             _ = Listen();
         }
         Settings.Load(); // before any window: the panes read column widths while being built
+        Themes.Apply(Settings.Theme);
         UseTipDelay();
         ShellMenu.FollowSystemTheme(); // the Windows right-click menu dark in dark mode
         Task.Run(() => { DataFolder.Repoint(); Sisters.WriteCard(); }); // the ecosystem card, so sister apps find this copy (Sisters.cs)
@@ -426,6 +427,22 @@ public partial class App : Application
                     var (f, t) = FileExplorer.MainWindow.Selection((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex), strength);
                     Check(FileExplorer.MainWindow.Contrast(t, f) >= 4.5, $"selection text on {hex} at {strength}");
                 }
+
+            // themes (1.0.78): on a light theme the dark look's text, veils and grounds become readable text, ink and
+            // an opaque ground, and the default theme leaves every colour as it is
+            static System.Windows.Media.Color Hx(string h) => (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(h);
+            foreach (var theme in Themes.All.Where(t => t.Light))
+            {
+                Themes.Apply(theme.Id);
+                var ground = Themes.Map(Hx("#B30A0D13"));
+                Check(!theme.Solid || ground.A == 255, $"{theme.Id}: an opaque ground");
+                ground.A = 255;
+                foreach (var hex in new[] { "#E8EEF6", "#8A97AA", "#80FFFFFF", "#D0FFFFFF" })
+                    Check(FileExplorer.MainWindow.Contrast(Themes.Map(Hx(hex)), ground) >= 4.5, $"{theme.Id}: text {hex} readable");
+                Check(Themes.Map(Hx("#1AFFFFFF")).A < 0x60, $"{theme.Id}: a veil stays a veil");
+            }
+            Themes.Apply("default");
+            Check(Themes.Map(Hx("#8A97AA")) == Hx("#8A97AA") && FileExplorer.MainWindow.Hex("#1AFFFFFF") is System.Windows.Media.SolidColorBrush { Color.A: 0x1A }, "default theme: colours as they are");
 
             // Stash and Backup Labs backups (1.0.40): told apart by their first bytes, read without trusting them
             var bk = Directory.CreateDirectory(Path.Combine(root, "backups")).FullName;

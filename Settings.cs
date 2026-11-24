@@ -22,6 +22,7 @@ public static class Settings
     public static int Backdrop = 3;          // 1 solid, 2 mica, 3 acrylic
     public static double Opacity = 70;       // 30–100, floor keeps text readable
     public static string Accent = "#4C8DFF"; // Protagonist Labs blue by default
+    public static string Theme = "default";  // Themes.All: default, win98, xp, leopard, macos27
     public static double RowPad = 3;         // row height: 1 compact, 3 normal, 6 roomy
     public static bool Animations = true;
     public static bool SmoothScroll;         // the wheel glides the file list instead of jumping
@@ -124,6 +125,7 @@ public static class Settings
             {
                 case "backdrop" when int.TryParse(v, out var b) && b is >= 1 and <= 3: Backdrop = b; break;
                 case "opacity" when double.TryParse(v, CultureInfo.InvariantCulture, out var o) && double.IsFinite(o): Opacity = Math.Clamp(o, 30, 100); break;
+                case "theme" when Themes.All.Any(x => x.Id == v): Theme = v; break;
                 case "accent" when System.Text.RegularExpressions.Regex.IsMatch(v, "^#[0-9a-fA-F]{6}$"): Accent = v; break;
                 case "rowpad" when double.TryParse(v, CultureInfo.InvariantCulture, out var rp) && double.IsFinite(rp): RowPad = Math.Clamp(rp, 0, 10); break;
                 case "animations": Animations = v == "1"; break;
@@ -203,6 +205,7 @@ public static class Settings
             $"backdrop={Backdrop}",
             $"opacity={Opacity.ToString(CultureInfo.InvariantCulture)}",
             $"accent={Accent}",
+            $"theme={Theme}",
             $"rowpad={RowPad.ToString(CultureInfo.InvariantCulture)}",
             $"animations={(Animations ? 1 : 0)}",
             $"smoothscroll={(SmoothScroll ? 1 : 0)}",
