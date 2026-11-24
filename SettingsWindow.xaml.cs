@@ -252,7 +252,8 @@ public partial class SettingsWindow : Window
             var dot = new System.Windows.Controls.Border
             {
                 Width = 22, Height = 22, CornerRadius = new(11), Margin = new(0, 0, 6, 0), Cursor = System.Windows.Input.Cursors.Hand,
-                Background = MainWindow.Hex(hex), BorderThickness = new(2), ToolTip = hex,
+                // the colour itself, never the theme's version of it: a swatch is what the accent will be
+                Background = new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex)), BorderThickness = new(2), ToolTip = hex,
             };
             dot.MouseLeftButtonDown += (_, _) => SetAccent(colour);
             Swatches.Children.Add(dot);
