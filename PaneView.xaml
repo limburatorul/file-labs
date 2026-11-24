@@ -149,7 +149,7 @@
         <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE72B;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" ToolTip="Back (Alt+Left) · middle-click: in a new tab" Click="Back_Click" Tag="back" PreviewMouseDown="Nav_MiddleClick"/>
         <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE72A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" ToolTip="Forward (Alt+Right) · middle-click: in a new tab" Click="Fwd_Click" Tag="fwd" PreviewMouseDown="Nav_MiddleClick"/>
         <Button DockPanel.Dock="Left" Style="{StaticResource Ghost}" Content="&#xE74A;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" ToolTip="Up (Backspace) · middle-click: in a new tab" Click="Up_Click" Tag="up" PreviewMouseDown="Nav_MiddleClick"/>
-        <Border DockPanel.Dock="Right" Width="200" Background="{DynamicResource c12FFFFFF}" CornerRadius="{DynamicResource r5}" Margin="6,0,0,0"
+        <Border DockPanel.Dock="Right" Width="200" Background="{DynamicResource SearchBg}" BorderBrush="{DynamicResource SearchEdge}" BorderThickness="1" CornerRadius="{DynamicResource r5}" Margin="6,0,0,0"
                 ToolTip="Typing filters this folder. Enter searches every subfolder. * and ? work as wildcards; size:, within:, re: and content: narrow it (the button beside sets them)">
           <DockPanel>
             <!-- size, date, a regular expression, text inside files: written into the box as terms -->

@@ -91,6 +91,9 @@
     <SolidColorBrush x:Key="TabStripBg" Color="#2E000000"/>
     <!-- the sidebar's veil; a theme may give it a gradient (Themes.cs) -->
     <SolidColorBrush x:Key="SidebarBg" Color="#40000000"/>
+    <!-- the filter box in each pane, and its edge (none, except in themes with white fields) -->
+    <SolidColorBrush x:Key="SearchBg" Color="#12FFFFFF"/>
+    <SolidColorBrush x:Key="SearchEdge" Color="#00000000"/>
     <!-- ScrollViewer corner square and similar system fills: keep them see-through -->
     <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="Transparent"/>
 

@@ -52,7 +52,7 @@ public partial class MainWindow : Window
         };
         Closed += (_, _) => tray?.Dispose(); // or the icon lingers until the pointer passes over it
         SourceInitialized += (_, _) => { ApplyAcrylic(this); WatchShellChanges(); };
-        Loaded += (_, _) => Themes.Strip(CaptionButtons);
+        Loaded += (_, _) => { Themes.Strip(CaptionButtons); CaptionLook(); };
         StartUpdateChecks();
         Motion.Nudge(PizzaButton, this);
 
@@ -343,11 +343,31 @@ public partial class MainWindow : Window
         (Color)ColorConverter.ConvertFromString(Settings.Accent == "#4C8DFF" && Themes.Current.Accent != null ? Themes.Current.Accent : Settings.Accent);
 
     /// Settings → Appearance → Theme: every key repainted, the glass and title bar told, the code-built parts rebuilt.
+    // The window buttons: Windows 11's glyphs, or (Mac OS X 10.5) three coloured lights with close first.
+    object[] captionGlyphs;
+    void CaptionLook()
+    {
+        var buttons = new[] { MinButton, MaxButton, CloseButton };
+        captionGlyphs ??= buttons.Select(b => b.Content).ToArray();
+        bool lights = Themes.Current.Lights;
+        string[] colours = { "#FEBC2E", "#28C840", "#FF5F57" };
+        for (int i = 0; i < 3; i++)
+        {
+            buttons[i].Content = lights
+                ? new System.Windows.Shapes.Ellipse { Width = 12, Height = 12, Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colours[i])), Stroke = new SolidColorBrush(Color.FromArgb(0x55, 0, 0, 0)), StrokeThickness = 0.5 }
+                : captionGlyphs[i];
+            buttons[i].Width = lights ? 22 : 46;
+        }
+        CaptionButtons.Children.Remove(CloseButton);
+        CaptionButtons.Children.Insert(lights ? CaptionButtons.Children.IndexOf(MinButton) : CaptionButtons.Children.Count, CloseButton);
+    }
+
     public void ApplyTheme()
     {
         Themes.Apply(Settings.Theme);
         foreach (Window w in Application.Current.Windows) SetBackdrop(w);
         Themes.Strip(CaptionButtons); Themes.Strip(Left.TabBand); Themes.Strip(Right.TabBand);
+        CaptionLook();
         Left.UpdateStripShape(); Right.UpdateStripShape(); // the tab band is drawn in code, with the old theme's corners
         ApplyAppearance();
         BuildSidebar();

@@ -25,6 +25,10 @@ public sealed record Theme(
     public bool TabLine { get; init; } = true;
     /// The sidebar sections' own ground, where the sidebar is coloured (XP's light-blue task pane boxes).
     public Color? SideCard { get; init; }
+    /// The sidebar's section titles in small capitals, bold (Finder's FAVORITES).
+    public bool SideCaps { get; init; }
+    /// The window buttons as three coloured lights, close first (the Mac's).
+    public bool Lights { get; init; }
 }
 
 public static class Themes
@@ -61,8 +65,10 @@ public static class Themes
         new("leopard", "Mac OS X 10.5", true, C("#E8E8E8"), C("#F6F6F6"), C("#000000"), C("#6E6E6E"), C("#000000"), 1.1, C("#5A6E8C"), 0.55,
             "#3875D7", "Lucida Sans Unicode, Segoe UI", 0.7, true, 0.75)
         {
-            Brushes = { ["TabStripBg"] = () => Down("#D3D3D3", "#A8A8A8"), ["SidebarBg"] = () => Down("#DDE4EB", "#D1DBE5") },
+            Brushes = { ["TabStripBg"] = () => Down("#EBEBEB", "#D2D2D2"), ["SidebarBg"] = () => Down("#E2E7ED", "#D3DAE2"),
+                ["SearchBg"] = () => new SolidColorBrush(C("#FFFFFF")), ["SearchEdge"] = () => new SolidColorBrush(C("#9A9A9A")) },
             Field = C("#FFFFFF"), Edge = () => new SolidColorBrush(C("#A5A5A5")), TabLine = false,
+            SideCard = C("#00FFFFFF"), SideCaps = true, Lights = true,
         },
         // macOS 27: Liquid Glass, light and see-through, large corners
         new("macos27", "macOS 27", true, C("#F5F5F7"), C("#FAFAFC"), C("#1D1D1F"), C("#6E6E73"), C("#000000"), 0.85, C("#FFFFFF"), 1.2,
