@@ -185,7 +185,7 @@
     <!-- Sidebar: a bit more opaque, it sits over whatever is behind the window -->
     <DockPanel x:Name="SidebarPanel" Background="{DynamicResource SidebarBg}">
       <!-- the app's name, where the title bar used to say it; it moves the window like one -->
-      <DockPanel DockPanel.Dock="Top" Margin="18,13,8,0" Height="26" Background="Transparent" MouseDown="Caption_MouseDown">
+      <DockPanel x:Name="AppTitle" DockPanel.Dock="Top" Margin="18,13,8,0" Height="26" Background="Transparent" MouseDown="Caption_MouseDown">
         <Image Source="/app.ico" Width="16" Height="16" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
         <TextBlock Text="File Labs" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
         <TextBlock x:Name="VersionText" Foreground="{DynamicResource Muted}" FontSize="11" Margin="8,1,0,0" VerticalAlignment="Center"/>
@@ -411,6 +411,8 @@
     </Grid>
 
     <!-- the window's buttons, over the right end of the tab row (the pane under them keeps that room free) -->
+    <!-- the window buttons as the Mac's lights (Mac OS X 10.5) move here, top left, before the app's name -->
+    <StackPanel x:Name="LightsCorner" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,10,0,0"/>
     <StackPanel x:Name="CaptionButtons" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,12,0">
       <Button x:Name="HistoryButton" Style="{StaticResource Caption}" Width="40" FontSize="13" Content="&#xE81C;" Click="History_Click" AutomationProperties.Name="History"
               ToolTip="Recent folders and closed tabs (Ctrl+Shift+T reopens the last closed tab)"/>

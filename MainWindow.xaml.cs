@@ -357,10 +357,13 @@ public partial class MainWindow : Window
                 ? new System.Windows.Shapes.Ellipse { Width = 12, Height = 12, Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colours[i])), Stroke = new SolidColorBrush(Color.FromArgb(0x55, 0, 0, 0)), StrokeThickness = 0.5 }
                 : captionGlyphs[i];
             buttons[i].Width = lights ? 22 : 46;
+            ((Panel)buttons[i].Parent).Children.Remove(buttons[i]);
         }
         if (!lights) ApplyWindowState(); // the maximize glyph follows the window's state
-        CaptionButtons.Children.Remove(CloseButton);
-        CaptionButtons.Children.Insert(lights ? CaptionButtons.Children.IndexOf(MinButton) : CaptionButtons.Children.Count, CloseButton);
+        // lights: top left, close first, the app's name moved past them; otherwise top right after History, close last
+        foreach (var b in lights ? new[] { CloseButton, MinButton, MaxButton } : buttons) (lights ? LightsCorner : CaptionButtons).Children.Add(b);
+        AppTitle.Margin = new Thickness(lights ? 84 : 18, 13, 8, 0);
+        PlaceCaption();
     }
 
     public void ApplyTheme()
