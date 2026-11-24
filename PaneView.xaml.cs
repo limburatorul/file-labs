@@ -2234,6 +2234,7 @@ public partial class PaneView : UserControl
 
     public void SetView(ViewMode mode)
     {
+        int lean = Math.Sign(Array.IndexOf(ZoomOrder, mode) - Array.IndexOf(ZoomOrder, Mode)); // bigger or smaller
         Mode = mode;
         PlaceNameEdge();
         var m = Modes.First(x => x.mode == mode);
@@ -2244,7 +2245,7 @@ public partial class PaneView : UserControl
         // frame lost its start to it, then the tiles filled in one by one. Now the view being left stays on screen as a
         // still picture while the new one is built under it, and gives way to it once it is drawn with its thumbnails.
         bool crossFade = Motion.On && IsVisible && List.ActualWidth > 0 && List.ActualHeight > 0;
-        if (crossFade) HoldPicture();
+        if (crossFade) HoldPicture(lean);
         // Template, item style and panel are three separate changes, and the list would rebuild its
         // containers after each one. Detached from its items it rebuilds once, when they come back.
         var source = List.ItemsSource;
@@ -2282,7 +2283,9 @@ public partial class PaneView : UserControl
         }
         if (mode == ViewMode.Details) ScrollViewer.SetVerticalScrollBarVisibility(List, ScrollBarVisibility.Auto);
         List.ItemsSource = source;
-        List.SelectedItem = sel;
+        // the same selection as before the switch: the footer, the stats and the preview have nothing new to show
+        bulkSelect = true;
+        try { List.SelectedItem = sel; } finally { bulkSelect = false; }
         if (sel != null) List.ScrollIntoView(sel);
         if (crossFade) Reveal(++switchVersion); else FadeInList();
     }
@@ -2290,39 +2293,53 @@ public partial class PaneView : UserControl
     int switchVersion;
 
     /// The list as it looks now, laid over it, and the list itself hidden until Reveal.
-    void HoldPicture()
+    void HoldPicture(int lean)
     {
+        // a switch still being built under its picture (a fast Ctrl+wheel spin): what shows is that picture, so it stays;
+        // taking a new one costs ~25 ms
+        if (ViewShot.Visibility == Visibility.Visible && List.Opacity == 0) return;
         // the list's whole area as it is on screen: in the middle of another switch (a fast Ctrl+wheel spin) that is the
         // picture still fading out with the list fading in, so the next one carries on from exactly what shows
         var area = (FrameworkElement)List.Parent;
         var dpi = VisualTreeHelper.GetDpi(area);
-        var shot = new RenderTargetBitmap((int)Math.Ceiling(area.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(area.ActualHeight * dpi.DpiScaleY),
-                                          dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
+        // at three quarters of the screen's pixels: drawn in software it cost 35–60 ms at full size, half that now, and the
+        // picture is only seen leaning and fading
+        const double k = 0.75;
+        var shot = new RenderTargetBitmap((int)Math.Ceiling(area.ActualWidth * dpi.DpiScaleX * k), (int)Math.Ceiling(area.ActualHeight * dpi.DpiScaleY * k),
+                                          dpi.PixelsPerInchX * k, dpi.PixelsPerInchY * k, PixelFormats.Pbgra32);
         // through a brush: Render(area) would draw it at its offset in the pane, as far down as the path bar is tall
         var dv = new DrawingVisual();
         using (var dc = dv.RenderOpen()) dc.DrawRectangle(new VisualBrush(area), null, new Rect(0, 0, area.ActualWidth, area.ActualHeight));
         shot.Render(dv);
         shot.Freeze();
         ViewShot.BeginAnimation(OpacityProperty, null);
-        ViewShot.RenderTransform = new ScaleTransform();
+        var scale = new ScaleTransform();
+        ViewShot.RenderTransform = scale;
         ViewShot.Source = shot;
         ViewShot.Opacity = 1;
         ViewShot.Visibility = Visibility.Visible;
         List.BeginAnimation(OpacityProperty, null);
         List.Opacity = 0;
+        // at once, so the notch answers on the next frame: the picture leans the way the zoom goes while the new view is made
+        var move = new DoubleAnimation(1, lean < 0 ? 0.97 : 1.03, TimeSpan.FromMilliseconds(400)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, move);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, move);
     }
 
-    /// Once the new view has had its first layout and the thumbnails of the tiles on screen are in (250 ms at most, so a
-    /// slow disk doesn't hold the switch), the picture fades out, growing a little, as the new view fades in.
+    /// Once the new view's tiles on screen are all made (a few each frame, TileVirtualizer.Building) and their thumbnails
+    /// are in (150 ms at most, so a slow disk doesn't hold the switch), the picture fades out as the new view fades in.
     async void Reveal(int version)
     {
         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
-        var until = DateTime.UtcNow.AddMilliseconds(250);
+        var until = DateTime.UtcNow.AddMilliseconds(800);
+        while (version == switchVersion && DateTime.UtcNow < until && TilePanel() is { Building: true })
+            await Task.Delay(15);
+        until = DateTime.UtcNow.AddMilliseconds(150);
         while (version == switchVersion && DateTime.UtcNow < until && Mode is not (ViewMode.Details or ViewMode.List)
                && TilePanel() is { } panel && panel.Children.OfType<FrameworkElement>().Any(c => c.DataContext is Entry { IsUp: false } e && !thumbTried.ContainsKey(e)))
             await Task.Delay(15);
         if (version != switchVersion) return; // another switch took over
-        var d = new Duration(TimeSpan.FromMilliseconds(220));
+        var d = new Duration(TimeSpan.FromMilliseconds(180));
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
         var listIn = new DoubleAnimation(0, 1, d) { EasingFunction = ease };
         listIn.Completed += (_, _) => { if (version != switchVersion) return; List.Opacity = 1; List.BeginAnimation(OpacityProperty, null); };
@@ -2330,9 +2347,6 @@ public partial class PaneView : UserControl
         var shotOut = new DoubleAnimation(1, 0, d) { EasingFunction = ease };
         shotOut.Completed += (_, _) => { if (version != switchVersion) return; ViewShot.Visibility = Visibility.Collapsed; ViewShot.Source = null; };
         ViewShot.BeginAnimation(OpacityProperty, shotOut);
-        var grow = new DoubleAnimation(1, 1.03, d) { EasingFunction = ease };
-        ((ScaleTransform)ViewShot.RenderTransform).BeginAnimation(ScaleTransform.ScaleXProperty, grow);
-        ((ScaleTransform)ViewShot.RenderTransform).BeginAnimation(ScaleTransform.ScaleYProperty, grow);
     }
 
     // Windows' Details template draws two white 1 px lines in the square where both scroll bars meet: a bright
@@ -2356,43 +2370,26 @@ public partial class PaneView : UserControl
 
     // 1.0.53: in the icon views Ctrl+wheel resizes the icons in steps of 16 px, from 48 to 256, gliding to each new
     // size at the screen's rate with the tiles resized in place, so every step shows. Below the smallest icons it
-    // steps on to List and Details; those changes rebuild the list, so they come one per notch, 160 ms apart,
-    // instead of a fast spin adding up and jumping from one end to the other.
+    // steps on to List and Details, one view per notch.
     const double IconMin = 48, IconMax = 256, IconStep = 16;
     double iconSize = 64, iconTarget = 64;
-    int zoomSteps;
-    DispatcherTimer zoomTimer;
     bool zoomGliding;
 
     public void Zoom(int step)
     {
-        if (Mode is ViewMode.IconsM or ViewMode.IconsL or ViewMode.IconsXL && zoomSteps == 0
-            && (step > 0 || iconTarget > IconMin))
+        if (Mode is ViewMode.IconsM or ViewMode.IconsL or ViewMode.IconsXL && (step > 0 || iconTarget > IconMin))
         {
             iconTarget = Math.Clamp(iconTarget + step * IconStep, IconMin, IconMax);
             if (!zoomGliding) { zoomGliding = true; CompositionTarget.Rendering += Glide; }
             return;
         }
-        // 1.0.77: a spin across Details, List and the icons is gathered and becomes one view change, 120 ms after its last
-        // notch. One notch at a time, each a rebuild of the list with its own cross-fade, they piled up and stuttered.
-        // Up from Details or List it stops at M icons and the rest of the spin grows the icons in place, like in the icons.
-        zoomSteps += step;
-        zoomTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
-        if (zoomTimer.Tag == null)
-        {
-            zoomTimer.Tag = "hooked";
-            zoomTimer.Tick += (_, _) =>
-            {
-                zoomTimer.Stop();
-                int steps = zoomSteps; zoomSteps = 0;
-                int at = Array.IndexOf(ZoomOrder, Mode), icons = Array.IndexOf(ZoomOrder, ViewMode.IconsM);
-                int to = Math.Clamp(at + steps, 0, at < icons ? icons : ZoomOrder.Length - 1);
-                if (ZoomOrder[to] != Mode) SetView(ZoomOrder[to]);
-                int rest = steps - (to - at);
-                if (rest > 0 && Mode is ViewMode.IconsM) Zoom(rest);
-            };
-        }
-        zoomTimer.Stop(); zoomTimer.Start(); // from the last notch
+        // 1.0.78: each notch changes the view at once. 1.0.77 gathered a spin and changed the view 120 ms after its last
+        // notch, and the new view was then made in one frame that held the window up to half a second: the wheel seemed
+        // not to answer, then the window stuck. Now the new view is made over several frames under the picture of the
+        // old one (TileVirtualizer), and a notch arriving meanwhile only changes what is being made.
+        if (zoomGliding) return; // the icons are still shrinking to their smallest: the same spin, not a step on to List
+        int at = Array.IndexOf(ZoomOrder, Mode), to = Math.Clamp(at + Math.Sign(step), 0, ZoomOrder.Length - 1);
+        if (to != at) SetView(ZoomOrder[to]);
     }
 
     void Glide(object s, EventArgs e)
@@ -2553,8 +2550,11 @@ public partial class PaneView : UserControl
         // an image already fetched at a larger size is kept instead of being asked for again.
         int size = iconSize <= 96 ? 128 : 256;
         var todo = view?.Cast<Entry>().Where(e => !e.IsUp).Take(3000).ToList() ?? new();
-        // the tiles on screen first, so a switch shows whole tiles (Reveal waits for them), then the rest in list order
-        var onScreen = TilePanel()?.Children.OfType<FrameworkElement>().Select(c => c.DataContext).OfType<Entry>().ToHashSet() ?? new();
+        // the tiles on screen first, so a switch shows whole tiles (Reveal waits for them), then the rest in list order;
+        // by the panel's range, since a new panel is still making its tiles
+        var onScreen = TilePanel() is { } panel
+            ? Enumerable.Range(panel.First, Math.Max(0, panel.Last - panel.First + 1)).Where(i => i < List.Items.Count).Select(i => List.Items[i]).OfType<Entry>().ToHashSet()
+            : new HashSet<Entry>();
         todo = todo.Where(onScreen.Contains).Concat(todo.Where(e => !onScreen.Contains(e))).ToList();
         thumbTried.Clear();
         // three at a time: the shell's thumbnailer is mostly waiting on the disk (16 ms a photo when Windows has none cached)

@@ -26,6 +26,15 @@ public class TileVirtualizer : VirtualizingPanel, IScrollInfo
     bool Wraps => Orientation == Orientation.Horizontal; // rows that wrap downwards
 
     int lanes = 1;      // items across a row (or down a column)
+    // 1.0.78: a view switch makes a new panel, and making every tile on screen in one layout pass held the window
+    // 70–500 ms (List is ~250 small cells, M icons ~130 tiles). A new panel now makes them ~8 ms' worth a frame, the
+    // visible ones only, and Building stays true until they are all there; PaneView keeps the old view's picture up
+    // meanwhile. After that it works as before, one strip of slack on each side included.
+    bool staged = true;
+    bool sliceSpent; // this frame's share is made: the layout pass measures the panel again as the new tiles settle
+    public bool Building => staged;
+    public int First => first; // the range on screen (with its slack once built)
+    public int Last => last;
     int first, last;    // the range currently realized
     Size extent, viewport;
     Point offset;
@@ -51,19 +60,29 @@ public class TileVirtualizer : VirtualizingPanel, IScrollInfo
         // one strip of slack on each side, so scrolling doesn't create items exactly at the edge
         double start = Wraps ? offset.Y : offset.X, size = Wraps ? TileHeight : TileWidth;
         double window = Wraps ? viewport.Height : viewport.Width;
-        int firstStrip = Math.Max(0, (int)(start / size) - 1);
-        int lastStrip = Math.Min(strips - 1, (int)((start + window) / size) + 1);
+        int slack = staged ? 0 : 1;
+        int firstStrip = Math.Max(0, (int)(start / size) - slack);
+        int lastStrip = Math.Min(strips - 1, (int)((start + window) / size) + slack);
         first = count == 0 ? 0 : firstStrip * lanes;
         last = count == 0 ? -1 : Math.Min(count - 1, lastStrip * lanes + lanes - 1);
 
-        Realize(count);
+        if (Realize(count)) staged = false;
+        else if (!sliceSpent)
+        {
+            sliceSpent = true;
+            Dispatcher.BeginInvoke(() => { sliceSpent = false; InvalidateMeasure(); }, System.Windows.Threading.DispatcherPriority.Input); // after this frame is drawn, ahead of the thumbnails (Background)
+        }
         foreach (UIElement child in InternalChildren) child.Measure(new Size(TileWidth, TileHeight));
         return new Size(Math.Min(available.Width, extent.Width), Math.Min(available.Height, extent.Height));
     }
 
-    void Realize(int count)
+    /// Makes the containers for first..last; while staged it stops once its time is up and says it didn't get there.
+    bool Realize(int count)
     {
-        if (count == 0) { Drop(0, -1); return; }
+        if (count == 0) { Drop(0, -1); return true; }
+        if (staged && sliceSpent) return false;
+        var clock = staged ? System.Diagnostics.Stopwatch.StartNew() : null;
+        int end = last;
         var generator = ItemContainerGenerator;
         var startPos = generator.GeneratorPositionFromIndex(first);
         int childIndex = startPos.Offset == 0 ? startPos.Index : startPos.Index + 1;
@@ -77,9 +96,13 @@ public class TileVirtualizer : VirtualizingPanel, IScrollInfo
                     if (childIndex >= InternalChildren.Count) AddInternalChild(child);
                     else InsertInternalChild(childIndex, child);
                     generator.PrepareItemContainer(child);
+                    if (clock == null) continue;
+                    child.Measure(new Size(TileWidth, TileHeight)); // the template is applied here: the costly part
+                    if (clock.ElapsedMilliseconds >= 8 && i < last) { end = i; break; }
                 }
             }
-        Drop(first, last);
+        Drop(first, end);
+        return end == last;
     }
 
     /// Throws away the containers that fell outside the visible range.
