@@ -385,11 +385,27 @@ public partial class MainWindow : Window
         var glyph = new TextBlock { Text = role switch { 0 => "0", 1 => max ? "2" : "1", _ => "r" }, FontFamily = new FontFamily("Marlett"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         if (t.Buttons == "98")
         {
-            // raised: white and black outside, light grey and dark grey inside; 16×14 on an 18 px title bar, here
-            // grown with the taller strip
-            glyph.FontSize = 13; glyph.Foreground = Brushes.Black;
-            var inner = new Border { BorderThickness = new(1), BorderBrush = Bevel("#DFDFDF", "#808080"), Background = Solid("#C0C0C0"), Child = glyph };
-            return new Border { Width = 23, Height = 20, BorderThickness = new(1), BorderBrush = Bevel("#FFFFFF", "#000000"), Child = inner, Margin = new(role == 2 ? 2 : 0, 0, 0, 0) };
+            // Windows 98's raised button, pixel for pixel: light grey and black outside, white and dark grey inside,
+            // the grey face, and black glyphs drawn without smoothing; 16×14 on its 18 px title bar, here 24×21
+            var ink = Brushes.Black;
+            var face = new Canvas { Width = 20, Height = 17 };
+            void Shape(string data, Brush fill) => face.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse(data), Fill = fill });
+            switch (role)
+            {
+                case 0: Shape("M5,11 H13 V14 H5 Z", ink); break;                                                    // the bar, bottom left
+                case 1 when max:
+                    Shape("F0 M7,1 H16 V10 H7 Z M8,4 H15 V9 H8 Z", ink);                                            // the window behind
+                    Shape("M4,5 H13 V14 H4 Z", Solid("#C0C0C0"));                                                   // the one in front covers it
+                    Shape("F0 M4,5 H13 V14 H4 Z M5,8 H12 V13 H5 Z", ink); break;
+                case 1: Shape("F0 M4,2 H16 V14 H4 Z M5,5 H15 V13 H5 Z", ink); break;                                // a window, thick top
+                default: face.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse("M5,3 L14,12 M14,3 L5,12"), Stroke = ink, StrokeThickness = 2 }); break;
+            }
+            RenderOptions.SetEdgeMode(face, EdgeMode.Aliased);
+            Border Edge(Thickness sides, string colour, UIElement child) => new() { BorderThickness = sides, BorderBrush = Solid(colour), Child = child, SnapsToDevicePixels = true };
+            var raised = Edge(new(1, 1, 0, 0), "#DFDFDF", Edge(new(0, 0, 1, 1), "#000000", Edge(new(1, 1, 0, 0), "#FFFFFF", Edge(new(0, 0, 1, 1), "#808080",
+                new Border { Background = Solid("#C0C0C0"), Child = face })))) ;
+            raised.Width = 24; raised.Height = 21; raised.Margin = new(role == 2 ? 2 : 0, 0, 0, 0);
+            return raised;
         }
         // XP Luna: rounded, white-edged, glossy blue (close red-orange), with its thick white glyphs drawn on a 26 px face
         var fill = new LinearGradientBrush { StartPoint = new(0, 0), EndPoint = new(0.35, 1) };
@@ -408,9 +424,6 @@ public partial class MainWindow : Window
     }
 
     static SolidColorBrush Solid(string hex) => new((Color)ColorConverter.ConvertFromString(hex));
-    // light along the top and left, dark along the bottom and right
-    static Brush Bevel(string light, string dark) => new LinearGradientBrush(new GradientStopCollection
-        { new(Solid(light).Color, 0), new(Solid(light).Color, 0.5), new(Solid(dark).Color, 0.5), new(Solid(dark).Color, 1) }, new Point(0, 0), new Point(1, 1));
 
     // the drawn buttons carry their own look: no hover square behind them, a little dimmer while pressed
     static Style PlainCaption()
