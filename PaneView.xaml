@@ -237,7 +237,7 @@
       <Canvas x:Name="MarqueeLayer" Panel.ZIndex="1" IsHitTestVisible="False" Margin="4,0" ClipToBounds="True">
         <!-- Details: where Name ends. A press right of it, on any row, starts a selection rectangle (PlaceNameEdge) -->
         <Rectangle x:Name="NameEdge" Width="1" Fill="{DynamicResource c18FFFFFF}" Visibility="Collapsed"/>
-        <Border x:Name="Marquee" Background="{DynamicResource AccentSoft}" BorderBrush="{DynamicResource AccentEdge}" BorderThickness="1" CornerRadius="{DynamicResource r2}" Visibility="Collapsed"/>
+        <Border x:Name="Marquee" Background="{DynamicResource AccentSoft}" BorderBrush="{DynamicResource MarqueeEdge}" BorderThickness="1.5" CornerRadius="{DynamicResource r2}" Visibility="Collapsed"/>
         <!-- middle-click autoscroll: where the click was, as in a browser; the arrows say which ways it scrolls -->
         <Grid x:Name="AutoscrollMark" Width="30" Height="30" Visibility="Collapsed">
           <Ellipse Fill="{DynamicResource cD91A1F29}" Stroke="{DynamicResource cB3FFFFFF}" StrokeThickness="1.5"/>

@@ -296,6 +296,12 @@ public partial class MainWindow : Window
         Put("AccentSelect", fill); Put("AccentSelectText", text);
         // the active tab: an accent line along its top, or (macOS 27) bolder text instead
         Put("TabMark", Themes.Current.TabLine ? c : Colors.Transparent);
+        // the selection rectangle's edge: the accent a good step darker or lighter, so it shows over rows already
+        // selected in the accent itself (a light theme's solid selection) as well as over the ground
+        double lum = (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255;
+        bool darker = Themes.Current.Light && lum > 0.45;
+        Put("MarqueeEdge", darker ? Mix(Colors.Black, 0.5) : Mix(Colors.White, 0.55));
+        Color Mix(Color to, double k) => Color.FromRgb((byte)(c.R + (to.R - c.R) * k), (byte)(c.G + (to.G - c.G) * k), (byte)(c.B + (to.B - c.B) * k));
         Application.Current.Resources["TabWeight"] = Themes.Current.TabLine ? FontWeights.Normal : FontWeights.SemiBold;
         void Shade(string key, byte alpha)
         {
@@ -348,7 +354,7 @@ public partial class MainWindow : Window
     Style captionStyle;
     static Style plainCaption;
     static bool DrawnCaption => Themes.Current.Lights || Themes.Current.Buttons != null;
-    static double CaptionButtonWidth => Themes.Current.Lights ? 22 : Themes.Current.Buttons switch { "98" => 17, "xp" => 23, _ => 46 };
+    static double CaptionButtonWidth => Themes.Current.Lights ? 22 : Themes.Current.Buttons switch { "98" => 25, "xp" => 29, _ => 46 };
 
     void CaptionLook()
     {
@@ -379,17 +385,26 @@ public partial class MainWindow : Window
         var glyph = new TextBlock { Text = role switch { 0 => "0", 1 => max ? "2" : "1", _ => "r" }, FontFamily = new FontFamily("Marlett"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         if (t.Buttons == "98")
         {
-            // raised: white and black outside, light grey and dark grey inside
-            glyph.FontSize = 9; glyph.Foreground = Brushes.Black;
+            // raised: white and black outside, light grey and dark grey inside; 16×14 on an 18 px title bar, here
+            // grown with the taller strip
+            glyph.FontSize = 13; glyph.Foreground = Brushes.Black;
             var inner = new Border { BorderThickness = new(1), BorderBrush = Bevel("#DFDFDF", "#808080"), Background = Solid("#C0C0C0"), Child = glyph };
-            return new Border { Width = 16, Height = 14, BorderThickness = new(1), BorderBrush = Bevel("#FFFFFF", "#000000"), Child = inner, Margin = new(role == 2 ? 2 : 0, 0, 0, 0) };
+            return new Border { Width = 23, Height = 20, BorderThickness = new(1), BorderBrush = Bevel("#FFFFFF", "#000000"), Child = inner, Margin = new(role == 2 ? 2 : 0, 0, 0, 0) };
         }
-        // XP Luna: rounded, white-edged, glossy blue; close in red-orange
-        glyph.FontSize = 11; glyph.Foreground = Brushes.White;
-        var fill = new LinearGradientBrush { StartPoint = new(0, 0), EndPoint = new(0, 1) };
-        foreach (var (c, o) in role == 2 ? new[] { ("#F0A68E", 0.0), ("#E2572F", 0.45), ("#C2391A", 1.0) } : new[] { ("#8DB2FA", 0.0), ("#3D78EE", 0.45), ("#2556D2", 1.0) })
+        // XP Luna: rounded, white-edged, glossy blue (close red-orange), with its thick white glyphs drawn on a 26 px face
+        var fill = new LinearGradientBrush { StartPoint = new(0, 0), EndPoint = new(0.35, 1) };
+        foreach (var (c, o) in role == 2 ? new[] { ("#F3A58A", 0.0), ("#E5653F", 0.35), ("#D24A24", 0.75), ("#B9330F", 1.0) }
+                                         : new[] { ("#A6C2FB", 0.0), ("#5B8DF3", 0.35), ("#3C70E6", 0.75), ("#2A58D0", 1.0) })
             fill.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString(c), o));
-        return new Border { Width = 21, Height = 21, CornerRadius = new(3), BorderThickness = new(1), BorderBrush = Brushes.White, Background = fill, Child = glyph };
+        var mark = new System.Windows.Shapes.Path { Fill = Brushes.White, Stroke = Brushes.White, StrokeThickness = role == 2 ? 2.8 : 0, StrokeStartLineCap = PenLineCap.Square, StrokeEndLineCap = PenLineCap.Square };
+        mark.Data = Geometry.Parse(role switch
+        {
+            0 => "M7,15.5 H14 V18.5 H7 Z",                                                     // a short bar, bottom left
+            1 when max => "F0 M10,5.5 H19.5 V15 H17.5 V8.5 H10 Z M5.5,10 H15 V19.5 H5.5 Z M7,13 H13.5 V18 H7 Z", // two windows
+            1 => "F0 M6,6 H19 V19 H6 Z M7.5,9.5 H17.5 V17.5 H7.5 Z",                           // a window with a thick top
+            _ => "M8.5,8.5 L16.5,16.5 M16.5,8.5 L8.5,16.5",                                     // a bold X
+        });
+        return new Border { Width = 25, Height = 25, CornerRadius = new(3.5), BorderThickness = new(1.2), BorderBrush = Brushes.White, Background = fill, Child = new Canvas { Width = 25, Height = 25, Children = { mark }, Margin = new(-1.2) } };
     }
 
     static SolidColorBrush Solid(string hex) => new((Color)ColorConverter.ConvertFromString(hex));
