@@ -1690,30 +1690,31 @@ public partial class PaneView : UserControl
         {
             var at = activeTab.TranslatePoint(new Point(0, 0), TabBand);
             double x = at.X, tw = activeTab.ActualWidth;
-            var cut = new StreamGeometry();
-            using (var g = cut.Open())
-            if (TabStrip.Rows > 1)
+            double top = at.Y + StripTop;
+            Geometry cut;
+            if (at.Y + activeTab.ActualHeight < h - 1)
             {
-                // several rows: the active tab may sit above another row, so it is cut out on its own
-                // instead of flaring into the panel below
-                double top = at.Y + StripTop, bottom = at.Y + activeTab.ActualHeight;
-                g.BeginFigure(new Point(x, bottom), true, true);
-                g.LineTo(new Point(x, top + TabRadius), true, true);
-                g.ArcTo(new Point(x + TabRadius, top), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
-                g.LineTo(new Point(x + tw - TabRadius, top), true, true);
-                g.ArcTo(new Point(x + tw, top + TabRadius), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
-                g.LineTo(new Point(x + tw, bottom), true, true);
+                // several rows, the active tab in an upper one: a notch open at the bottom ran into the row below and
+                // looked torn, so it is a pill of the panel's surface, rounded all round, floating in its row
+                double bottom = at.Y + activeTab.ActualHeight - 3;
+                cut = new RectangleGeometry(new Rect(x, top, tw, Math.Max(0, bottom - top)), TabRadius, TabRadius);
             }
             else
             {
-                g.BeginFigure(new Point(x - TabFlare, h), true, true);
-                g.QuadraticBezierTo(new Point(x, h), new Point(x, h - TabFlare), true, true);           // flare out, bottom left
-                g.LineTo(new Point(x, StripTop + TabRadius), true, true);
-                g.ArcTo(new Point(x + TabRadius, StripTop), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
-                g.LineTo(new Point(x + tw - TabRadius, StripTop), true, true);
-                g.ArcTo(new Point(x + tw, StripTop + TabRadius), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
-                g.LineTo(new Point(x + tw, h - TabFlare), true, true);
-                g.QuadraticBezierTo(new Point(x + tw, h), new Point(x + tw + TabFlare, h), true, true); // flare out, bottom right
+                // one row, or the active tab in the last: it flows into the panel below, flaring out at the bottom
+                var flow = new StreamGeometry();
+                using (var g = flow.Open())
+                {
+                    g.BeginFigure(new Point(x - TabFlare, h), true, true);
+                    g.QuadraticBezierTo(new Point(x, h), new Point(x, h - TabFlare), true, true);           // flare out, bottom left
+                    g.LineTo(new Point(x, top + TabRadius), true, true);
+                    g.ArcTo(new Point(x + TabRadius, top), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
+                    g.LineTo(new Point(x + tw - TabRadius, top), true, true);
+                    g.ArcTo(new Point(x + tw, top + TabRadius), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
+                    g.LineTo(new Point(x + tw, h - TabFlare), true, true);
+                    g.QuadraticBezierTo(new Point(x + tw, h), new Point(x + tw + TabFlare, h), true, true); // flare out, bottom right
+                }
+                cut = flow;
             }
             cut.Freeze();
             shape = new CombinedGeometry(GeometryCombineMode.Exclude, band, cut);

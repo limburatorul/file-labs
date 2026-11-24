@@ -190,7 +190,7 @@
         <TextBlock Text="File Labs" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
         <TextBlock x:Name="VersionText" Foreground="{DynamicResource Muted}" FontSize="11" Margin="8,1,0,0" VerticalAlignment="Center"/>
       </DockPanel>
-      <DockPanel DockPanel.Dock="Bottom" Margin="8,4,8,8">
+      <DockPanel x:Name="SidebarFoot" DockPanel.Dock="Bottom" Margin="8,4,8,8">
         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE713;" Click="Settings_Click" ToolTip="Settings (Ctrl+,)" AutomationProperties.Name="Settings"/>
         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE897;" Click="Help_Click" ToolTip="Help: everything File Labs does (F1)" AutomationProperties.Name="Help"/>
         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE789;" Click="WhatsNew_Click" ToolTip="What&#x2019;s new" AutomationProperties.Name="What&#x2019;s new"/>

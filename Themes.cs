@@ -25,6 +25,8 @@ public sealed record Theme(
     public bool TabLine { get; init; } = true;
     /// The sidebar sections' own ground, where the sidebar is coloured (XP's light-blue task pane boxes).
     public Color? SideCard { get; init; }
+    /// The colour of what sits straight on a coloured sidebar, outside its sections (XP's white on blue).
+    public Color? SideInk { get; init; }
     /// The sidebar's section titles in small capitals, bold (Finder's FAVORITES).
     public bool SideCaps { get; init; }
     /// The window buttons as three coloured lights, close first (the Mac's).
@@ -63,7 +65,7 @@ public static class Themes
             "#316AC5", "Tahoma", 0.5, true, 0.75)
         {
             Brushes = { ["TabStripBg"] = () => Down("#0054E3", "#2C72E8", "#0A49C6"), ["SidebarBg"] = () => Down("#7BA2E7", "#6375D6") },
-            Field = C("#FFFFFF"), DarkStrip = true, Edge = () => new SolidColorBrush(C("#7F9DB9")), SideCard = C("#F2D6DFF7"), Buttons = "xp",
+            Field = C("#FFFFFF"), DarkStrip = true, Edge = () => new SolidColorBrush(C("#7F9DB9")), SideCard = C("#F2D6DFF7"), Buttons = "xp", SideInk = C("#FFFFFF"),
         },
         // Mac OS X 10.5: the grey unified toolbar, the blue-grey source list, Lucida
         new("leopard", "Mac OS X 10.5", true, C("#E8E8E8"), C("#F6F6F6"), C("#000000"), C("#6E6E6E"), C("#000000"), 1.1, C("#5A6E8C"), 0.55,

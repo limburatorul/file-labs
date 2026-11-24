@@ -52,7 +52,7 @@ public partial class MainWindow : Window
         };
         Closed += (_, _) => tray?.Dispose(); // or the icon lingers until the pointer passes over it
         SourceInitialized += (_, _) => { ApplyAcrylic(this); WatchShellChanges(); };
-        Loaded += (_, _) => { Themes.Strip(CaptionButtons); CaptionLook(); };
+        Loaded += (_, _) => { Themes.Strip(CaptionButtons); CaptionLook(); SidebarInk(); };
         StartUpdateChecks();
         Motion.Nudge(PizzaButton, this);
 
@@ -445,11 +445,19 @@ public partial class MainWindow : Window
     }
 
     /// Settings → Appearance → Theme: every key repainted, the glass and title bar told, the code-built parts rebuilt.
+    // the buttons under the sidebar sit on its own colour: on XP's blue they are white
+    void SidebarInk()
+    {
+        if (Themes.Current.SideInk is Color ink) SidebarFoot.Resources["Muted"] = new SolidColorBrush(ink);
+        else SidebarFoot.Resources.Remove("Muted");
+    }
+
     public void ApplyTheme()
     {
         Themes.Apply(Settings.Theme);
         foreach (Window w in Application.Current.Windows) SetBackdrop(w);
         Themes.Strip(CaptionButtons); Themes.Strip(Left.TabBand); Themes.Strip(Right.TabBand);
+        SidebarInk();
         CaptionLook();
         Left.UpdateStripShape(); Right.UpdateStripShape(); // the tab band is drawn in code, with the old theme's corners
         ApplyAppearance();
