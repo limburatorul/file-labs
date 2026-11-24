@@ -180,7 +180,7 @@ public partial class MainWindow
         var wrapper = new Border
         {
             Child = body, Tag = section.Key, CornerRadius = new(7),
-            BorderThickness = new(1), BorderBrush = Hex("#16FFFFFF"), Background = Hex("#08FFFFFF"), Margin = new(0, 0, 0, 8), Padding = new(2, 2, 2, 4),
+            BorderThickness = new(1), BorderBrush = Hex("#16FFFFFF"), Background = Themes.Current.SideCard is Color card ? new SolidColorBrush(card) : Hex("#08FFFFFF"), Margin = new(0, 0, 0, 8), Padding = new(2, 2, 2, 4),
         };
 
         header.MouseLeftButtonDown += (_, e) => { dragFrom = e.GetPosition(SidebarHost); dragKey = section.Key; };

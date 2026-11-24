@@ -23,6 +23,8 @@ public sealed record Theme(
     public bool DarkStrip { get; init; }
     /// The active tab carries an accent line along its top (off in macOS 27, which marks it by its text).
     public bool TabLine { get; init; } = true;
+    /// The sidebar sections' own ground, where the sidebar is coloured (XP's light-blue task pane boxes).
+    public Color? SideCard { get; init; }
 }
 
 public static class Themes
@@ -53,18 +55,18 @@ public static class Themes
             "#316AC5", "Tahoma", 0.5, true, 0.75)
         {
             Brushes = { ["TabStripBg"] = () => Down("#0054E3", "#2C72E8", "#0A49C6"), ["SidebarBg"] = () => Down("#7BA2E7", "#6375D6") },
-            Field = C("#FFFFFF"), DarkStrip = true, Edge = () => new SolidColorBrush(C("#7F9DB9")),
+            Field = C("#FFFFFF"), DarkStrip = true, Edge = () => new SolidColorBrush(C("#7F9DB9")), SideCard = C("#F2D6DFF7"),
         },
         // Mac OS X 10.5: the grey unified toolbar, the blue-grey source list, Lucida
         new("leopard", "Mac OS X 10.5", true, C("#E8E8E8"), C("#F6F6F6"), C("#000000"), C("#6E6E6E"), C("#000000"), 1.1, C("#5A6E8C"), 0.55,
             "#3875D7", "Lucida Sans Unicode, Segoe UI", 0.7, true, 0.75)
         {
             Brushes = { ["TabStripBg"] = () => Down("#D3D3D3", "#A8A8A8"), ["SidebarBg"] = () => Down("#DDE4EB", "#D1DBE5") },
-            Field = C("#FFFFFF"), Edge = () => new SolidColorBrush(C("#A5A5A5")),
+            Field = C("#FFFFFF"), Edge = () => new SolidColorBrush(C("#A5A5A5")), TabLine = false,
         },
         // macOS 27: Liquid Glass, light and see-through, large corners
         new("macos27", "macOS 27", true, C("#F5F5F7"), C("#FAFAFC"), C("#1D1D1F"), C("#6E6E73"), C("#000000"), 0.85, C("#FFFFFF"), 1.2,
-            "#0071E3", "Segoe UI Variable Display, Segoe UI", 1.5, false, 0.8) { TabLine = false },
+            "#0071E3", "Segoe UI Variable Display, Segoe UI", 1.5, false, 0.8) { TabLine = false, Field = C("#E6FFFFFF") },
     };
 
     public static Theme Current { get; private set; } = All[0];
