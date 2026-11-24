@@ -44,7 +44,7 @@ public partial class MainWindow
     {
         bool max = WindowState == WindowState.Maximized;
         Root.Margin = max ? SystemParameters.WindowResizeBorderThickness : new Thickness(0);
-        MaxButton.Content = max ? "" : "";
+        if (!Themes.Current.Lights) MaxButton.Content = max ? "" : ""; // the lights keep their green dot
         MaxButton.ToolTip = max ? "Restore down" : "Maximize";
         System.Windows.Automation.AutomationProperties.SetName(MaxButton, (string)MaxButton.ToolTip);
     }

@@ -358,6 +358,7 @@ public partial class MainWindow : Window
                 : captionGlyphs[i];
             buttons[i].Width = lights ? 22 : 46;
         }
+        if (!lights) ApplyWindowState(); // the maximize glyph follows the window's state
         CaptionButtons.Children.Remove(CloseButton);
         CaptionButtons.Children.Insert(lights ? CaptionButtons.Children.IndexOf(MinButton) : CaptionButtons.Children.Count, CloseButton);
     }
