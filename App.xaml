@@ -390,7 +390,8 @@
               </Trigger>
               <Trigger Property="Tag" Value="on">
                 <Setter TargetName="Bd" Property="Background" Value="Transparent"/>
-                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource TabMark}"/>
+                <Setter Property="FontWeight" Value="{DynamicResource TabWeight}"/>
                 <Setter TargetName="Divider" Property="Visibility" Value="Hidden"/>
                 <Setter Property="Foreground" Value="{DynamicResource cFFF2F6FB}"/>
               </Trigger>

@@ -21,6 +21,8 @@ public sealed record Theme(
     public Func<Brush> Edge { get; init; }
     /// The tab strip is dark (a title bar's blue): what sits on it keeps the dark look's light colours.
     public bool DarkStrip { get; init; }
+    /// The active tab carries an accent line along its top (off in macOS 27, which marks it by its text).
+    public bool TabLine { get; init; } = true;
 }
 
 public static class Themes
@@ -62,7 +64,7 @@ public static class Themes
         },
         // macOS 27: Liquid Glass, light and see-through, large corners
         new("macos27", "macOS 27", true, C("#F5F5F7"), C("#FAFAFC"), C("#1D1D1F"), C("#6E6E73"), C("#000000"), 0.85, C("#FFFFFF"), 1.2,
-            "#0071E3", "Segoe UI Variable Display, Segoe UI", 1.5, false, 0.8),
+            "#0071E3", "Segoe UI Variable Display, Segoe UI", 1.5, false, 0.8) { TabLine = false },
     };
 
     public static Theme Current { get; private set; } = All[0];

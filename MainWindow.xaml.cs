@@ -294,6 +294,9 @@ public partial class MainWindow : Window
         Shade("Accent", 0xFF); Shade("AccentEdge", 0xA6); Shade("AccentSoft", 0x45);
         var (fill, text) = Selection(c, Settings.AccentStrength);
         Put("AccentSelect", fill); Put("AccentSelectText", text);
+        // the active tab: an accent line along its top, or (macOS 27) bolder text instead
+        Put("TabMark", Themes.Current.TabLine ? c : Colors.Transparent);
+        Application.Current.Resources["TabWeight"] = Themes.Current.TabLine ? FontWeights.Normal : FontWeights.SemiBold;
         void Shade(string key, byte alpha)
         {
             // "Accent" itself is the solid fill for bars and must stay opaque; the tints follow the slider.
