@@ -13,7 +13,7 @@ namespace FileExplorer;
 public partial class MainWindow
 {
     // the four buttons and a little air, kept free in the tab row under them; History alone when the lights are top left
-    static double CaptionWidth => Themes.Current.Lights ? 40 + 6 : 40 + 3 * 46 + 6;
+    static double CaptionWidth => Themes.Current.Lights ? 40 + 6 : 40 + 3 * CaptionButtonWidth + 2 + 6;
 
     void SetUpChrome()
     {
@@ -45,7 +45,7 @@ public partial class MainWindow
     {
         bool max = WindowState == WindowState.Maximized;
         Root.Margin = max ? SystemParameters.WindowResizeBorderThickness : new Thickness(0);
-        if (!Themes.Current.Lights) MaxButton.Content = max ? "" : ""; // the lights keep their green dot
+        MaxButton.Content = DrawnCaption ? CaptionFace(1, max) : max ? "" : "";
         MaxButton.ToolTip = max ? "Restore down" : "Maximize";
         System.Windows.Automation.AutomationProperties.SetName(MaxButton, (string)MaxButton.ToolTip);
     }

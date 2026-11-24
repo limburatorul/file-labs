@@ -342,30 +342,81 @@ public partial class MainWindow : Window
     public static Color AccentColor =>
         (Color)ColorConverter.ConvertFromString(Settings.Accent == "#4C8DFF" && Themes.Current.Accent != null ? Themes.Current.Accent : Settings.Accent);
 
-    /// Settings → Appearance → Theme: every key repainted, the glass and title bar told, the code-built parts rebuilt.
-    // The window buttons: Windows 11's glyphs, or (Mac OS X 10.5) three coloured lights with close first.
+    // The window buttons: Windows 11's glyphs, or drawn as the theme's system drew them: Windows 98's grey bevelled
+    // squares, XP's blue and red Luna buttons, the Mac's three lights (top left, close first).
     object[] captionGlyphs;
+    Style captionStyle;
+    static Style plainCaption;
+    static bool DrawnCaption => Themes.Current.Lights || Themes.Current.Buttons != null;
+    static double CaptionButtonWidth => Themes.Current.Lights ? 22 : Themes.Current.Buttons switch { "98" => 17, "xp" => 23, _ => 46 };
+
     void CaptionLook()
     {
         var buttons = new[] { MinButton, MaxButton, CloseButton };
         captionGlyphs ??= buttons.Select(b => b.Content).ToArray();
-        bool lights = Themes.Current.Lights;
-        string[] colours = { "#FEBC2E", "#28C840", "#FF5F57" };
+        captionStyle ??= MinButton.Style;
+        plainCaption ??= PlainCaption();
+        bool lights = Themes.Current.Lights, drawn = DrawnCaption;
         for (int i = 0; i < 3; i++)
         {
-            buttons[i].Content = lights
-                ? new System.Windows.Shapes.Ellipse { Width = 12, Height = 12, Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString(colours[i])), Stroke = new SolidColorBrush(Color.FromArgb(0x55, 0, 0, 0)), StrokeThickness = 0.5 }
-                : captionGlyphs[i];
-            buttons[i].Width = lights ? 22 : 46;
+            buttons[i].Style = drawn ? plainCaption : captionStyle;
+            buttons[i].Content = drawn ? CaptionFace(i, WindowState == WindowState.Maximized) : captionGlyphs[i];
+            buttons[i].Width = CaptionButtonWidth + (i == 2 && Themes.Current.Buttons == "98" ? 2 : 0); // 98 keeps close apart
             ((Panel)buttons[i].Parent).Children.Remove(buttons[i]);
         }
-        if (!lights) ApplyWindowState(); // the maximize glyph follows the window's state
-        // lights: top left, close first, the app's name moved past them; otherwise top right after History, close last
+        ApplyWindowState(); // the maximize button follows the window's state
         foreach (var b in lights ? new[] { CloseButton, MinButton, MaxButton } : buttons) (lights ? LightsCorner : CaptionButtons).Children.Add(b);
         AppTitle.Margin = new Thickness(lights ? 84 : 18, 13, 8, 0);
         PlaceCaption();
     }
 
+    /// A drawn window button (0 minimize, 1 maximize or restore, 2 close); Marlett holds the classic glyphs.
+    static FrameworkElement CaptionFace(int role, bool max)
+    {
+        var t = Themes.Current;
+        if (t.Lights)
+            return new System.Windows.Shapes.Ellipse { Width = 12, Height = 12, Fill = Solid(new[] { "#FEBC2E", "#28C840", "#FF5F57" }[role]), Stroke = new SolidColorBrush(Color.FromArgb(0x55, 0, 0, 0)), StrokeThickness = 0.5 };
+        var glyph = new TextBlock { Text = role switch { 0 => "0", 1 => max ? "2" : "1", _ => "r" }, FontFamily = new FontFamily("Marlett"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        if (t.Buttons == "98")
+        {
+            // raised: white and black outside, light grey and dark grey inside
+            glyph.FontSize = 9; glyph.Foreground = Brushes.Black;
+            var inner = new Border { BorderThickness = new(1), BorderBrush = Bevel("#DFDFDF", "#808080"), Background = Solid("#C0C0C0"), Child = glyph };
+            return new Border { Width = 16, Height = 14, BorderThickness = new(1), BorderBrush = Bevel("#FFFFFF", "#000000"), Child = inner, Margin = new(role == 2 ? 2 : 0, 0, 0, 0) };
+        }
+        // XP Luna: rounded, white-edged, glossy blue; close in red-orange
+        glyph.FontSize = 11; glyph.Foreground = Brushes.White;
+        var fill = new LinearGradientBrush { StartPoint = new(0, 0), EndPoint = new(0, 1) };
+        foreach (var (c, o) in role == 2 ? new[] { ("#F0A68E", 0.0), ("#E2572F", 0.45), ("#C2391A", 1.0) } : new[] { ("#8DB2FA", 0.0), ("#3D78EE", 0.45), ("#2556D2", 1.0) })
+            fill.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString(c), o));
+        return new Border { Width = 21, Height = 21, CornerRadius = new(3), BorderThickness = new(1), BorderBrush = Brushes.White, Background = fill, Child = glyph };
+    }
+
+    static SolidColorBrush Solid(string hex) => new((Color)ColorConverter.ConvertFromString(hex));
+    // light along the top and left, dark along the bottom and right
+    static Brush Bevel(string light, string dark) => new LinearGradientBrush(new GradientStopCollection
+        { new(Solid(light).Color, 0), new(Solid(light).Color, 0.5), new(Solid(dark).Color, 0.5), new(Solid(dark).Color, 1) }, new Point(0, 0), new Point(1, 1));
+
+    // the drawn buttons carry their own look: no hover square behind them, a little dimmer while pressed
+    static Style PlainCaption()
+    {
+        var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+        presenter.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        presenter.SetValue(VerticalAlignmentProperty, VerticalAlignment.Center);
+        var root = new FrameworkElementFactory(typeof(Border));
+        root.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+        root.AppendChild(presenter);
+        var s = new Style(typeof(Button));
+        s.Setters.Add(new Setter(TemplateProperty, new ControlTemplate(typeof(Button)) { VisualTree = root }));
+        s.Setters.Add(new Setter(HeightProperty, 32.0));
+        s.Setters.Add(new Setter(FocusableProperty, false));
+        var pressed = new Trigger { Property = System.Windows.Controls.Primitives.ButtonBase.IsPressedProperty, Value = true };
+        pressed.Setters.Add(new Setter(OpacityProperty, 0.7));
+        s.Triggers.Add(pressed);
+        return s;
+    }
+
+    /// Settings → Appearance → Theme: every key repainted, the glass and title bar told, the code-built parts rebuilt.
     public void ApplyTheme()
     {
         Themes.Apply(Settings.Theme);
