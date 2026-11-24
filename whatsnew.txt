@@ -1,6 +1,20 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.78 | 2026-11-24 | Themes
+File Labs can now dress as the systems you grew up with, and Settings is no longer one long page.
+**Seven looks**
+- Pick one in **Settings → Appearance**: the File Labs look, **Windows 98**, **Windows XP**, **Mac OS X 10.5**, **macOS 27**, and two terminal screens, **Amber** and **Phosphor**.
+- Each brings its own colours, font and corners, and its own window buttons: Windows 98's grey squares, XP's blue and red ones, the Mac's three coloured dots in the top left.
+- The theme changes at once, with no restart.
+**Settings in pages**
+- Six pages down the side (Appearance, Layout and motion, Files, Transfers, Windows, About) instead of one long scroll, in a window a quarter wider.
+**Also**
+- The active tab is marked by bolder text instead of a coloured line, and with tabs on two rows it no longer looks cut off.
+- The selection rectangle has a darker or lighter edge in your accent colour, so you can see it over rows already selected.
+- Ctrl and the mouse wheel from Details change the view at every notch without holding the window: List and the icons come up in about 60 ms instead of up to half a second.
+- On Linux nothing changes in this version.
+
 ## 1.0.77 | 2026-11-23 | Straight to the icons
 The first steps from Details to the icons are smooth now too.
 **On Windows**

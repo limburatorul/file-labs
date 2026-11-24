@@ -9,7 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>filelabs</AssemblyName>
     <RootNamespace>FileExplorer</RootNamespace>
-    <Version>1.0.77</Version>
+    <Version>1.0.78</Version>
     <Product>File Labs</Product>
     <Company>Protagonist Labs</Company>
     <InvariantGlobalization>true</InvariantGlobalization>
