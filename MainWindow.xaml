@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:FileExplorer"
         Title="File Labs" Width="1400" Height="860" Background="Transparent"
-        Foreground="#E8E8E8" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12">
+        Foreground="{DynamicResource cFFE8E8E8}" FontFamily="{DynamicResource UiFont}" FontSize="12">
   <!-- No Windows title bar: the tabs take the top row, the window's buttons sit at its right end, and the
        empty part of the tab row (and the sidebar's name) moves the window. GlassFrameThickness -1 keeps the
        DWM frame, so the acrylic, the shadow and the rounded corners stay. -->
@@ -13,7 +13,7 @@
   <Window.Resources>
     <!-- minimize / maximize / close and the history button: Windows 11's sizes and glyphs -->
     <Style x:Key="Caption" TargetType="Button">
-      <Setter Property="Foreground" Value="#D0FFFFFF"/>
+      <Setter Property="Foreground" Value="{DynamicResource cD0FFFFFF}"/>
       <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
       <Setter Property="FontSize" Value="10"/>
       <Setter Property="Width" Value="46"/>
@@ -22,16 +22,16 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="6">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource r6}">
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#18FFFFFF"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c18FFFFFF}"/></Trigger>
               <!-- the maximize button is hit-tested by Windows (snap layouts), so WPF never sees the mouse over it -->
-              <Trigger Property="Tag" Value="hover"><Setter TargetName="Bd" Property="Background" Value="#18FFFFFF"/></Trigger>
+              <Trigger Property="Tag" Value="hover"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c18FFFFFF}"/></Trigger>
               <MultiTrigger>
                 <MultiTrigger.Conditions><Condition Property="Uid" Value="close"/><Condition Property="IsMouseOver" Value="True"/></MultiTrigger.Conditions>
-                <Setter TargetName="Bd" Property="Background" Value="#C42B1C"/>
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource cFFC42B1C}"/>
                 <Setter Property="Foreground" Value="White"/>
               </MultiTrigger>
             </ControlTemplate.Triggers>
@@ -43,7 +43,7 @@
     <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource Ghost}">
       <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
       <Setter Property="FontSize" Value="14"/>
-      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
       <Setter Property="Width" Value="34"/>
       <Setter Property="Height" Value="30"/>
       <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -54,26 +54,26 @@
       <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
     </Style>
     <Style x:Key="StatSub" TargetType="TextBlock">
-      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
       <Setter Property="FontSize" Value="11"/>
     </Style>
     <Style x:Key="StatIcon" TargetType="TextBlock">
       <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
       <Setter Property="FontSize" Value="18"/>
-      <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+      <Setter Property="Foreground" Value="{DynamicResource Muted}"/>
       <Setter Property="Margin" Value="0,5,12,0"/>
     </Style>
     <Style x:Key="StatCard" TargetType="Border">
-      <Setter Property="Background" Value="#08FFFFFF"/>
-      <Setter Property="BorderBrush" Value="#14FFFFFF"/>
+      <Setter Property="Background" Value="{DynamicResource c08FFFFFF}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource e14FFFFFF}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="CornerRadius" Value="{DynamicResource r10}"/>
       <Setter Property="Padding" Value="12,9,14,9"/>
     </Style>
     <!-- the transfer window's buttons: big, filled and labelled, so they are found at a glance; Tag="on" is the
          accent one (the default answer) -->
     <Style x:Key="JobAction" TargetType="Button">
-      <Setter Property="Foreground" Value="#F0FFFFFF"/>
+      <Setter Property="Foreground" Value="{DynamicResource cF0FFFFFF}"/>
       <Setter Property="FontSize" Value="13"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Margin" Value="0,0,8,0"/>
@@ -82,11 +82,11 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="#1FFFFFFF" BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="7" Padding="{TemplateBinding Padding}" MinHeight="{TemplateBinding MinHeight}">
+            <Border x:Name="Bd" Background="{DynamicResource c1FFFFFFF}" BorderBrush="{DynamicResource e26FFFFFF}" BorderThickness="1" CornerRadius="{DynamicResource r7}" Padding="{TemplateBinding Padding}" MinHeight="{TemplateBinding MinHeight}">
               <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#33FFFFFF"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c33FFFFFF}"/></Trigger>
               <Trigger Property="Tag" Value="on">
                 <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/>
                 <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Accent}"/>
@@ -110,8 +110,8 @@
          chart above), progress, figures, and what it needs from you -->
     <DataTemplate x:Key="JobCard">
       <!-- a new transfer slides up into place (Motion.Enter, off with reduced motion) -->
-      <Border Background="#0DFFFFFF" BorderBrush="{Binding Hue}" BorderThickness="3,0,0,0" CornerRadius="4,10,10,4" Margin="0,0,0,8" Loaded="JobCard_Loaded">
-        <Border BorderBrush="#16FFFFFF" BorderThickness="0,1,1,1" CornerRadius="0,10,10,0" Padding="12,10">
+      <Border Background="{DynamicResource c0DFFFFFF}" BorderBrush="{Binding Hue}" BorderThickness="3,0,0,0" CornerRadius="{DynamicResource r4_10_10_4}" Margin="0,0,0,8" Loaded="JobCard_Loaded">
+        <Border BorderBrush="{DynamicResource e16FFFFFF}" BorderThickness="0,1,1,1" CornerRadius="{DynamicResource r0_10_10_0}" Padding="12,10">
         <StackPanel>
           <DockPanel>
             <TextBlock DockPanel.Dock="Right" Text="{Binding PercentText}" FontSize="13" Typography.NumeralAlignment="Tabular" Margin="12,0,0,0"/>
@@ -119,10 +119,10 @@
           </DockPanel>
           <ProgressBar Value="{Binding Fraction, Mode=OneWay}" Foreground="{Binding Hue}" Height="6" Margin="0,8,0,6"/>
           <DockPanel Visibility="{Binding Copying, Converter={StaticResource Vis}}" Margin="0,0,0,4">
-            <ProgressBar DockPanel.Dock="Right" Width="100" Height="3" Value="{Binding CurrentFraction, Mode=OneWay}" Foreground="#8A97AA" Margin="10,0,0,0"/>
-            <TextBlock Text="{Binding Current}" Foreground="#8A97AA" FontSize="11" TextTrimming="CharacterEllipsis"/>
+            <ProgressBar DockPanel.Dock="Right" Width="100" Height="3" Value="{Binding CurrentFraction, Mode=OneWay}" Foreground="{DynamicResource cFF8A97AA}" Margin="10,0,0,0"/>
+            <TextBlock Text="{Binding Current}" Foreground="{DynamicResource cFF8A97AA}" FontSize="11" TextTrimming="CharacterEllipsis"/>
           </DockPanel>
-          <TextBlock Text="{Binding ErrorSummary}" ToolTip="{Binding ErrorDetail}" Foreground="#F87171" FontSize="11" Margin="0,0,0,4"
+          <TextBlock Text="{Binding ErrorSummary}" ToolTip="{Binding ErrorDetail}" Foreground="{DynamicResource cFFF87171}" FontSize="11" Margin="0,0,0,4"
                      Visibility="{Binding HasErrors, Converter={StaticResource Vis}}"/>
           <!-- figures on the left, its buttons on the right -->
           <DockPanel>
@@ -137,11 +137,11 @@
               <Button Style="{StaticResource JobAction}" Margin="0" Visibility="{Binding Finished, Converter={StaticResource Vis}}" Click="JobDismiss_Click">
                 <TextBlock><Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE73E;"/>  Dismiss</TextBlock></Button>
             </StackPanel>
-            <TextBlock Text="{Binding Stats}" Foreground="#8A97AA" FontSize="11" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            <TextBlock Text="{Binding Stats}" Foreground="{DynamicResource cFF8A97AA}" FontSize="11" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
           </DockPanel>
 
           <StackPanel Visibility="{Binding HasConflicts, Converter={StaticResource Vis}}" Margin="0,10,0,0">
-            <TextBlock Text="{Binding ConflictTitle}" Foreground="#FFD23F" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding ConflictTitle}" Foreground="{DynamicResource cFFFFD23F}" FontWeight="SemiBold"/>
             <ItemsControl ItemsSource="{Binding Conflicts}" MaxHeight="96" Margin="0,4,0,8">
               <ItemsControl.Template>
                 <ControlTemplate><ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer></ControlTemplate>
@@ -149,7 +149,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <DockPanel Margin="0,1">
-                    <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" Foreground="#8A97AA" FontSize="11" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding Detail}" Foreground="{DynamicResource cFF8A97AA}" FontSize="11" Typography.NumeralAlignment="Tabular"/>
                     <TextBlock Text="{Binding Name}" FontSize="11" TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
                   </DockPanel>
                 </DataTemplate>
@@ -171,7 +171,7 @@
   </Window.Resources>
 
   <!-- Dark tint over the acrylic keeps text readable on bright wallpapers -->
-  <Grid x:Name="Root" Background="#B30A0D13">
+  <Grid x:Name="Root" Background="{DynamicResource cB30A0D13}">
     <Grid.ColumnDefinitions>
       <ColumnDefinition x:Name="SidebarColumn" Width="270" MinWidth="160" MaxWidth="600"/>
       <ColumnDefinition/>
@@ -183,14 +183,14 @@
     </Grid>
 
     <!-- Sidebar: a bit more opaque, it sits over whatever is behind the window -->
-    <DockPanel x:Name="SidebarPanel" Background="#40000000">
+    <DockPanel x:Name="SidebarPanel" Background="{DynamicResource SidebarBg}">
       <!-- the app's name, where the title bar used to say it; it moves the window like one -->
-      <DockPanel DockPanel.Dock="Top" Margin="18,13,8,0" Height="26" Background="Transparent" MouseDown="Caption_MouseDown">
+      <DockPanel x:Name="AppTitle" DockPanel.Dock="Top" Margin="18,13,8,0" Height="26" Background="Transparent" MouseDown="Caption_MouseDown">
         <Image Source="/app.ico" Width="16" Height="16" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
         <TextBlock Text="File Labs" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
-        <TextBlock x:Name="VersionText" Foreground="{StaticResource Muted}" FontSize="11" Margin="8,1,0,0" VerticalAlignment="Center"/>
+        <TextBlock x:Name="VersionText" Foreground="{DynamicResource Muted}" FontSize="11" Margin="8,1,0,0" VerticalAlignment="Center"/>
       </DockPanel>
-      <DockPanel DockPanel.Dock="Bottom" Margin="8,4,8,8">
+      <DockPanel x:Name="SidebarFoot" DockPanel.Dock="Bottom" Margin="8,4,8,8">
         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE713;" Click="Settings_Click" ToolTip="Settings (Ctrl+,)" AutomationProperties.Name="Settings"/>
         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE897;" Click="Help_Click" ToolTip="Help: everything File Labs does (F1)" AutomationProperties.Name="Help"/>
         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE789;" Click="WhatsNew_Click" ToolTip="What&#x2019;s new" AutomationProperties.Name="What&#x2019;s new"/>
@@ -202,7 +202,7 @@
                 ToolTip="Drop bin: collect files from several folders, then copy or move them all at once (Ctrl+B adds the selection)">
           <StackPanel Orientation="Horizontal">
             <TextBlock Text="&#xE7B8;" VerticalAlignment="Center"/>
-            <TextBlock x:Name="BinCount" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"
+            <TextBlock x:Name="BinCount" FontFamily="{DynamicResource UiFont}" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"
                        Foreground="{DynamicResource Accent}"/>
           </StackPanel>
         </Button>
@@ -212,22 +212,22 @@
               Content="&#x1F355; Buy me a pizza" AutomationProperties.Name="Buy me a pizza" ToolTip="Optional. It goes toward code signing and a Steam listing.">
         <Button.Template>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="#D63A3A" CornerRadius="5">
+            <Border x:Name="Bd" Background="{DynamicResource cFFD63A3A}" CornerRadius="{DynamicResource r5}">
               <Grid>
-                <Border x:Name="Glow" Background="#F25555" CornerRadius="5" Opacity="0"/>
+                <Border x:Name="Glow" Background="{DynamicResource cFFF25555}" CornerRadius="{DynamicResource r5}" Opacity="0"/>
                 <ContentPresenter HorizontalAlignment="Center" Margin="7,6" TextElement.Foreground="White"/>
               </Grid>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#E54848"/></Trigger>
-              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bd" Property="Background" Value="#BF3030"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource cFFE54848}"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource cFFBF3030}"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Button.Template>
       </Button>
       <!-- Drop bin: files gathered from anywhere, sent together to the active pane's folder -->
-      <Border x:Name="DropBin" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="8,4,8,0" Padding="10,8" CornerRadius="8"
-              Background="#0DFFFFFF" BorderBrush="#1AFFFFFF" BorderThickness="1" AllowDrop="True" DragOver="Bin_DragOver" Drop="Bin_Drop">
+      <Border x:Name="DropBin" DockPanel.Dock="Bottom" Visibility="Collapsed" Margin="8,4,8,0" Padding="10,8" CornerRadius="{DynamicResource r8}"
+              Background="{DynamicResource c0DFFFFFF}" BorderBrush="{DynamicResource e1AFFFFFF}" BorderThickness="1" AllowDrop="True" DragOver="Bin_DragOver" Drop="Bin_Drop">
         <DockPanel>
           <DockPanel DockPanel.Dock="Top">
             <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Content="&#xE711;"
@@ -235,7 +235,7 @@
             <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" FontSize="11" Content="Clear" ToolTip="Empty the Drop bin (the files stay where they are)" Click="BinClear_Click"/>
             <TextBlock Text="Drop bin" FontWeight="SemiBold" VerticalAlignment="Center"/>
           </DockPanel>
-          <TextBlock x:Name="BinSummary" DockPanel.Dock="Top" Foreground="{StaticResource Muted}" FontSize="11" Margin="0,2,0,6" TextWrapping="Wrap"/>
+          <TextBlock x:Name="BinSummary" DockPanel.Dock="Top" Foreground="{DynamicResource Muted}" FontSize="11" Margin="0,2,0,6" TextWrapping="Wrap"/>
           <StackPanel x:Name="BinActions" DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,6,0,0">
             <Button Style="{StaticResource Tab}" Tag="on" Click="BinCopy_Click" Content="Copy here"/>
             <Button Style="{StaticResource Tab}" Click="BinMove_Click" Content="Move here"/>
@@ -270,14 +270,14 @@
         <StackPanel x:Name="SidebarHost">
           <!-- declared here so the code can find them by name; BuildSidebar moves each one into its section -->
           <StackPanel x:Name="QuickAccess"/>
-          <TextBlock x:Name="QuickHint" Text="Ctrl+D pins a folder here" Foreground="#59FFFFFF" FontSize="11" Margin="8,2,0,0"/>
+          <TextBlock x:Name="QuickHint" Text="Ctrl+D pins a folder here" Foreground="{DynamicResource c59FFFFFF}" FontSize="11" Margin="8,2,0,0"/>
           <StackPanel x:Name="Favorites"/>
           <StackPanel x:Name="Drives"/>
           <StackPanel x:Name="FolderTree"/>
         </StackPanel>
         <!-- drop position while reordering sections: drawn over the list, so it never moves anything -->
         <Canvas IsHitTestVisible="False">
-          <Border x:Name="DropLine" Height="3" CornerRadius="1.5" Background="{DynamicResource Accent}" Visibility="Collapsed"/>
+          <Border x:Name="DropLine" Height="3" CornerRadius="{DynamicResource r1p5}" Background="{DynamicResource Accent}" Visibility="Collapsed"/>
         </Canvas>
         </Grid>
       </ScrollViewer>
@@ -313,14 +313,14 @@
             <StackPanel VerticalAlignment="Center">
               <DockPanel>
                 <TextBlock x:Name="DrivePct" DockPanel.Dock="Right" Style="{StaticResource StatSub}" Typography.NumeralAlignment="Tabular"/>
-                <TextBlock Style="{StaticResource StatSub}"><Run x:Name="StatDrive" FontWeight="SemiBold" Foreground="#E8EEF6"/><Run x:Name="StatFs"/></TextBlock>
+                <TextBlock Style="{StaticResource StatSub}"><Run x:Name="StatDrive" FontWeight="SemiBold" Foreground="{DynamicResource cFFE8EEF6}"/><Run x:Name="StatFs"/></TextBlock>
               </DockPanel>
-              <TextBlock TextTrimming="CharacterEllipsis"><Run x:Name="StatFree" FontSize="20" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular"/><Run Text="  free" Foreground="{StaticResource Muted}" FontSize="11"/><Run x:Name="StatUsed" Foreground="{StaticResource Muted}" FontSize="11"/></TextBlock>
+              <TextBlock TextTrimming="CharacterEllipsis"><Run x:Name="StatFree" FontSize="20" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular"/><Run Text="  free" Foreground="{DynamicResource Muted}" FontSize="11"/><Run x:Name="StatUsed" Foreground="{DynamicResource Muted}" FontSize="11"/></TextBlock>
               <!-- how full the drive is: the sidebar's bar, across the card; red with a glow past 90% -->
               <Grid x:Name="DriveBar" Height="4" Margin="0,5,0,0">
                 <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-                <Border Grid.ColumnSpan="2" Background="#12FFFFFF" CornerRadius="2"/>
-                <Border x:Name="DriveFill" CornerRadius="2" Background="{DynamicResource Accent}"/>
+                <Border Grid.ColumnSpan="2" Background="{DynamicResource c12FFFFFF}" CornerRadius="{DynamicResource r2}"/>
+                <Border x:Name="DriveFill" CornerRadius="{DynamicResource r2}" Background="{DynamicResource Accent}"/>
               </Grid>
             </StackPanel>
           </DockPanel>
@@ -328,13 +328,13 @@
 
         <Border Grid.Column="2" Style="{StaticResource StatCard}">
           <DockPanel>
-            <TextBlock x:Name="FolderIcon" Text="&#xE8B7;" Style="{StaticResource StatIcon}" Foreground="#60A5FA" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <TextBlock x:Name="FolderIcon" Text="&#xE8B7;" Style="{StaticResource StatIcon}" Foreground="{DynamicResource cFF60A5FA}" VerticalAlignment="Center" Margin="0,0,12,0"/>
             <StackPanel VerticalAlignment="Center">
               <TextBlock Text="This folder" Style="{StaticResource StatSub}"/>
               <TextBlock x:Name="StatFolder" Style="{StaticResource StatValue}"/>
               <TextBlock x:Name="StatFolderSub" Style="{StaticResource StatSub}" Typography.NumeralAlignment="Tabular"/>
               <!-- what the folder is made of, by size: images, video, archives, programs, code… -->
-              <Grid x:Name="KindBar" Height="4" Margin="0,5,0,0" Background="#12FFFFFF"/>
+              <Grid x:Name="KindBar" Height="4" Margin="0,5,0,0" Background="{DynamicResource c12FFFFFF}"/>
             </StackPanel>
           </DockPanel>
         </Border>
@@ -372,12 +372,12 @@
       <!-- Preview pane (Alt+P): the active pane's selected file, drawn by Quick View's code -->
       <GridSplitter x:Name="PreviewSplitter" Grid.Column="1" HorizontalAlignment="Stretch" Background="Transparent" ResizeBehavior="PreviousAndNext"
                     Visibility="Collapsed" DragCompleted="PreviewSplitter_DragCompleted"/>
-      <Border x:Name="PreviewPane" Grid.Column="2" Visibility="Collapsed" Background="#0DFFFFFF" CornerRadius="10" BorderThickness="1" BorderBrush="#1AFFFFFF" ClipToBounds="True">
+      <Border x:Name="PreviewPane" Grid.Column="2" Visibility="Collapsed" Background="{DynamicResource c0DFFFFFF}" CornerRadius="{DynamicResource r10}" BorderThickness="1" BorderBrush="{DynamicResource e1AFFFFFF}" ClipToBounds="True">
         <DockPanel>
           <DockPanel x:Name="PreviewHeader" DockPanel.Dock="Top" Margin="12,6,6,4">
             <Button DockPanel.Dock="Right" Style="{StaticResource Ghost}" Content="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10"
                     ToolTip="Close the preview (Alt+P)" Click="Preview_Click"/>
-            <TextBlock x:Name="PreviewTitle" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            <TextBlock x:Name="PreviewTitle" Foreground="{DynamicResource Muted}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
           </DockPanel>
           <ContentControl x:Name="PreviewBody" Focusable="False"/>
         </DockPanel>
@@ -390,33 +390,35 @@
       <DockPanel Grid.Row="3" Margin="0,6,0,6">
         <!-- the buttons first: a long status message is trimmed, it never pushes the last buttons out -->
         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" TextElement.FontSize="11">
-          <Button Style="{StaticResource Ghost}" Click="Rename_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F2</Run> Rename</TextBlock></Button>
-          <Button Style="{StaticResource Ghost}" Click="Open_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F3</Run> Open</TextBlock></Button>
-          <Button Style="{StaticResource Ghost}" Click="Copy_Click" ToolTip="Copy to the other pane (Ctrl+F5). F5 refreshes."><TextBlock><Run Foreground="{StaticResource Muted}">Ctrl+F5</Run> Copy</TextBlock></Button>
-          <Button Style="{StaticResource Ghost}" Click="Move_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F6</Run> Move</TextBlock></Button>
-          <Button Style="{StaticResource Ghost}" Click="MkDir_Click" ToolTip="New folder (F7 or Ctrl+Shift+N)"><TextBlock><Run Foreground="{StaticResource Muted}">F7</Run> New folder</TextBlock></Button>
-          <Button Style="{StaticResource Ghost}" Click="NewFile_Click" ToolTip="New file (Ctrl+N)"><TextBlock><Run Foreground="{StaticResource Muted}">Ctrl+N</Run> New file</TextBlock></Button>
-          <Button Style="{StaticResource Ghost}" Click="Delete_Click"><TextBlock><Run Foreground="{StaticResource Muted}">F8</Run> Delete</TextBlock></Button>
-          <Button Style="{StaticResource Ghost}" Click="Terminal_Click"><TextBlock><Run Foreground="{StaticResource Muted}">Ctrl+`</Run> Terminal</TextBlock></Button>
-          <Button Style="{StaticResource Ghost}" Click="Hidden_Click"><TextBlock><Run Foreground="{StaticResource Muted}">Ctrl+H</Run> Hidden</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Rename_Click"><TextBlock><Run Foreground="{DynamicResource Muted}">F2</Run> Rename</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Open_Click"><TextBlock><Run Foreground="{DynamicResource Muted}">F3</Run> Open</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Copy_Click" ToolTip="Copy to the other pane (Ctrl+F5). F5 refreshes."><TextBlock><Run Foreground="{DynamicResource Muted}">Ctrl+F5</Run> Copy</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Move_Click"><TextBlock><Run Foreground="{DynamicResource Muted}">F6</Run> Move</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="MkDir_Click" ToolTip="New folder (F7 or Ctrl+Shift+N)"><TextBlock><Run Foreground="{DynamicResource Muted}">F7</Run> New folder</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="NewFile_Click" ToolTip="New file (Ctrl+N)"><TextBlock><Run Foreground="{DynamicResource Muted}">Ctrl+N</Run> New file</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Delete_Click"><TextBlock><Run Foreground="{DynamicResource Muted}">F8</Run> Delete</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Terminal_Click"><TextBlock><Run Foreground="{DynamicResource Muted}">Ctrl+`</Run> Terminal</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Hidden_Click"><TextBlock><Run Foreground="{DynamicResource Muted}">Ctrl+H</Run> Hidden</TextBlock></Button>
           <!-- in screen order: first pane, second pane, preview -->
-          <Button Style="{StaticResource Ghost}" Click="Panes_Click" ToolTip="One pane or two (Ctrl+P)"><TextBlock><Run Foreground="{StaticResource Muted}">Ctrl+P</Run> One / two panes</TextBlock></Button>
-          <Button Style="{StaticResource Ghost}" Click="Preview_Click" ToolTip="Show the selected file beside the panes"><TextBlock><Run Foreground="{StaticResource Muted}">Alt+P</Run> Preview</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Panes_Click" ToolTip="One pane or two (Ctrl+P)"><TextBlock><Run Foreground="{DynamicResource Muted}">Ctrl+P</Run> One / two panes</TextBlock></Button>
+          <Button Style="{StaticResource Ghost}" Click="Preview_Click" ToolTip="Show the selected file beside the panes"><TextBlock><Run Foreground="{DynamicResource Muted}">Alt+P</Run> Preview</TextBlock></Button>
           <!-- brings the Transfers window back; there while any copy or move is listed -->
           <Button x:Name="TransfersButton" Style="{StaticResource Ghost}" Click="Transfers_Click" Visibility="Collapsed" ToolTip="Show the copies and moves">
             <TextBlock><Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource Accent}" Text="&#xE8AB;"/> <Run x:Name="TransfersText" Text="Transfers"/></TextBlock></Button>
         </StackPanel>
-        <TextBlock x:Name="Status" Foreground="{StaticResource Muted}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420" HorizontalAlignment="Right" Margin="12,0,0,0"/>
+        <TextBlock x:Name="Status" Foreground="{DynamicResource Muted}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420" HorizontalAlignment="Right" Margin="12,0,0,0"/>
       </DockPanel>
     </Grid>
 
     <!-- the window's buttons, over the right end of the tab row (the pane under them keeps that room free) -->
+    <!-- the window buttons as the Mac's lights (Mac OS X 10.5) move here, top left, before the app's name -->
+    <StackPanel x:Name="LightsCorner" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,10,0,0"/>
     <StackPanel x:Name="CaptionButtons" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,12,0">
       <Button x:Name="HistoryButton" Style="{StaticResource Caption}" Width="40" FontSize="13" Content="&#xE81C;" Click="History_Click" AutomationProperties.Name="History"
               ToolTip="Recent folders and closed tabs (Ctrl+Shift+T reopens the last closed tab)"/>
-      <Button Style="{StaticResource Caption}" Content="&#xE921;" Click="Minimize_Click" ToolTip="Minimize" AutomationProperties.Name="Minimize"/>
+      <Button x:Name="MinButton" Style="{StaticResource Caption}" Content="&#xE921;" Click="Minimize_Click" ToolTip="Minimize" AutomationProperties.Name="Minimize"/>
       <Button x:Name="MaxButton" Style="{StaticResource Caption}" Content="&#xE922;" Click="Maximize_Click" AutomationProperties.Name="Maximize"/>
-      <Button Style="{StaticResource Caption}" Uid="close" Content="&#xE8BB;" Click="Close_Click" ToolTip="Close" AutomationProperties.Name="Close"/>
+      <Button x:Name="CloseButton" Style="{StaticResource Caption}" Uid="close" Content="&#xE8BB;" Click="Close_Click" ToolTip="Close" AutomationProperties.Name="Close"/>
     </StackPanel>
   </Grid>
 </Window>

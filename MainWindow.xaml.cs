@@ -52,6 +52,7 @@ public partial class MainWindow : Window
         };
         Closed += (_, _) => tray?.Dispose(); // or the icon lingers until the pointer passes over it
         SourceInitialized += (_, _) => { ApplyAcrylic(this); WatchShellChanges(); };
+        Loaded += (_, _) => { Themes.Strip(CaptionButtons); CaptionLook(); SidebarInk(); };
         StartUpdateChecks();
         Motion.Nudge(PizzaButton, this);
 
@@ -172,9 +173,10 @@ public partial class MainWindow : Window
         HwndSource.FromHwnd(hwnd).CompositionTarget.BackgroundColor = Colors.Transparent;
         var m = new Margins { L = -1, R = -1, T = -1, B = -1 };
         DwmExtendFrameIntoClientArea(hwnd, ref m);
-        int dark = 1, backdrop = Settings.Backdrop;
+        int dark = Themes.Current.Light ? 0 : 1, backdrop = Backdrop;
         DwmSetWindowAttribute(hwnd, 20, ref dark, sizeof(int));     // dark title bar
         DwmSetWindowAttribute(hwnd, 38, ref backdrop, sizeof(int)); // DWMWA_SYSTEMBACKDROP_TYPE: 1 none, 2 mica, 3 acrylic
+        int corner = Themes.Current.Radius == 0 ? 1 : 0; DwmSetWindowAttribute(hwnd, 33, ref corner, sizeof(int)); // DWMWA_WINDOW_CORNER_PREFERENCE: 1 square
     }
 
     // Sync apps announce status changes through SHChangeNotify ("this item's icon changed"), which is
@@ -240,14 +242,20 @@ public partial class MainWindow : Window
     }
 
     public static Brush Tint() =>
-        new SolidColorBrush(Color.FromArgb((byte)(Settings.Backdrop == 1 ? 255 : Settings.Opacity * 2.55), 0x0A, 0x0D, 0x13));
+        new SolidColorBrush(Color.FromArgb((byte)(Backdrop == 1 ? 255 : Settings.Opacity * 2.55), 0x0A, 0x0D, 0x13) is var c && (Themes.Current.Light || Themes.Current.Mono != null)
+            ? Color.FromArgb(c.A, Themes.Current.Surface.R, Themes.Current.Surface.G, Themes.Current.Surface.B) : c);
+
+    /// The backdrop in use: the classic themes are opaque, whatever Settings says.
+    static int Backdrop => Themes.Current.Solid ? 1 : Settings.Backdrop;
 
     public static void SetBackdrop(Window w)
     {
         var h = new WindowInteropHelper(w).Handle;
         if (h == IntPtr.Zero) return;
-        int b = Settings.Backdrop;
+        int b = Backdrop, dark = Themes.Current.Light ? 0 : 1;
+        DwmSetWindowAttribute(h, 20, ref dark, sizeof(int));
         DwmSetWindowAttribute(h, 38, ref b, sizeof(int));
+        int corner = Themes.Current.Radius == 0 ? 1 : 0; DwmSetWindowAttribute(h, 33, ref corner, sizeof(int)); // DWMWA_WINDOW_CORNER_PREFERENCE: 1 square
     }
 
     public void ApplyAppearance()
@@ -286,6 +294,15 @@ public partial class MainWindow : Window
         Shade("Accent", 0xFF); Shade("AccentEdge", 0xA6); Shade("AccentSoft", 0x45);
         var (fill, text) = Selection(c, Settings.AccentStrength);
         Put("AccentSelect", fill); Put("AccentSelectText", text);
+        // the active tab: an accent line along its top, or (macOS 27) bolder text instead
+        Put("TabMark", Themes.Current.TabLine ? c : Colors.Transparent);
+        // the selection rectangle's edge: the accent a good step darker or lighter, so it shows over rows already
+        // selected in the accent itself (a light theme's solid selection) as well as over the ground
+        double lum = (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255;
+        bool darker = Themes.Current.Light && lum > 0.45;
+        Put("MarqueeEdge", darker ? Mix(Colors.Black, 0.5) : Mix(Colors.White, 0.55));
+        Color Mix(Color to, double k) => Color.FromRgb((byte)(c.R + (to.R - c.R) * k), (byte)(c.G + (to.G - c.G) * k), (byte)(c.B + (to.B - c.B) * k));
+        Application.Current.Resources["TabWeight"] = Themes.Current.TabLine ? FontWeights.Normal : FontWeights.SemiBold;
         void Shade(string key, byte alpha)
         {
             // "Accent" itself is the solid fill for bars and must stay opaque; the tints follow the slider.
@@ -307,6 +324,8 @@ public partial class MainWindow : Window
     /// where black reads better (a light accent at a high strength); one of the two always reaches 4.5:1 (WCAG AA).
     internal static (Color Fill, Color Text) Selection(Color accent, double strength)
     {
+        // a light theme selects with the accent itself, as Windows 98, XP and macOS do
+        if (Themes.Current.Light) return (accent, Contrast(Colors.White, accent) >= Contrast(Colors.Black, accent) ? Colors.White : Colors.Black);
         double a = Math.Clamp(0x73 * strength, 12, 255) / 255;
         byte Mix(byte x, byte ground) => (byte)Math.Round(x * a + ground * (1 - a));
         var fill = Color.FromRgb(Mix(accent.R, 0x18), Mix(accent.G, 0x1A), Mix(accent.B, 0x20));
@@ -325,8 +344,127 @@ public partial class MainWindow : Window
         return (Math.Max(lx, ly) + 0.05) / (Math.Min(lx, ly) + 0.05);
     }
 
+    // a theme brings its own accent until one is picked (the default blue counts as none picked)
     public static Color AccentColor =>
-        ((SolidColorBrush)Hex(Settings.Accent)).Color;
+        (Color)ColorConverter.ConvertFromString(Settings.Accent == "#4C8DFF" && Themes.Current.Accent != null ? Themes.Current.Accent : Settings.Accent);
+
+    // The window buttons: Windows 11's glyphs, or drawn as the theme's system drew them: Windows 98's grey bevelled
+    // squares, XP's blue and red Luna buttons, the Mac's three lights (top left, close first).
+    object[] captionGlyphs;
+    Style captionStyle;
+    static Style plainCaption;
+    static bool DrawnCaption => Themes.Current.Lights || Themes.Current.Buttons != null;
+    static double CaptionButtonWidth => Themes.Current.Lights ? 22 : Themes.Current.Buttons switch { "98" => 25, "xp" => 29, _ => 46 };
+
+    void CaptionLook()
+    {
+        var buttons = new[] { MinButton, MaxButton, CloseButton };
+        captionGlyphs ??= buttons.Select(b => b.Content).ToArray();
+        captionStyle ??= MinButton.Style;
+        plainCaption ??= PlainCaption();
+        bool lights = Themes.Current.Lights, drawn = DrawnCaption;
+        for (int i = 0; i < 3; i++)
+        {
+            buttons[i].Style = drawn ? plainCaption : captionStyle;
+            buttons[i].Content = drawn ? CaptionFace(i, WindowState == WindowState.Maximized) : captionGlyphs[i];
+            buttons[i].Width = CaptionButtonWidth + (i == 2 && Themes.Current.Buttons == "98" ? 2 : 0); // 98 keeps close apart
+            ((Panel)buttons[i].Parent).Children.Remove(buttons[i]);
+        }
+        ApplyWindowState(); // the maximize button follows the window's state
+        foreach (var b in lights ? new[] { CloseButton, MinButton, MaxButton } : buttons) (lights ? LightsCorner : CaptionButtons).Children.Add(b);
+        AppTitle.Margin = new Thickness(lights ? 84 : 18, 13, 8, 0);
+        PlaceCaption();
+    }
+
+    /// A drawn window button (0 minimize, 1 maximize or restore, 2 close); Marlett holds the classic glyphs.
+    static FrameworkElement CaptionFace(int role, bool max)
+    {
+        var t = Themes.Current;
+        if (t.Lights)
+            return new System.Windows.Shapes.Ellipse { Width = 12, Height = 12, Fill = Solid(new[] { "#FEBC2E", "#28C840", "#FF5F57" }[role]), Stroke = new SolidColorBrush(Color.FromArgb(0x55, 0, 0, 0)), StrokeThickness = 0.5 };
+        var glyph = new TextBlock { Text = role switch { 0 => "0", 1 => max ? "2" : "1", _ => "r" }, FontFamily = new FontFamily("Marlett"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        if (t.Buttons == "98")
+        {
+            // Windows 98's raised button, pixel for pixel: light grey and black outside, white and dark grey inside,
+            // the grey face, and black glyphs drawn without smoothing; 16×14 on its 18 px title bar, here 24×21
+            var ink = Brushes.Black;
+            var face = new Canvas { Width = 20, Height = 17 };
+            void Shape(string data, Brush fill) => face.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse(data), Fill = fill });
+            switch (role)
+            {
+                case 0: Shape("M5,11 H13 V14 H5 Z", ink); break;                                                    // the bar, bottom left
+                case 1 when max:
+                    Shape("F0 M7,1 H16 V10 H7 Z M8,4 H15 V9 H8 Z", ink);                                            // the window behind
+                    Shape("M4,5 H13 V14 H4 Z", Solid("#C0C0C0"));                                                   // the one in front covers it
+                    Shape("F0 M4,5 H13 V14 H4 Z M5,8 H12 V13 H5 Z", ink); break;
+                case 1: Shape("F0 M4,2 H16 V14 H4 Z M5,5 H15 V13 H5 Z", ink); break;                                // a window, thick top
+                default: face.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse("M5,3 L14,12 M14,3 L5,12"), Stroke = ink, StrokeThickness = 2 }); break;
+            }
+            RenderOptions.SetEdgeMode(face, EdgeMode.Aliased);
+            Border Edge(Thickness sides, string colour, UIElement child) => new() { BorderThickness = sides, BorderBrush = Solid(colour), Child = child, SnapsToDevicePixels = true };
+            var raised = Edge(new(1, 1, 0, 0), "#DFDFDF", Edge(new(0, 0, 1, 1), "#000000", Edge(new(1, 1, 0, 0), "#FFFFFF", Edge(new(0, 0, 1, 1), "#808080",
+                new Border { Background = Solid("#C0C0C0"), Child = face })))) ;
+            raised.Width = 24; raised.Height = 21; raised.Margin = new(role == 2 ? 2 : 0, 0, 0, 0);
+            return raised;
+        }
+        // XP Luna: rounded, white-edged, glossy blue (close red-orange), with its thick white glyphs drawn on a 26 px face
+        var fill = new LinearGradientBrush { StartPoint = new(0, 0), EndPoint = new(0.35, 1) };
+        foreach (var (c, o) in role == 2 ? new[] { ("#F3A58A", 0.0), ("#E5653F", 0.35), ("#D24A24", 0.75), ("#B9330F", 1.0) }
+                                         : new[] { ("#A6C2FB", 0.0), ("#5B8DF3", 0.35), ("#3C70E6", 0.75), ("#2A58D0", 1.0) })
+            fill.GradientStops.Add(new GradientStop((Color)ColorConverter.ConvertFromString(c), o));
+        var mark = new System.Windows.Shapes.Path { Fill = Brushes.White, Stroke = Brushes.White, StrokeThickness = role == 2 ? 2.8 : 0, StrokeStartLineCap = PenLineCap.Square, StrokeEndLineCap = PenLineCap.Square };
+        mark.Data = Geometry.Parse(role switch
+        {
+            0 => "M7,15.5 H14 V18.5 H7 Z",                                                     // a short bar, bottom left
+            1 when max => "F0 M10,5.5 H19.5 V15 H17.5 V8.5 H10 Z M5.5,10 H15 V19.5 H5.5 Z M7,13 H13.5 V18 H7 Z", // two windows
+            1 => "F0 M6,6 H19 V19 H6 Z M7.5,9.5 H17.5 V17.5 H7.5 Z",                           // a window with a thick top
+            _ => "M8.5,8.5 L16.5,16.5 M16.5,8.5 L8.5,16.5",                                     // a bold X
+        });
+        return new Border { Width = 25, Height = 25, CornerRadius = new(3.5), BorderThickness = new(1.2), BorderBrush = Brushes.White, Background = fill, Child = new Canvas { Width = 25, Height = 25, Children = { mark }, Margin = new(-1.2) } };
+    }
+
+    static SolidColorBrush Solid(string hex) => new((Color)ColorConverter.ConvertFromString(hex));
+
+    // the drawn buttons carry their own look: no hover square behind them, a little dimmer while pressed
+    static Style PlainCaption()
+    {
+        var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+        presenter.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        presenter.SetValue(VerticalAlignmentProperty, VerticalAlignment.Center);
+        var root = new FrameworkElementFactory(typeof(Border));
+        root.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+        root.AppendChild(presenter);
+        var s = new Style(typeof(Button));
+        s.Setters.Add(new Setter(TemplateProperty, new ControlTemplate(typeof(Button)) { VisualTree = root }));
+        s.Setters.Add(new Setter(HeightProperty, 32.0));
+        s.Setters.Add(new Setter(FocusableProperty, false));
+        var pressed = new Trigger { Property = System.Windows.Controls.Primitives.ButtonBase.IsPressedProperty, Value = true };
+        pressed.Setters.Add(new Setter(OpacityProperty, 0.7));
+        s.Triggers.Add(pressed);
+        return s;
+    }
+
+    /// Settings → Appearance → Theme: every key repainted, the glass and title bar told, the code-built parts rebuilt.
+    // the buttons under the sidebar sit on its own colour: on XP's blue they are white
+    void SidebarInk()
+    {
+        if (Themes.Current.SideInk is Color ink) SidebarFoot.Resources["Muted"] = new SolidColorBrush(ink);
+        else SidebarFoot.Resources.Remove("Muted");
+    }
+
+    public void ApplyTheme()
+    {
+        Themes.Apply(Settings.Theme);
+        foreach (Window w in Application.Current.Windows) SetBackdrop(w);
+        Themes.Strip(CaptionButtons); Themes.Strip(Left.TabBand); Themes.Strip(Right.TabBand);
+        SidebarInk();
+        CaptionLook();
+        Left.UpdateStripShape(); Right.UpdateStripShape(); // the tab band is drawn in code, with the old theme's corners
+        ApplyAppearance();
+        BuildSidebar();
+        shownDrives = new(); RefreshDrives(); // the drive rows are built in code, in the old theme's colours
+        RefreshPanes();
+    }
 
     public void RefreshPanes()
     {
@@ -899,7 +1037,13 @@ public partial class MainWindow : Window
     // Parsed once per colour and frozen: rows ask for their icon and age colours as they are built, and a fresh
     // parse per row was part of drawing the first lists (1.0.44). Frozen brushes are also cheaper to draw.
     static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Brush> hexBrushes = new();
-    public static Brush Hex(string c) => hexBrushes.GetOrAdd(c, k => { var b = (Brush)new BrushConverter().ConvertFrom(k); b.Freeze(); return b; });
+    // in the current theme's colours (Themes.Map): the cache is per theme, keyed "theme|#colour"
+    public static Brush Hex(string c) => hexBrushes.GetOrAdd(Themes.Current.Id + "|" + c, _ =>
+    {
+        var b = new SolidColorBrush(Themes.Map(((SolidColorBrush)new BrushConverter().ConvertFrom(c)).Color));
+        b.Freeze();
+        return b;
+    });
 
     public static string Fmt(long b)
     {

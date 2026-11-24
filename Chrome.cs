@@ -12,7 +12,8 @@ namespace FileExplorer;
 // tab row, the history menu beside them, and the notification-area icon for "close to the notification area".
 public partial class MainWindow
 {
-    const double CaptionWidth = 40 + 3 * 46 + 6; // the four buttons and a little air, kept free in the tab row under them
+    // the four buttons and a little air, kept free in the tab row under them; History alone when the lights are top left
+    static double CaptionWidth => Themes.Current.Lights ? 40 + 6 : 40 + 3 * CaptionButtonWidth + 2 + 6;
 
     void SetUpChrome()
     {
@@ -44,7 +45,7 @@ public partial class MainWindow
     {
         bool max = WindowState == WindowState.Maximized;
         Root.Margin = max ? SystemParameters.WindowResizeBorderThickness : new Thickness(0);
-        MaxButton.Content = max ? "" : "";
+        MaxButton.Content = DrawnCaption ? CaptionFace(1, max) : max ? "" : "";
         MaxButton.ToolTip = max ? "Restore down" : "Maximize";
         System.Windows.Automation.AutomationProperties.SetName(MaxButton, (string)MaxButton.ToolTip);
     }

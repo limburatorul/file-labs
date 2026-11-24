@@ -123,10 +123,15 @@ public class Entry : INotifyPropertyChanged
             return Stops[^1].c;
         }
     }
-    public Brush AgeBrush { get { if (NoDate) return Brushes.Transparent; var b = new SolidColorBrush(AgeColor); b.Freeze(); return b; } }
+    // a monochrome theme shows the age in its one colour too, brighter for newer
+    Color AgeShown => Themes.Current.Mono != null ? Themes.Map(AgeColor) : AgeColor;
+    public Brush AgeBrush { get { if (NoDate) return Brushes.Transparent; var b = new SolidColorBrush(AgeShown); b.Freeze(); return b; } }
+    // text on the age badge's own colour, the same in every theme
+    static readonly Brush DarkOnAge = Frozen(Color.FromArgb(0xE6, 0x11, 0x11, 0x11)), LightOnAge = Frozen(Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF));
+    static Brush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
     public Brush AgeTextBrush
     {
-        get { var c = AgeColor; return 0.299 * c.R + 0.587 * c.G + 0.114 * c.B > 140 ? MainWindow.Hex("#E6111111") : MainWindow.Hex("#E6FFFFFF"); }
+        get { var c = AgeShown; return 0.299 * c.R + 0.587 * c.G + 0.114 * c.B > 140 ? DarkOnAge : LightOnAge; }
     }
     public string Age
     {
@@ -260,6 +265,7 @@ public partial class PaneView : UserControl
         details = List.View;
         SetSort(sortKey, sortDesc);
         Loaded += (_, _) => SetView(FolderView(Dir));
+        Loaded += (_, _) => Themes.Strip(TabBand);
         List.GotKeyboardFocus += (_, _) => Activated?.Invoke();
         PreviewMouseDown += (_, _) => Activated?.Invoke(); // anywhere in the pane: tabs, path, list
         renameTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(GetDoubleClickTime()) };
@@ -434,8 +440,8 @@ public partial class PaneView : UserControl
         isActivePane = on;
         if (Card.Background != cardFill) { Card.Background = cardFill; Card.BorderBrush = cardEdge; Glow.BorderBrush = glowColor; }
         var accent = ((SolidColorBrush)Application.Current.Resources["AccentEdge"]).Color;
-        Animate(cardFill, ((SolidColorBrush)MainWindow.Hex(on ? "#12FFFFFF" : "#0A000000")).Color);
-        Animate(cardEdge, on ? accent : Color.FromArgb(0x0F, 255, 255, 255));
+        Animate(cardFill, Themes.Current.Field ?? ((SolidColorBrush)MainWindow.Hex(on ? "#12FFFFFF" : "#0A000000")).Color);
+        Animate(cardEdge, on ? accent : Themes.Map(Color.FromArgb(0x0F, 255, 255, 255)));
         glowColor.Color = Color.FromRgb(accent.R, accent.G, accent.B); // a discreet glow around the active pane only
         var glowTo = on ? 0.7 : 0;
         if (Motion.On) Glow.BeginAnimation(OpacityProperty, new DoubleAnimation(glowTo, Quick) { EasingFunction = Ease });
@@ -1668,43 +1674,47 @@ public partial class PaneView : UserControl
 
     // The strip, minus the active tab. Built by hand rather than stretched, so the corner radii stay
     // round whatever the tab width is.
-    const double TabRadius = 8, TabFlare = 8, StripTop = 4;
-    void UpdateStripShape()
+    const double StripTop = 4;
+    // the theme's corners: Windows 98 squares the band and its tabs off
+    static double TabRadius => 8 * Themes.Current.Radius;
+    static double TabFlare => 8 * Themes.Current.Radius;
+    internal void UpdateStripShape()
     {
         double w = TabBand.ActualWidth, h = TabBand.ActualHeight;
         if (w <= 0 || h <= 0) return;
         StripShape.Width = w; StripShape.Height = h;
 
-        var band = new RectangleGeometry(new Rect(0, 0, w, h), 9, 9);
+        var band = new RectangleGeometry(new Rect(0, 0, w, h), 9 * Themes.Current.Radius, 9 * Themes.Current.Radius);
         Geometry shape = band;
         if (tab >= 0 && tab < TabStrip.Children.Count && TabStrip.Children[tab] is FrameworkElement activeTab)
         {
             var at = activeTab.TranslatePoint(new Point(0, 0), TabBand);
             double x = at.X, tw = activeTab.ActualWidth;
-            var cut = new StreamGeometry();
-            using (var g = cut.Open())
-            if (TabStrip.Rows > 1)
+            double top = at.Y + StripTop;
+            Geometry cut;
+            if (at.Y + activeTab.ActualHeight < h - 1)
             {
-                // several rows: the active tab may sit above another row, so it is cut out on its own
-                // instead of flaring into the panel below
-                double top = at.Y + StripTop, bottom = at.Y + activeTab.ActualHeight;
-                g.BeginFigure(new Point(x, bottom), true, true);
-                g.LineTo(new Point(x, top + TabRadius), true, true);
-                g.ArcTo(new Point(x + TabRadius, top), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
-                g.LineTo(new Point(x + tw - TabRadius, top), true, true);
-                g.ArcTo(new Point(x + tw, top + TabRadius), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
-                g.LineTo(new Point(x + tw, bottom), true, true);
+                // several rows, the active tab in an upper one: a notch open at the bottom ran into the row below and
+                // looked torn, so it is a pill of the panel's surface, rounded all round, floating in its row
+                double bottom = at.Y + activeTab.ActualHeight - 3;
+                cut = new RectangleGeometry(new Rect(x, top, tw, Math.Max(0, bottom - top)), TabRadius, TabRadius);
             }
             else
             {
-                g.BeginFigure(new Point(x - TabFlare, h), true, true);
-                g.QuadraticBezierTo(new Point(x, h), new Point(x, h - TabFlare), true, true);           // flare out, bottom left
-                g.LineTo(new Point(x, StripTop + TabRadius), true, true);
-                g.ArcTo(new Point(x + TabRadius, StripTop), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
-                g.LineTo(new Point(x + tw - TabRadius, StripTop), true, true);
-                g.ArcTo(new Point(x + tw, StripTop + TabRadius), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
-                g.LineTo(new Point(x + tw, h - TabFlare), true, true);
-                g.QuadraticBezierTo(new Point(x + tw, h), new Point(x + tw + TabFlare, h), true, true); // flare out, bottom right
+                // one row, or the active tab in the last: it flows into the panel below, flaring out at the bottom
+                var flow = new StreamGeometry();
+                using (var g = flow.Open())
+                {
+                    g.BeginFigure(new Point(x - TabFlare, h), true, true);
+                    g.QuadraticBezierTo(new Point(x, h), new Point(x, h - TabFlare), true, true);           // flare out, bottom left
+                    g.LineTo(new Point(x, top + TabRadius), true, true);
+                    g.ArcTo(new Point(x + TabRadius, top), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
+                    g.LineTo(new Point(x + tw - TabRadius, top), true, true);
+                    g.ArcTo(new Point(x + tw, top + TabRadius), new Size(TabRadius, TabRadius), 0, false, SweepDirection.Clockwise, true, true);
+                    g.LineTo(new Point(x + tw, h - TabFlare), true, true);
+                    g.QuadraticBezierTo(new Point(x + tw, h), new Point(x + tw + TabFlare, h), true, true); // flare out, bottom right
+                }
+                cut = flow;
             }
             cut.Freeze();
             shape = new CombinedGeometry(GeometryCombineMode.Exclude, band, cut);

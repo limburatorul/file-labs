@@ -1,17 +1,25 @@
 ﻿<Window x:Class="FileExplorer.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Settings — File Labs" Width="560" Height="640" MinWidth="440" MinHeight="400"
+        Title="Settings — File Labs" Width="700" Height="704" MinWidth="560" MinHeight="440"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="True" Background="Transparent"
-        Foreground="#E8EEF6" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12">
+        Foreground="{DynamicResource cFFE8EEF6}" FontFamily="{DynamicResource UiFont}" FontSize="12">
   <Window.Resources>
     <Style x:Key="Card" TargetType="Border">
-      <Setter Property="Background" Value="#0AFFFFFF"/>
-      <Setter Property="BorderBrush" Value="#16FFFFFF"/>
+      <Setter Property="Background" Value="{DynamicResource c0AFFFFFF}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource e16FFFFFF}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="12"/>
+      <Setter Property="CornerRadius" Value="{DynamicResource r12}"/>
       <Setter Property="Padding" Value="16,12"/>
       <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+    <!-- the page list on the left: the Tab look, full width and a little larger -->
+    <Style x:Key="NavItem" TargetType="Button" BasedOn="{StaticResource Tab}">
+      <Setter Property="FontSize" Value="12.5"/>
+      <Setter Property="MaxWidth" Value="Infinity"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="Padding" Value="0,4"/>
+      <Setter Property="Margin" Value="0,0,0,2"/>
     </Style>
     <Style x:Key="H" TargetType="TextBlock">
       <Setter Property="FontSize" Value="13"/>
@@ -19,268 +27,306 @@
       <Setter Property="Margin" Value="0,0,0,8"/>
     </Style>
     <Style x:Key="Hint" TargetType="TextBlock">
-      <Setter Property="Foreground" Value="#8A97AA"/>
+      <Setter Property="Foreground" Value="{DynamicResource cFF8A97AA}"/>
       <Setter Property="FontSize" Value="11"/>
       <Setter Property="TextWrapping" Value="Wrap"/>
       <Setter Property="Margin" Value="0,2,0,10"/>
     </Style>
   </Window.Resources>
 
-  <Grid x:Name="Root" Background="#B30A0D13">
+  <Grid x:Name="Root" Background="{DynamicResource cB30A0D13}">
     <!-- shown once the empty window is on screen (SettingsWindow.xaml.cs) -->
-    <ScrollViewer x:Name="Body" VerticalScrollBarVisibility="Auto" Padding="18,16" Visibility="Collapsed">
-      <StackPanel>
-        <Border Style="{StaticResource Card}">
-          <StackPanel>
-            <DockPanel>
-              <Button x:Name="ResetAppearance" DockPanel.Dock="Right" Content="Reset" Style="{StaticResource Tab}" VerticalAlignment="Top" Click="ResetSection_Click"
-                      ToolTip="Put this card's settings back to their defaults"/>
-              <TextBlock Text="Appearance" Style="{StaticResource H}"/>
-            </DockPanel>
-            <TextBlock Style="{StaticResource Hint}" Margin="0,-4,0,10" Text="Double-click a slider's handle to put it back to its default."/>
-            <TextBlock Text="Backdrop"/>
-            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
-              <Button x:Name="BdAcrylic" Content="Blur" Style="{StaticResource Tab}" Click="Backdrop_Click"/>
-              <Button x:Name="BdMica" Content="Tint" Style="{StaticResource Tab}" Click="Backdrop_Click"/>
-              <Button x:Name="BdSolid" Content="Solid" Style="{StaticResource Tab}" Click="Backdrop_Click"/>
-            </StackPanel>
-            <TextBlock Style="{StaticResource Hint}" Text="Blur: frosted acrylic of whatever is behind the window. Tint: the wallpaper's colour, no blur. Solid: no transparency. Blur strength is set by Windows."/>
-            <DockPanel>
-              <TextBlock x:Name="OpacityText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="#8A97AA" Typography.NumeralAlignment="Tabular"/>
-              <TextBlock Text="Opacity" Width="70" VerticalAlignment="Center"/>
-              <Slider x:Name="OpacitySlider" Minimum="30" Maximum="100" VerticalAlignment="Center" ValueChanged="Opacity_Changed"/>
-            </DockPanel>
-            <TextBlock Style="{StaticResource Hint}" Text="How dark the layer over the backdrop is. Stops at 30% so text stays readable on bright wallpapers."/>
-
-            <TextBlock Text="Background image"/>
-            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
-              <Button x:Name="BgChoose" Content="Choose…" Style="{StaticResource Tab}" Click="BgChoose_Click"/>
-              <Button x:Name="BgNone" Content="None" Style="{StaticResource Tab}" Click="BgNone_Click"/>
-            </StackPanel>
-            <DockPanel Margin="0,6,0,0">
-              <TextBlock x:Name="BgOpacityText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="#8A97AA" Typography.NumeralAlignment="Tabular"/>
-              <TextBlock Text="Strength" Width="70" VerticalAlignment="Center"/>
-              <Slider x:Name="BgOpacitySlider" Minimum="5" Maximum="100" VerticalAlignment="Center" ValueChanged="BgOpacity_Changed"/>
-            </DockPanel>
-            <DockPanel Margin="0,6,0,0">
-              <TextBlock x:Name="BgBlurText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="#8A97AA" Typography.NumeralAlignment="Tabular"/>
-              <TextBlock Text="Blur" Width="70" VerticalAlignment="Center"/>
-              <Slider x:Name="BgBlurSlider" Minimum="0" Maximum="40" VerticalAlignment="Center" ValueChanged="BgBlur_Changed"/>
-            </DockPanel>
-            <DockPanel Margin="0,6,0,0">
-              <TextBlock x:Name="BgBrightText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="#8A97AA" Typography.NumeralAlignment="Tabular"/>
-              <TextBlock Text="Brightness" Width="70" VerticalAlignment="Center"/>
-              <Slider x:Name="BgBrightSlider" Minimum="-100" Maximum="100" VerticalAlignment="Center" ValueChanged="BgBright_Changed"/>
-            </DockPanel>
-            <TextBlock Style="{StaticResource Hint}" Text="A picture behind the panes, cropped to fill the window. Strength is how much of it shows, Blur softens it, Brightness darkens or lightens it. A darker, softer picture keeps the lists readable."/>
-
-            <TextBlock Text="Accent colour"/>
-            <DockPanel Margin="0,6,0,2">
-              <Border DockPanel.Dock="Right" Background="#12FFFFFF" CornerRadius="5" Padding="8,4" BorderBrush="#2EFFFFFF" BorderThickness="1" Margin="8,0,0,0">
-                <TextBox x:Name="AccentHex" Style="{StaticResource Bare}" Width="72" KeyDown="AccentHex_KeyDown" ToolTip="Any colour as #RRGGBB, then Enter"/>
-              </Border>
-              <WrapPanel x:Name="Swatches"/>
-            </DockPanel>
-            <!-- any colour: hue around the wheel, saturation from the centre out, brightness beside it -->
-            <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
-              <Grid Width="132" Height="132" Cursor="Cross" Background="Transparent"
-                    MouseLeftButtonDown="Wheel_Down" MouseMove="Wheel_Move" MouseLeftButtonUp="Wheel_Up">
-                <Image x:Name="Wheel"/>
-                <Ellipse x:Name="WheelShade" Fill="Black" IsHitTestVisible="False"/>
-                <Canvas IsHitTestVisible="False">
-                  <Ellipse x:Name="WheelMark" Width="14" Height="14" Stroke="White" StrokeThickness="2">
-                    <Ellipse.Effect><DropShadowEffect ShadowDepth="0" BlurRadius="4" Opacity="0.9"/></Ellipse.Effect>
-                  </Ellipse>
-                </Canvas>
-              </Grid>
-              <StackPanel Margin="18,0,0,0" Width="170" VerticalAlignment="Center">
-                <TextBlock Text="Brightness" FontSize="11"/>
-                <Slider x:Name="ValueSlider" Minimum="25" Maximum="100" Margin="0,4,0,0" ValueChanged="Value_Changed"/>
-                <Border x:Name="AccentPreview" Height="28" CornerRadius="7" Margin="0,12,0,0"/>
-              </StackPanel>
-            </StackPanel>
-            <TextBlock Style="{StaticResource Hint}" Text="Used for the selection, the drive bars, the progress bars and the active pane's edge."/>
-
-            <DockPanel Margin="0,10,0,2">
-              <TextBlock x:Name="StrengthText" DockPanel.Dock="Right" Foreground="{StaticResource Muted}" FontSize="11" Width="40" TextAlignment="Right" Typography.NumeralAlignment="Tabular"/>
-              <TextBlock Text="Strength" FontSize="11" Width="60" VerticalAlignment="Center"/>
-              <Slider x:Name="StrengthSlider" Minimum="30" Maximum="250" ValueChanged="Strength_Changed" VerticalAlignment="Center"/>
-            </DockPanel>
-            <TextBlock Style="{StaticResource Hint}" Text="How strongly the accent tints the selected rows and the pane edge. Higher is bolder, lower is washed out."/>
-
-            <TextBlock Text="Row height"/>
-            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
-              <Button x:Name="RowCompact" Content="Compact" Style="{StaticResource Tab}" Click="RowHeight_Click"/>
-              <Button x:Name="RowNormal" Content="Normal" Style="{StaticResource Tab}" Click="RowHeight_Click"/>
-              <Button x:Name="RowRoomy" Content="Roomy" Style="{StaticResource Tab}" Click="RowHeight_Click"/>
-            </StackPanel>
-            <TextBlock Style="{StaticResource Hint}" Text="How much room each row takes in Details and List. Compact fits more on screen."/>
-
-            <TextBlock Text="Text size"/>
-            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
-              <Button x:Name="Text100" Content="100%" Style="{StaticResource Tab}" Click="TextSize_Click"/>
-              <Button x:Name="Text115" Content="115%" Style="{StaticResource Tab}" Click="TextSize_Click"/>
-              <Button x:Name="Text130" Content="130%" Style="{StaticResource Tab}" Click="TextSize_Click"/>
-              <Button x:Name="Text150" Content="150%" Style="{StaticResource Tab}" Click="TextSize_Click"/>
-            </StackPanel>
-            <TextBlock Style="{StaticResource Hint}" Text="Makes the whole window larger, text, icons and rows together, on top of Windows' own scaling."/>
-            <DockPanel Margin="0,4,0,0">
-              <TextBlock x:Name="ScaleSidebarText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="#8A97AA" Typography.NumeralAlignment="Tabular"/>
-              <TextBlock Text="Sidebar" Width="70" VerticalAlignment="Center"/>
-              <Slider x:Name="ScaleSidebar" Minimum="80" Maximum="150" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="Scale_Changed"/>
-            </DockPanel>
-            <DockPanel Margin="0,6,0,0">
-              <TextBlock x:Name="ScaleTabsText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="#8A97AA" Typography.NumeralAlignment="Tabular"/>
-              <TextBlock Text="Tabs" Width="70" VerticalAlignment="Center"/>
-              <Slider x:Name="ScaleTabs" Minimum="80" Maximum="150" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="Scale_Changed"/>
-            </DockPanel>
-            <DockPanel Margin="0,6,0,0">
-              <TextBlock x:Name="ScalePathText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="#8A97AA" Typography.NumeralAlignment="Tabular"/>
-              <TextBlock Text="Path bar" Width="70" VerticalAlignment="Center"/>
-              <Slider x:Name="ScalePath" Minimum="80" Maximum="150" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="Scale_Changed"/>
-            </DockPanel>
-            <DockPanel Margin="0,6,0,0">
-              <TextBlock x:Name="ScaleListText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="#8A97AA" Typography.NumeralAlignment="Tabular"/>
-              <TextBlock Text="File list" Width="70" VerticalAlignment="Center"/>
-              <Slider x:Name="ScaleList" Minimum="80" Maximum="150" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="Scale_Changed"/>
-            </DockPanel>
-            <TextBlock Style="{StaticResource Hint}" Text="Each area on its own, on top of the size above: a bigger file list with a compact sidebar, for example."/>
-
-            <CheckBox x:Name="SinglePaneBox" Content="One pane" Click="SinglePane_Click" Margin="0,4,0,0"/>
-            <TextBlock Style="{StaticResource Hint}" Text="Hides the right pane, Explorer style. Ctrl+P (or its button at the bottom) switches. Ctrl+F5 and F6 bring the second pane back, since they copy into it."/>
-            <CheckBox x:Name="CloseEmptyPaneBox" Content="Close the second pane with its last tab" Click="CloseEmptyPane_Click" Margin="0,4,0,0"/>
-            <TextBlock Style="{StaticResource Hint}" Text="Closing the right pane's last tab (its x, Ctrl+W or a middle click) hides the pane, as Ctrl+P does; Ctrl+P brings it back with that tab. Off: a pane's last tab can't be closed."/>
-
-            <CheckBox x:Name="StatsBox" Content="Summary cards below the panes" Click="Stats_Click" Margin="0,4,0,0"/>
-            <CheckBox x:Name="StatsCompactBox" Content="Compact: one line each" Click="Stats_Click" Margin="22,6,0,0"/>
-            <TextBlock Style="{StaticResource Hint}" Text="The drive, the folder and the selection. Compact keeps the figures and drops the icons, bars and second lines; off gives the panes the whole height."/>
-
-            <CheckBox x:Name="AnimationsBox" Content="Animations" Click="Animations_Click" Margin="0,4,0,0"/>
-            <TextBlock Style="{StaticResource Hint}" Text="Short fades when a folder is read, when panes change and when a transfer appears. Off means everything switches instantly."/>
-            <CheckBox x:Name="SmoothScrollBox" Content="Smooth scrolling" Click="SmoothScroll_Click" Margin="0,4,0,0"/>
-            <TextBlock Style="{StaticResource Hint}" Text="The mouse wheel glides the file list instead of jumping a few rows at a time."/>
-            <CheckBox x:Name="AutoscrollBox" Content="Middle-click autoscroll" Click="Autoscroll_Click" Margin="0,4,0,0"/>
-            <TextBlock Style="{StaticResource Hint}" Text="A middle click on the list's empty space puts a round marker there, as in a browser: move the mouse away from it and the list scrolls that way, faster the further you go. A left or middle click stops it, and so does letting go if you held the button down. A middle click on a folder still opens it in a new tab."/>
-            <CheckBox x:Name="AutoscrollUpDownBox" Content="Up and down only" Click="Autoscroll_Click" Margin="22,0,0,0"/>
-            <TextBlock Style="{StaticResource Hint}" Margin="22,2,0,10" Text="Sideways movement is ignored, so a wide Details list doesn't drift left or right."/>
-          </StackPanel>
-        </Border>
-
-        <Border Style="{StaticResource Card}">
-          <StackPanel>
-            <DockPanel>
-              <Button x:Name="ResetFiles" DockPanel.Dock="Right" Content="Reset" Style="{StaticResource Tab}" VerticalAlignment="Top" Click="ResetSection_Click"
-                      ToolTip="Put this card's settings back to their defaults"/>
-              <TextBlock Text="Files" Style="{StaticResource H}"/>
-            </DockPanel>
-            <CheckBox x:Name="HiddenBox" Content="Show hidden files" Click="Hidden_Click"/>
-            <TextBlock Style="{StaticResource Hint}" Text="Also Ctrl+H."/>
-            <CheckBox x:Name="ShortcutFoldersBox" Content="Sort shortcuts to folders with the folders" Click="ShortcutFolders_Click"/>
-            <TextBlock Style="{StaticResource Hint}" Text="A shortcut that opens a folder is listed among the folders, at the top, instead of among the files."/>
-            <CheckBox x:Name="EditorBox" Content="Open code and text files in the File Labs editor" Click="Editor_Click"/>
-            <TextBlock Style="{StaticResource Hint}" Text="Enter or double-click on a .txt, .json, .py, .php, .html, .ps1 and every other code or text file opens it in the built-in editor. Off: it opens in the app Windows has for it. F4 always opens the built-in editor."/>
-            <CheckBox x:Name="QuickLookBox" Content="Space opens QuickLook" Click="QuickLook_Click"/>
-            <TextBlock Style="{StaticResource Hint}" Text="For QuickLook users: when it is running, Space previews in QuickLook instead of Quick View, and the preview follows the selection. When it is not running, Quick View opens as usual."/>
-            <CheckBox x:Name="ItemTipsBox" Content="Show details when hovering a file" Click="ItemTips_Click"/>
-            <TextBlock Style="{StaticResource Hint}" Text="A tooltip with the full name, type, size and date, as in Explorer."/>
-            <DockPanel Margin="0,2,0,0">
-              <TextBlock x:Name="TipDelayText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="#8A97AA" Typography.NumeralAlignment="Tabular"/>
-              <TextBlock Text="Tooltip delay" Width="90" VerticalAlignment="Center"/>
-              <Slider x:Name="TipDelaySlider" Minimum="0" Maximum="3000" TickFrequency="100" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="TipDelay_Changed"/>
-            </DockPanel>
-            <TextBlock Style="{StaticResource Hint}" Text="How long the pointer rests on something before its tooltip shows, for every tooltip in File Labs, the next one too: running the pointer down a list no longer pops one on every row. 1.5 s unless you change it (1 s before 1.0.51). Takes effect the next time File Labs starts."/>
-            <CheckBox x:Name="DeleteSoundBox" Content="Play a sound when deleting permanently" Click="DeleteSound_Click"/>
-            <TextBlock Style="{StaticResource Hint}" Text="Shift+Delete: the warning when it asks, and Windows' recycle sound when it deletes. Off: both are silent."/>
-            <TextBlock Text="Search in subfolders stops after"/>
-            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
-              <Button x:Name="Limit1k" Content="1,000" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
-              <Button x:Name="Limit10k" Content="10,000" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
-              <Button x:Name="Limit100k" Content="100,000" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
-              <Button x:Name="LimitNone" Content="No limit" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
-            </StackPanel>
-            <TextBlock Style="{StaticResource Hint}" Text="Results found when you press Enter in the filter box. When a search stops there, Enter again carries on from where it stopped."/>
-            <TextBlock Text="Right-click menu"/>
-            <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
-              <Button x:Name="MenuOwn" Content="File Labs" Style="{StaticResource Tab}" Click="Menu_Click"/>
-              <Button x:Name="MenuWin" Content="Windows" Style="{StaticResource Tab}" Click="Menu_Click"/>
-            </StackPanel>
-            <TextBlock Style="{StaticResource Hint}" Text="File Labs: a compact menu that matches the app. Windows: the full Explorer menu, with Send to, Open with and extensions like 7-Zip. The File Labs menu has a 'Windows menu…' item."/>
-            <CheckBox x:Name="MissingAppsBox" Content="Show items for our other apps that aren't installed" Margin="0,8,0,0" Click="MissingApps_Click"/>
-            <TextBlock Style="{StaticResource Hint}" Text="Scan with SpaceScan, Add to Shelf, Add to Reel and Back up with Backup Labs. When the app isn't on this PC, the item opens its web page. Off: the item shows only once the app is installed."/>
-          </StackPanel>
-        </Border>
-
-        <Border Style="{StaticResource Card}">
-          <StackPanel>
-            <DockPanel>
-              <Button x:Name="ResetTransfers" DockPanel.Dock="Right" Content="Reset" Style="{StaticResource Tab}" VerticalAlignment="Top" Click="ResetSection_Click"
-                      ToolTip="Put this card's settings back to their defaults"/>
-              <TextBlock Text="Transfers" Style="{StaticResource H}"/>
-            </DockPanel>
-            <CheckBox x:Name="VerifyBox" Content="Verify copies after transfer" Click="Verify_Click"/>
-            <TextBlock Style="{StaticResource Hint}" Text="Reads source and copy back and compares xxHash3 digests. Catches a disk or cable that dropped bytes, at the cost of a second full read. On a move, a source whose copy doesn't match is kept."/>
-            <CheckBox x:Name="ParallelBox" Content="Copy small files several at once" Margin="0,10,0,0" Click="Parallel_Click"/>
-            <TextBlock Style="{StaticResource Hint}" Text="Files under 16 MB go four at a time when both drives are SSDs or network shares, where a small file is mostly waiting. To or from a spinning disk they still go one by one, and big files always do."/>
-          </StackPanel>
-        </Border>
-
-        <Border Style="{StaticResource Card}">
-          <StackPanel>
-            <TextBlock Text="Windows integration" Style="{StaticResource H}"/>
-            <CheckBox x:Name="DefaultBox" Content="Use File Labs as the default file manager" Click="Default_Click"/>
-            <TextBlock Style="{StaticResource Hint}">
-              Opening a folder or drive (desktop, Start, other apps) and Win+E open File Labs instead of File Explorer.
-              Only your user account is changed, and switching this off removes everything it added.
-              If you move FileLabs.exe, switch it off and on again.
-            </TextBlock>
-            <CheckBox x:Name="WinEBox" Content="Win+E opens File Labs" Click="WinE_Click" Margin="22,0,0,0"/>
-            <TextBlock Style="{StaticResource Hint}" Margin="22,2,0,10" Text="Off: Win+E keeps opening File Explorer while folders still open in File Labs."/>
-            <CheckBox x:Name="TrayBox" Content="Close to the notification area" Click="Tray_Click"/>
-            <TextBlock Style="{StaticResource Hint}" Text="Closing the window hides File Labs next to the clock instead of quitting, so it opens again at once. Click its icon to bring it back; right-click the icon → Quit to really close."/>
-            <CheckBox x:Name="StartupBox" Content="Start with Windows, hidden next to the clock" Click="Startup_Click" Margin="22,0,0,0"/>
-            <TextBlock Style="{StaticResource Hint}" Margin="22,2,0,10" Text="Off unless you turn it on. File Labs starts when you sign in and waits by the clock, so even the first window of the day opens at once; this also turns on Close to the notification area. It uses some memory while it waits."/>
-          </StackPanel>
-        </Border>
-
-        <Border Style="{StaticResource Card}">
-          <StackPanel>
-            <TextBlock Text="Defaults" Style="{StaticResource H}"/>
-            <Button x:Name="ResetAll" Content="Reset to defaults…" Style="{StaticResource Tab}" HorizontalAlignment="Left" Padding="12,6" Click="ResetAll_Click"/>
-            <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" Text="Appearance, Files and Transfers go back to how File Labs comes, after you confirm. Windows integration stays as it is, and so do your tabs, Quick access lists and folder sizes. Each card's own Reset does just that card."/>
-          </StackPanel>
-        </Border>
-
-        <Border Style="{StaticResource Card}">
-          <StackPanel>
-            <TextBlock Text="About" Style="{StaticResource H}"/>
-            <TextBlock x:Name="AboutText" Foreground="#8A97AA" TextWrapping="Wrap"/>
-            <TextBlock x:Name="StartupText" Foreground="#8A97AA" TextWrapping="Wrap" Margin="0,6,0,0"
-                       ToolTip="From launching File Labs to its window, and to the files in its panes. The last starts are in startup.log in the settings folder."/>
-            <WrapPanel Margin="0,10,0,0">
-              <Button x:Name="UpdateCheck" Content="Check for updates" Style="{StaticResource Tab}" Padding="12,6" Click="Update_Click"/>
-              <Button Content="What&#x2019;s new" Style="{StaticResource Tab}" Padding="12,6" Margin="6,0,0,0" Click="WhatsNew_Click"/>
-              <TextBlock x:Name="UpdateStatus" Foreground="#8A97AA" VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
-            </WrapPanel>
-            <TextBlock Foreground="#8A97AA" TextWrapping="Wrap" Margin="0,10,0,0">
-              <TextBlock.Resources><Style TargetType="Hyperlink"><Setter Property="Foreground" Value="#E8EEF6"/></Style></TextBlock.Resources>
-              Feedback: <Hyperlink NavigateUri="mailto:feedback@protagonistlabs.app?subject=File%20Labs%20feedback" RequestNavigate="Link_Navigate">feedback@protagonistlabs.app</Hyperlink>
-              · <Hyperlink NavigateUri="https://protagonistlabs.app/filelabs/?utm_source=filelabs&amp;utm_medium=app&amp;utm_campaign=about" RequestNavigate="Link_Navigate">Website</Hyperlink>
-              · <Hyperlink NavigateUri="https://protagonistlabs.app/?utm_source=filelabs&amp;utm_medium=app&amp;utm_campaign=more-apps" RequestNavigate="Link_Navigate">More apps from Protagonist Labs</Hyperlink>
-            </TextBlock>
-            <TextBlock Text="Works with" Style="{StaticResource Hint}" Margin="0,14,0,2"/>
-            <!-- filled by BuildWorksWith: one quiet line per sister app; names are the only links -->
-            <TextBlock x:Name="WorksWith" Style="{StaticResource Hint}" LineHeight="18" Margin="0">
-              <TextBlock.Resources>
-                <Style TargetType="Hyperlink">
-                  <Setter Property="Foreground" Value="#B4BFCE"/>
-                  <Setter Property="TextDecorations" Value="{x:Null}"/>
-                  <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="TextDecorations" Value="Underline"/></Trigger></Style.Triggers>
-                </Style>
-              </TextBlock.Resources>
-            </TextBlock>
-          </StackPanel>
-        </Border>
+    <Grid x:Name="Body" Visibility="Collapsed">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="168"/><ColumnDefinition/></Grid.ColumnDefinitions>
+      <!-- one page per group, picked here (Nav_Click); the order matches the pages below -->
+      <StackPanel x:Name="Nav" Margin="12,16,4,16">
+        <Button Content="Appearance" Style="{StaticResource NavItem}" Tag="on" Click="Nav_Click"/>
+        <Button Content="Layout and motion" Style="{StaticResource NavItem}" Click="Nav_Click"/>
+        <Button Content="Files" Style="{StaticResource NavItem}" Click="Nav_Click"/>
+        <Button Content="Transfers" Style="{StaticResource NavItem}" Click="Nav_Click"/>
+        <Button Content="Windows" Style="{StaticResource NavItem}" Click="Nav_Click"/>
+        <Button Content="About" Style="{StaticResource NavItem}" Click="Nav_Click"/>
       </StackPanel>
-    </ScrollViewer>
+      <ScrollViewer x:Name="Scroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="8,16,18,16">
+        <Grid x:Name="Pages">
+          <StackPanel x:Name="PageAppearance">
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Text="Theme" Style="{StaticResource H}"/>
+                  <!-- one card per theme, drawn from its own colours (SettingsWindow.BuildThemes) -->
+                  <WrapPanel x:Name="ThemeCards" Margin="-4,0,0,0"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="The colours, corners and font of every File Labs window. The classic themes are opaque, so Backdrop and Opacity apply to File Labs and macOS 27 only. Each theme brings its accent colour until you pick one below."/>
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <DockPanel>
+                    <Button x:Name="ResetAppearance" DockPanel.Dock="Right" Content="Reset" Style="{StaticResource Tab}" VerticalAlignment="Top" Click="ResetSection_Click"
+                            ToolTip="Put this card's settings back to their defaults"/>
+                    <TextBlock Text="Appearance" Style="{StaticResource H}"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,-4,0,10" Text="Double-click a slider's handle to put it back to its default."/>
+                  <TextBlock Text="Backdrop"/>
+                  <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                    <Button x:Name="BdAcrylic" Content="Blur" Style="{StaticResource Tab}" Click="Backdrop_Click"/>
+                    <Button x:Name="BdMica" Content="Tint" Style="{StaticResource Tab}" Click="Backdrop_Click"/>
+                    <Button x:Name="BdSolid" Content="Solid" Style="{StaticResource Tab}" Click="Backdrop_Click"/>
+                  </StackPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="Blur: frosted acrylic of whatever is behind the window. Tint: the wallpaper's colour, no blur. Solid: no transparency. Blur strength is set by Windows."/>
+                  <DockPanel>
+                    <TextBlock x:Name="OpacityText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="{DynamicResource cFF8A97AA}" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="Opacity" Width="70" VerticalAlignment="Center"/>
+                    <Slider x:Name="OpacitySlider" Minimum="30" Maximum="100" VerticalAlignment="Center" ValueChanged="Opacity_Changed"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="How dark the layer over the backdrop is. Stops at 30% so text stays readable on bright wallpapers."/>
+
+                  <TextBlock Text="Background image"/>
+                  <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                    <Button x:Name="BgChoose" Content="Choose…" Style="{StaticResource Tab}" Click="BgChoose_Click"/>
+                    <Button x:Name="BgNone" Content="None" Style="{StaticResource Tab}" Click="BgNone_Click"/>
+                  </StackPanel>
+                  <DockPanel Margin="0,6,0,0">
+                    <TextBlock x:Name="BgOpacityText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="{DynamicResource cFF8A97AA}" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="Strength" Width="70" VerticalAlignment="Center"/>
+                    <Slider x:Name="BgOpacitySlider" Minimum="5" Maximum="100" VerticalAlignment="Center" ValueChanged="BgOpacity_Changed"/>
+                  </DockPanel>
+                  <DockPanel Margin="0,6,0,0">
+                    <TextBlock x:Name="BgBlurText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="{DynamicResource cFF8A97AA}" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="Blur" Width="70" VerticalAlignment="Center"/>
+                    <Slider x:Name="BgBlurSlider" Minimum="0" Maximum="40" VerticalAlignment="Center" ValueChanged="BgBlur_Changed"/>
+                  </DockPanel>
+                  <DockPanel Margin="0,6,0,0">
+                    <TextBlock x:Name="BgBrightText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="{DynamicResource cFF8A97AA}" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="Brightness" Width="70" VerticalAlignment="Center"/>
+                    <Slider x:Name="BgBrightSlider" Minimum="-100" Maximum="100" VerticalAlignment="Center" ValueChanged="BgBright_Changed"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="A picture behind the panes, cropped to fill the window. Strength is how much of it shows, Blur softens it, Brightness darkens or lightens it. A darker, softer picture keeps the lists readable."/>
+
+                  <TextBlock Text="Accent colour"/>
+                  <DockPanel Margin="0,6,0,2">
+                    <Border DockPanel.Dock="Right" Background="{DynamicResource c12FFFFFF}" CornerRadius="{DynamicResource r5}" Padding="8,4" BorderBrush="{DynamicResource e2EFFFFFF}" BorderThickness="1" Margin="8,0,0,0">
+                      <TextBox x:Name="AccentHex" Style="{StaticResource Bare}" Width="72" KeyDown="AccentHex_KeyDown" ToolTip="Any colour as #RRGGBB, then Enter"/>
+                    </Border>
+                    <WrapPanel x:Name="Swatches"/>
+                  </DockPanel>
+                  <!-- any colour: hue around the wheel, saturation from the centre out, brightness beside it -->
+                  <StackPanel Orientation="Horizontal" Margin="0,12,0,4">
+                    <Grid Width="132" Height="132" Cursor="Cross" Background="Transparent"
+                          MouseLeftButtonDown="Wheel_Down" MouseMove="Wheel_Move" MouseLeftButtonUp="Wheel_Up">
+                      <Image x:Name="Wheel"/>
+                      <Ellipse x:Name="WheelShade" Fill="Black" IsHitTestVisible="False"/>
+                      <Canvas IsHitTestVisible="False">
+                        <Ellipse x:Name="WheelMark" Width="14" Height="14" Stroke="White" StrokeThickness="2">
+                          <Ellipse.Effect><DropShadowEffect ShadowDepth="0" BlurRadius="4" Opacity="0.9"/></Ellipse.Effect>
+                        </Ellipse>
+                      </Canvas>
+                    </Grid>
+                    <StackPanel Margin="18,0,0,0" Width="170" VerticalAlignment="Center">
+                      <TextBlock Text="Brightness" FontSize="11"/>
+                      <Slider x:Name="ValueSlider" Minimum="25" Maximum="100" Margin="0,4,0,0" ValueChanged="Value_Changed"/>
+                      <Border x:Name="AccentPreview" Height="28" CornerRadius="{DynamicResource r7}" Margin="0,12,0,0"/>
+                    </StackPanel>
+                  </StackPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="Used for the selection, the drive bars, the progress bars and the active pane's edge."/>
+
+                  <DockPanel Margin="0,10,0,2">
+                    <TextBlock x:Name="StrengthText" DockPanel.Dock="Right" Foreground="{DynamicResource Muted}" FontSize="11" Width="40" TextAlignment="Right" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="Strength" FontSize="11" Width="60" VerticalAlignment="Center"/>
+                    <Slider x:Name="StrengthSlider" Minimum="30" Maximum="250" ValueChanged="Strength_Changed" VerticalAlignment="Center"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="How strongly the accent tints the selected rows and the pane edge. Higher is bolder, lower is washed out."/>
+
+                </StackPanel>
+              </Border>
+          </StackPanel>
+          <StackPanel x:Name="PageLayout" Visibility="Collapsed">
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Text="Layout" Style="{StaticResource H}"/>
+                  <TextBlock Text="Row height"/>
+                  <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                    <Button x:Name="RowCompact" Content="Compact" Style="{StaticResource Tab}" Click="RowHeight_Click"/>
+                    <Button x:Name="RowNormal" Content="Normal" Style="{StaticResource Tab}" Click="RowHeight_Click"/>
+                    <Button x:Name="RowRoomy" Content="Roomy" Style="{StaticResource Tab}" Click="RowHeight_Click"/>
+                  </StackPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="How much room each row takes in Details and List. Compact fits more on screen."/>
+
+                  <TextBlock Text="Text size"/>
+                  <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                    <Button x:Name="Text100" Content="100%" Style="{StaticResource Tab}" Click="TextSize_Click"/>
+                    <Button x:Name="Text115" Content="115%" Style="{StaticResource Tab}" Click="TextSize_Click"/>
+                    <Button x:Name="Text130" Content="130%" Style="{StaticResource Tab}" Click="TextSize_Click"/>
+                    <Button x:Name="Text150" Content="150%" Style="{StaticResource Tab}" Click="TextSize_Click"/>
+                  </StackPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="Makes the whole window larger, text, icons and rows together, on top of Windows' own scaling."/>
+                  <DockPanel Margin="0,4,0,0">
+                    <TextBlock x:Name="ScaleSidebarText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="{DynamicResource cFF8A97AA}" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="Sidebar" Width="70" VerticalAlignment="Center"/>
+                    <Slider x:Name="ScaleSidebar" Minimum="80" Maximum="150" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="Scale_Changed"/>
+                  </DockPanel>
+                  <DockPanel Margin="0,6,0,0">
+                    <TextBlock x:Name="ScaleTabsText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="{DynamicResource cFF8A97AA}" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="Tabs" Width="70" VerticalAlignment="Center"/>
+                    <Slider x:Name="ScaleTabs" Minimum="80" Maximum="150" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="Scale_Changed"/>
+                  </DockPanel>
+                  <DockPanel Margin="0,6,0,0">
+                    <TextBlock x:Name="ScalePathText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="{DynamicResource cFF8A97AA}" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="Path bar" Width="70" VerticalAlignment="Center"/>
+                    <Slider x:Name="ScalePath" Minimum="80" Maximum="150" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="Scale_Changed"/>
+                  </DockPanel>
+                  <DockPanel Margin="0,6,0,0">
+                    <TextBlock x:Name="ScaleListText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="{DynamicResource cFF8A97AA}" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="File list" Width="70" VerticalAlignment="Center"/>
+                    <Slider x:Name="ScaleList" Minimum="80" Maximum="150" TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="Scale_Changed"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="Each area on its own, on top of the size above: a bigger file list with a compact sidebar, for example."/>
+
+                  <CheckBox x:Name="SinglePaneBox" Content="One pane" Click="SinglePane_Click" Margin="0,4,0,0"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Hides the right pane, Explorer style. Ctrl+P (or its button at the bottom) switches. Ctrl+F5 and F6 bring the second pane back, since they copy into it."/>
+                  <CheckBox x:Name="CloseEmptyPaneBox" Content="Close the second pane with its last tab" Click="CloseEmptyPane_Click" Margin="0,4,0,0"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Closing the right pane's last tab (its x, Ctrl+W or a middle click) hides the pane, as Ctrl+P does; Ctrl+P brings it back with that tab. Off: a pane's last tab can't be closed."/>
+
+                  <CheckBox x:Name="StatsBox" Content="Summary cards below the panes" Click="Stats_Click" Margin="0,4,0,0"/>
+                  <CheckBox x:Name="StatsCompactBox" Content="Compact: one line each" Click="Stats_Click" Margin="22,6,0,0"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="The drive, the folder and the selection. Compact keeps the figures and drops the icons, bars and second lines; off gives the panes the whole height."/>
+
+                </StackPanel>
+              </Border>
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Text="Motion" Style="{StaticResource H}"/>
+                  <CheckBox x:Name="AnimationsBox" Content="Animations" Click="Animations_Click" Margin="0,4,0,0"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Short fades when a folder is read, when panes change and when a transfer appears. Off means everything switches instantly."/>
+                  <CheckBox x:Name="SmoothScrollBox" Content="Smooth scrolling" Click="SmoothScroll_Click" Margin="0,4,0,0"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="The mouse wheel glides the file list instead of jumping a few rows at a time."/>
+                  <CheckBox x:Name="AutoscrollBox" Content="Middle-click autoscroll" Click="Autoscroll_Click" Margin="0,4,0,0"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="A middle click on the list's empty space puts a round marker there, as in a browser: move the mouse away from it and the list scrolls that way, faster the further you go. A left or middle click stops it, and so does letting go if you held the button down. A middle click on a folder still opens it in a new tab."/>
+                  <CheckBox x:Name="AutoscrollUpDownBox" Content="Up and down only" Click="Autoscroll_Click" Margin="22,0,0,0"/>
+                  <TextBlock Style="{StaticResource Hint}" Margin="22,2,0,10" Text="Sideways movement is ignored, so a wide Details list doesn't drift left or right."/>
+                </StackPanel>
+              </Border>
+          </StackPanel>
+          <StackPanel x:Name="PageFiles" Visibility="Collapsed">
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <DockPanel>
+                    <Button x:Name="ResetFiles" DockPanel.Dock="Right" Content="Reset" Style="{StaticResource Tab}" VerticalAlignment="Top" Click="ResetSection_Click"
+                            ToolTip="Put this card's settings back to their defaults"/>
+                    <TextBlock Text="Files" Style="{StaticResource H}"/>
+                  </DockPanel>
+                  <CheckBox x:Name="HiddenBox" Content="Show hidden files" Click="Hidden_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Also Ctrl+H."/>
+                  <CheckBox x:Name="ShortcutFoldersBox" Content="Sort shortcuts to folders with the folders" Click="ShortcutFolders_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="A shortcut that opens a folder is listed among the folders, at the top, instead of among the files."/>
+                  <CheckBox x:Name="EditorBox" Content="Open code and text files in the File Labs editor" Click="Editor_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Enter or double-click on a .txt, .json, .py, .php, .html, .ps1 and every other code or text file opens it in the built-in editor. Off: it opens in the app Windows has for it. F4 always opens the built-in editor."/>
+                  <CheckBox x:Name="QuickLookBox" Content="Space opens QuickLook" Click="QuickLook_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="For QuickLook users: when it is running, Space previews in QuickLook instead of Quick View, and the preview follows the selection. When it is not running, Quick View opens as usual."/>
+                  <CheckBox x:Name="ItemTipsBox" Content="Show details when hovering a file" Click="ItemTips_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="A tooltip with the full name, type, size and date, as in Explorer."/>
+                  <DockPanel Margin="0,2,0,0">
+                    <TextBlock x:Name="TipDelayText" DockPanel.Dock="Right" Width="40" TextAlignment="Right" Foreground="{DynamicResource cFF8A97AA}" Typography.NumeralAlignment="Tabular"/>
+                    <TextBlock Text="Tooltip delay" Width="90" VerticalAlignment="Center"/>
+                    <Slider x:Name="TipDelaySlider" Minimum="0" Maximum="3000" TickFrequency="100" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="TipDelay_Changed"/>
+                  </DockPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="How long the pointer rests on something before its tooltip shows, for every tooltip in File Labs, the next one too: running the pointer down a list no longer pops one on every row. 1.5 s unless you change it (1 s before 1.0.51). Takes effect the next time File Labs starts."/>
+                  <CheckBox x:Name="DeleteSoundBox" Content="Play a sound when deleting permanently" Click="DeleteSound_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Shift+Delete: the warning when it asks, and Windows' recycle sound when it deletes. Off: both are silent."/>
+                  <TextBlock Text="Search in subfolders stops after"/>
+                  <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                    <Button x:Name="Limit1k" Content="1,000" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
+                    <Button x:Name="Limit10k" Content="10,000" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
+                    <Button x:Name="Limit100k" Content="100,000" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
+                    <Button x:Name="LimitNone" Content="No limit" Style="{StaticResource Tab}" Click="SearchLimit_Click"/>
+                  </StackPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="Results found when you press Enter in the filter box. When a search stops there, Enter again carries on from where it stopped."/>
+                  <TextBlock Text="Right-click menu"/>
+                  <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                    <Button x:Name="MenuOwn" Content="File Labs" Style="{StaticResource Tab}" Click="Menu_Click"/>
+                    <Button x:Name="MenuWin" Content="Windows" Style="{StaticResource Tab}" Click="Menu_Click"/>
+                  </StackPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="File Labs: a compact menu that matches the app. Windows: the full Explorer menu, with Send to, Open with and extensions like 7-Zip. The File Labs menu has a 'Windows menu…' item."/>
+                  <CheckBox x:Name="MissingAppsBox" Content="Show items for our other apps that aren't installed" Margin="0,8,0,0" Click="MissingApps_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Scan with SpaceScan, Add to Shelf, Add to Reel and Back up with Backup Labs. When the app isn't on this PC, the item opens its web page. Off: the item shows only once the app is installed."/>
+                </StackPanel>
+              </Border>
+          </StackPanel>
+          <StackPanel x:Name="PageTransfers" Visibility="Collapsed">
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <DockPanel>
+                    <Button x:Name="ResetTransfers" DockPanel.Dock="Right" Content="Reset" Style="{StaticResource Tab}" VerticalAlignment="Top" Click="ResetSection_Click"
+                            ToolTip="Put this card's settings back to their defaults"/>
+                    <TextBlock Text="Transfers" Style="{StaticResource H}"/>
+                  </DockPanel>
+                  <CheckBox x:Name="VerifyBox" Content="Verify copies after transfer" Click="Verify_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Reads source and copy back and compares xxHash3 digests. Catches a disk or cable that dropped bytes, at the cost of a second full read. On a move, a source whose copy doesn't match is kept."/>
+                  <CheckBox x:Name="ParallelBox" Content="Copy small files several at once" Margin="0,10,0,0" Click="Parallel_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Files under 16 MB go four at a time when both drives are SSDs or network shares, where a small file is mostly waiting. To or from a spinning disk they still go one by one, and big files always do."/>
+                </StackPanel>
+              </Border>
+          </StackPanel>
+          <StackPanel x:Name="PageWindows" Visibility="Collapsed">
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Text="Windows integration" Style="{StaticResource H}"/>
+                  <CheckBox x:Name="DefaultBox" Content="Use File Labs as the default file manager" Click="Default_Click"/>
+                  <TextBlock Style="{StaticResource Hint}">
+                    Opening a folder or drive (desktop, Start, other apps) and Win+E open File Labs instead of File Explorer.
+                    Only your user account is changed, and switching this off removes everything it added.
+                    If you move FileLabs.exe, switch it off and on again.
+                  </TextBlock>
+                  <CheckBox x:Name="WinEBox" Content="Win+E opens File Labs" Click="WinE_Click" Margin="22,0,0,0"/>
+                  <TextBlock Style="{StaticResource Hint}" Margin="22,2,0,10" Text="Off: Win+E keeps opening File Explorer while folders still open in File Labs."/>
+                  <CheckBox x:Name="TrayBox" Content="Close to the notification area" Click="Tray_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Closing the window hides File Labs next to the clock instead of quitting, so it opens again at once. Click its icon to bring it back; right-click the icon → Quit to really close."/>
+                  <CheckBox x:Name="StartupBox" Content="Start with Windows, hidden next to the clock" Click="Startup_Click" Margin="22,0,0,0"/>
+                  <TextBlock Style="{StaticResource Hint}" Margin="22,2,0,10" Text="Off unless you turn it on. File Labs starts when you sign in and waits by the clock, so even the first window of the day opens at once; this also turns on Close to the notification area. It uses some memory while it waits."/>
+                </StackPanel>
+              </Border>
+          </StackPanel>
+          <StackPanel x:Name="PageAbout" Visibility="Collapsed">
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Text="About" Style="{StaticResource H}"/>
+                  <TextBlock x:Name="AboutText" Foreground="{DynamicResource cFF8A97AA}" TextWrapping="Wrap"/>
+                  <TextBlock x:Name="StartupText" Foreground="{DynamicResource cFF8A97AA}" TextWrapping="Wrap" Margin="0,6,0,0"
+                             ToolTip="From launching File Labs to its window, and to the files in its panes. The last starts are in startup.log in the settings folder."/>
+                  <WrapPanel Margin="0,10,0,0">
+                    <Button x:Name="UpdateCheck" Content="Check for updates" Style="{StaticResource Tab}" Padding="12,6" Click="Update_Click"/>
+                    <Button Content="What&#x2019;s new" Style="{StaticResource Tab}" Padding="12,6" Margin="6,0,0,0" Click="WhatsNew_Click"/>
+                    <TextBlock x:Name="UpdateStatus" Foreground="{DynamicResource cFF8A97AA}" VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
+                  </WrapPanel>
+                  <TextBlock Foreground="{DynamicResource cFF8A97AA}" TextWrapping="Wrap" Margin="0,10,0,0">
+                    <TextBlock.Resources><Style TargetType="Hyperlink"><Setter Property="Foreground" Value="{DynamicResource cFFE8EEF6}"/></Style></TextBlock.Resources>
+                    Feedback: <Hyperlink NavigateUri="mailto:feedback@protagonistlabs.app?subject=File%20Labs%20feedback" RequestNavigate="Link_Navigate">feedback@protagonistlabs.app</Hyperlink>
+                    · <Hyperlink NavigateUri="https://protagonistlabs.app/filelabs/?utm_source=filelabs&amp;utm_medium=app&amp;utm_campaign=about" RequestNavigate="Link_Navigate">Website</Hyperlink>
+                    · <Hyperlink NavigateUri="https://protagonistlabs.app/?utm_source=filelabs&amp;utm_medium=app&amp;utm_campaign=more-apps" RequestNavigate="Link_Navigate">More apps from Protagonist Labs</Hyperlink>
+                  </TextBlock>
+                  <TextBlock Text="Works with" Style="{StaticResource Hint}" Margin="0,14,0,2"/>
+                  <!-- filled by BuildWorksWith: one quiet line per sister app; names are the only links -->
+                  <TextBlock x:Name="WorksWith" Style="{StaticResource Hint}" LineHeight="18" Margin="0">
+                    <TextBlock.Resources>
+                      <Style TargetType="Hyperlink">
+                        <Setter Property="Foreground" Value="{DynamicResource cFFB4BFCE}"/>
+                        <Setter Property="TextDecorations" Value="{x:Null}"/>
+                        <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="TextDecorations" Value="Underline"/></Trigger></Style.Triggers>
+                      </Style>
+                    </TextBlock.Resources>
+                  </TextBlock>
+                </StackPanel>
+              </Border>
+
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Text="Defaults" Style="{StaticResource H}"/>
+                  <Button x:Name="ResetAll" Content="Reset to defaults…" Style="{StaticResource Tab}" HorizontalAlignment="Left" Padding="12,6" Click="ResetAll_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" Text="Appearance, Files and Transfers go back to how File Labs comes, after you confirm. Windows integration stays as it is, and so do your tabs, Quick access lists and folder sizes. Each card's own Reset does just that card."/>
+                </StackPanel>
+              </Border>
+          </StackPanel>
+        </Grid>
+      </ScrollViewer>
+    </Grid>
   </Grid>
 </Window>

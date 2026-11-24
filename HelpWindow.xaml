@@ -3,14 +3,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Help — File Labs" Width="900" Height="740" MinWidth="560" MinHeight="400"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Background="Transparent"
-        Foreground="#E8EEF6" FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="12">
-  <Grid x:Name="Root" Background="#B30A0D13">
+        Foreground="{DynamicResource cFFE8EEF6}" FontFamily="{DynamicResource UiFont}" FontSize="12">
+  <Grid x:Name="Root" Background="{DynamicResource cB30A0D13}">
     <!-- shown once the empty window is on screen (HelpWindow.xaml.cs) -->
     <DockPanel x:Name="Body" Margin="18,14,18,14" Visibility="Collapsed">
-      <Border DockPanel.Dock="Top" Background="#12FFFFFF" CornerRadius="6" Margin="0,0,0,12">
+      <Border DockPanel.Dock="Top" Background="{DynamicResource c12FFFFFF}" CornerRadius="{DynamicResource r6}" Margin="0,0,0,12">
         <Grid>
-          <TextBlock x:Name="FindHint" Text="Find a key or a feature" Foreground="#66FFFFFF" Margin="10,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
-          <TextBox x:Name="Find" Background="Transparent" BorderThickness="0" Foreground="#E8EEF6" CaretBrush="#E8EEF6" Padding="6,6" TextChanged="Find_Changed"/>
+          <TextBlock x:Name="FindHint" Text="Find a key or a feature" Foreground="{DynamicResource c66FFFFFF}" Margin="10,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
+          <TextBox x:Name="Find" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource cFFE8EEF6}" CaretBrush="{DynamicResource cFFE8EEF6}" Padding="6,6" TextChanged="Find_Changed"/>
         </Grid>
       </Border>
       <!-- the topics: a click jumps to one -->

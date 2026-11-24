@@ -1,6 +1,83 @@
 ﻿<Application x:Class="FileExplorer.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Application.Resources>
+    <!-- Theme keys (Themes.cs): the dark look's literals, one key each, which a theme maps to its own. Generated. -->
+    <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <!-- the same colours where they are an edge (BorderBrush): a theme may bevel these -->
+    <SolidColorBrush x:Key="e14FFFFFF" Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="e16FFFFFF" Color="#16FFFFFF"/>
+    <SolidColorBrush x:Key="e1AFFFFFF" Color="#1AFFFFFF"/>
+    <SolidColorBrush x:Key="e1FFFFFFF" Color="#1FFFFFFF"/>
+    <SolidColorBrush x:Key="e26FFFFFF" Color="#26FFFFFF"/>
+    <SolidColorBrush x:Key="e2EFFFFFF" Color="#2EFFFFFF"/>
+    <SolidColorBrush x:Key="e994C8DFF" Color="#994C8DFF"/>
+    <SolidColorBrush x:Key="c08FFFFFF" Color="#08FFFFFF"/>
+    <SolidColorBrush x:Key="c0AFFFFFF" Color="#0AFFFFFF"/>
+    <SolidColorBrush x:Key="c0DFFFFFF" Color="#0DFFFFFF"/>
+    <SolidColorBrush x:Key="c10FFFFFF" Color="#10FFFFFF"/>
+    <SolidColorBrush x:Key="c12FFFFFF" Color="#12FFFFFF"/>
+    <SolidColorBrush x:Key="c14FFFFFF" Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="c16FFFFFF" Color="#16FFFFFF"/>
+    <SolidColorBrush x:Key="c18FFFFFF" Color="#18FFFFFF"/>
+    <SolidColorBrush x:Key="c1AFFFFFF" Color="#1AFFFFFF"/>
+    <SolidColorBrush x:Key="c1FFFFFFF" Color="#1FFFFFFF"/>
+    <SolidColorBrush x:Key="c26FFFFFF" Color="#26FFFFFF"/>
+    <SolidColorBrush x:Key="c29FFFFFF" Color="#29FFFFFF"/>
+    <SolidColorBrush x:Key="c2EFFFFFF" Color="#2EFFFFFF"/>
+    <SolidColorBrush x:Key="c33FFFFFF" Color="#33FFFFFF"/>
+    <SolidColorBrush x:Key="c40000000" Color="#40000000"/>
+    <SolidColorBrush x:Key="c404C8DFF" Color="#404C8DFF"/>
+    <SolidColorBrush x:Key="c4DFFFFFF" Color="#4DFFFFFF"/>
+    <SolidColorBrush x:Key="c59000000" Color="#59000000"/>
+    <SolidColorBrush x:Key="c59FFFFFF" Color="#59FFFFFF"/>
+    <SolidColorBrush x:Key="c66FFFFFF" Color="#66FFFFFF"/>
+    <SolidColorBrush x:Key="c6BFFFFFF" Color="#6BFFFFFF"/>
+    <SolidColorBrush x:Key="c70FFFFFF" Color="#70FFFFFF"/>
+    <SolidColorBrush x:Key="c80FFFFFF" Color="#80FFFFFF"/>
+    <SolidColorBrush x:Key="c994C8DFF" Color="#994C8DFF"/>
+    <SolidColorBrush x:Key="c99FFFFFF" Color="#99FFFFFF"/>
+    <SolidColorBrush x:Key="cB30A0D13" Color="#B30A0D13"/>
+    <SolidColorBrush x:Key="cB3FFFFFF" Color="#B3FFFFFF"/>
+    <SolidColorBrush x:Key="cD0FFFFFF" Color="#D0FFFFFF"/>
+    <SolidColorBrush x:Key="cD91A1F29" Color="#D91A1F29"/>
+    <SolidColorBrush x:Key="cE6FFFFFF" Color="#E6FFFFFF"/>
+    <SolidColorBrush x:Key="cF0FFFFFF" Color="#F0FFFFFF"/>
+    <SolidColorBrush x:Key="cF2151A22" Color="#F2151A22"/>
+    <SolidColorBrush x:Key="cF2161B24" Color="#F2161B24"/>
+    <SolidColorBrush x:Key="cFF1C2029" Color="#FF1C2029"/>
+    <SolidColorBrush x:Key="cFF60A5FA" Color="#FF60A5FA"/>
+    <SolidColorBrush x:Key="cFF6E7A8C" Color="#FF6E7A8C"/>
+    <SolidColorBrush x:Key="cFF8A97AA" Color="#FF8A97AA"/>
+    <SolidColorBrush x:Key="cFF9AA6B8" Color="#FF9AA6B8"/>
+    <SolidColorBrush x:Key="cFFB4BECC" Color="#FFB4BECC"/>
+    <SolidColorBrush x:Key="cFFB4BFCE" Color="#FFB4BFCE"/>
+    <SolidColorBrush x:Key="cFFBF3030" Color="#FFBF3030"/>
+    <SolidColorBrush x:Key="cFFC42B1C" Color="#FFC42B1C"/>
+    <SolidColorBrush x:Key="cFFD63A3A" Color="#FFD63A3A"/>
+    <SolidColorBrush x:Key="cFFD6DEEA" Color="#FFD6DEEA"/>
+    <SolidColorBrush x:Key="cFFE54848" Color="#FFE54848"/>
+    <SolidColorBrush x:Key="cFFE8E8E8" Color="#FFE8E8E8"/>
+    <SolidColorBrush x:Key="cFFE8EEF6" Color="#FFE8EEF6"/>
+    <SolidColorBrush x:Key="cFFF25555" Color="#FFF25555"/>
+    <SolidColorBrush x:Key="cFFF2F6FB" Color="#FFF2F6FB"/>
+    <SolidColorBrush x:Key="cFFF87171" Color="#FFF87171"/>
+    <SolidColorBrush x:Key="cFFFFD23F" Color="#FFFFD23F"/>
+    <SolidColorBrush x:Key="cFFFFFFFF" Color="#FFFFFFFF"/>
+    <CornerRadius x:Key="r0">0</CornerRadius>
+    <CornerRadius x:Key="r0_10_10_0">0,10,10,0</CornerRadius>
+    <CornerRadius x:Key="r1p5">1.5</CornerRadius>
+    <CornerRadius x:Key="r10">10</CornerRadius>
+    <CornerRadius x:Key="r12">12</CornerRadius>
+    <CornerRadius x:Key="r2">2</CornerRadius>
+    <CornerRadius x:Key="r2p5">2.5</CornerRadius>
+    <CornerRadius x:Key="r3">3</CornerRadius>
+    <CornerRadius x:Key="r4">4</CornerRadius>
+    <CornerRadius x:Key="r4_10_10_4">4,10,10,4</CornerRadius>
+    <CornerRadius x:Key="r5">5</CornerRadius>
+    <CornerRadius x:Key="r6">6</CornerRadius>
+    <CornerRadius x:Key="r7">7</CornerRadius>
+    <CornerRadius x:Key="r8">8</CornerRadius>
+    <CornerRadius x:Key="r8_8_0_0">8,8,0,0</CornerRadius>
     <SolidColorBrush x:Key="Accent" Color="#4C8DFF"/>
     <!-- the accent at the three transparencies the UI needs; all four follow the colour chosen in Settings -->
     <SolidColorBrush x:Key="AccentEdge" Color="#A64C8DFF"/>
@@ -12,6 +89,11 @@
     <SolidColorBrush x:Key="Muted" Color="#8CFFFFFF"/>
     <!-- the darker band tabs sit on -->
     <SolidColorBrush x:Key="TabStripBg" Color="#2E000000"/>
+    <!-- the sidebar's veil; a theme may give it a gradient (Themes.cs) -->
+    <SolidColorBrush x:Key="SidebarBg" Color="#40000000"/>
+    <!-- the filter box in each pane, and its edge (none, except in themes with white fields) -->
+    <SolidColorBrush x:Key="SearchBg" Color="#12FFFFFF"/>
+    <SolidColorBrush x:Key="SearchEdge" Color="#00000000"/>
     <!-- ScrollViewer corner square and similar system fills: keep them see-through -->
     <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="Transparent"/>
 
@@ -20,10 +102,10 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Thumb">
-            <Border x:Name="B" Background="#29FFFFFF" CornerRadius="3" Margin="2"/>
+            <Border x:Name="B" Background="{DynamicResource c29FFFFFF}" CornerRadius="{DynamicResource r3}" Margin="2"/>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="Background" Value="#4DFFFFFF"/></Trigger>
-              <Trigger Property="IsDragging" Value="True"><Setter TargetName="B" Property="Background" Value="#6BFFFFFF"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="B" Property="Background" Value="{DynamicResource c4DFFFFFF}"/></Trigger>
+              <Trigger Property="IsDragging" Value="True"><Setter TargetName="B" Property="Background" Value="{DynamicResource c6BFFFFFF}"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -89,22 +171,22 @@
     </Style>
     <Style TargetType="ListViewItem" BasedOn="{StaticResource ItemTip}">
       <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-      <Setter Property="Foreground" Value="#E8EEF6"/>
+      <Setter Property="Foreground" Value="{DynamicResource cFFE8EEF6}"/>
       <Setter Property="Padding" Value="{DynamicResource RowPad}"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ListViewItem">
             <Grid>
-            <Border x:Name="Bd" Background="Transparent" Opacity="{Binding RowFade, RelativeSource={RelativeSource AncestorType=ListView}, FallbackValue=1}" CornerRadius="2" Padding="{TemplateBinding Padding}">
+            <Border x:Name="Bd" Background="Transparent" Opacity="{Binding RowFade, RelativeSource={RelativeSource AncestorType=ListView}, FallbackValue=1}" CornerRadius="{DynamicResource r2}" Padding="{TemplateBinding Padding}">
               <Grid>
                 <GridViewRowPresenter/>
                 <!-- the age bar: a block in the row's age colour, wide enough to spot recent files down a
                      long list. It sits in the row padding and the name cell's margin, so the columns
                      stay aligned with the headers. -->
-                <Border Width="6" CornerRadius="2" Background="{Binding AgeBrush}" HorizontalAlignment="Left" Margin="-4,0,0,0"/>
+                <Border Width="6" CornerRadius="{DynamicResource r2}" Background="{Binding AgeBrush}" HorizontalAlignment="Left" Margin="-4,0,0,0"/>
               </Grid>
             </Border>
-            <Border x:Name="Focus" CornerRadius="2" BorderThickness="1" IsHitTestVisible="False"/>
+            <Border x:Name="Focus" CornerRadius="{DynamicResource r2}" BorderThickness="1" IsHitTestVisible="False"/>
             </Grid>
             <ControlTemplate.Triggers>
               <!-- where the keyboard is when nothing is selected (a click on empty space): an outline, as in Explorer (Rico, 1.0.53) -->
@@ -115,9 +197,9 @@
               <!-- the inactive pane's rows recede (FileList.RowFade), its selected rows don't -->
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="1"/></Trigger>
               <!-- every other row a touch lighter, so a long row is easy to follow across -->
-              <Trigger Property="ItemsControl.AlternationIndex" Value="1"><Setter TargetName="Bd" Property="Background" Value="#08FFFFFF"/></Trigger>
+              <Trigger Property="ItemsControl.AlternationIndex" Value="1"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c08FFFFFF}"/></Trigger>
               <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c10FFFFFF}"/></Trigger>
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/><Setter Property="Foreground" Value="{DynamicResource AccentSelectText}"/></Trigger>
               <!-- the folder a drag would drop into: brighter than the selection, so the two never look alike -->
               <DataTrigger Binding="{Binding DropHover}" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentEdge}"/></DataTrigger>
@@ -127,21 +209,21 @@
       </Setter>
     </Style>
     <Style TargetType="GridViewColumnHeader">
-      <Setter Property="Foreground" Value="#9AA6B8"/>
+      <Setter Property="Foreground" Value="{DynamicResource cFF9AA6B8}"/>
       <Setter Property="FontSize" Value="12"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="GridViewColumnHeader">
             <!-- flat header row: bottom rule, a thin separator on each column's right edge (also the resize grip) -->
             <Grid>
-              <Border x:Name="Bd" Background="Transparent" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="10,6,12,6" Cursor="Hand">
+              <Border x:Name="Bd" Background="Transparent" BorderBrush="{DynamicResource e1FFFFFFF}" BorderThickness="0,0,0,1" Padding="10,6,12,6" Cursor="Hand">
                 <ContentPresenter HorizontalAlignment="Stretch"/>
               </Border>
               <Thumb x:Name="PART_HeaderGripper" HorizontalAlignment="Right" Width="9" Margin="0,0,-5,1" Cursor="SizeWE">
                 <Thumb.Template>
                   <ControlTemplate TargetType="Thumb">
                     <Border Background="Transparent">
-                      <Border x:Name="G" Width="1" Margin="0,6" Background="#2EFFFFFF" HorizontalAlignment="Center"/>
+                      <Border x:Name="G" Width="1" Margin="0,6" Background="{DynamicResource c2EFFFFFF}" HorizontalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
                       <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="G" Property="Background" Value="{DynamicResource Accent}"/><Setter TargetName="G" Property="Width" Value="2"/></Trigger>
@@ -153,8 +235,8 @@
             </Grid>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="Bd" Property="Background" Value="#0DFFFFFF"/>
-                <Setter Property="Foreground" Value="#E8EEF6"/>
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c0DFFFFFF}"/>
+                <Setter Property="Foreground" Value="{DynamicResource cFFE8EEF6}"/>
               </Trigger>
               <!-- filler after the last column: just the bottom rule -->
               <Trigger Property="Role" Value="Padding">
@@ -177,15 +259,15 @@
 
     <!-- Icon / list views: size comes from the ListView's Tag (thumbnail edge in px) -->
     <Style x:Key="ListViewItem.Plain" TargetType="ListViewItem" BasedOn="{StaticResource ItemTip}">
-      <Setter Property="Foreground" Value="#E8EEF6"/>
+      <Setter Property="Foreground" Value="{DynamicResource cFFE8EEF6}"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ListViewItem">
             <Grid Margin="0,0,8,0">
-            <Border x:Name="Bd" Background="Transparent" Opacity="{Binding RowFade, RelativeSource={RelativeSource AncestorType=ListView}, FallbackValue=1}" CornerRadius="2" Padding="4,3">
+            <Border x:Name="Bd" Background="Transparent" Opacity="{Binding RowFade, RelativeSource={RelativeSource AncestorType=ListView}, FallbackValue=1}" CornerRadius="{DynamicResource r2}" Padding="4,3">
               <ContentPresenter/>
             </Border>
-            <Border x:Name="Focus" CornerRadius="2" BorderThickness="1" IsHitTestVisible="False"/>
+            <Border x:Name="Focus" CornerRadius="{DynamicResource r2}" BorderThickness="1" IsHitTestVisible="False"/>
             </Grid>
             <ControlTemplate.Triggers>
               <MultiTrigger>
@@ -195,9 +277,9 @@
               <!-- the inactive pane's rows recede (FileList.RowFade), its selected rows don't -->
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="1"/></Trigger>
               <!-- every other row a touch lighter, so a long row is easy to follow across -->
-              <Trigger Property="ItemsControl.AlternationIndex" Value="1"><Setter TargetName="Bd" Property="Background" Value="#08FFFFFF"/></Trigger>
+              <Trigger Property="ItemsControl.AlternationIndex" Value="1"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c08FFFFFF}"/></Trigger>
               <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c10FFFFFF}"/></Trigger>
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/><Setter Property="Foreground" Value="{DynamicResource AccentSelectText}"/></Trigger>
               <!-- the folder a drag would drop into: brighter than the selection, so the two never look alike -->
               <DataTrigger Binding="{Binding DropHover}" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentEdge}"/></DataTrigger>
@@ -207,17 +289,17 @@
       </Setter>
     </Style>
     <Style x:Key="TileItem" TargetType="ListViewItem" BasedOn="{StaticResource ItemTip}">
-      <Setter Property="Foreground" Value="#E8EEF6"/>
+      <Setter Property="Foreground" Value="{DynamicResource cFFE8EEF6}"/>
       <Setter Property="Margin" Value="2"/>
       <Setter Property="VerticalContentAlignment" Value="Top"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ListViewItem">
             <Grid>
-            <Border x:Name="Bd" Background="Transparent" Opacity="{Binding RowFade, RelativeSource={RelativeSource AncestorType=ListView}, FallbackValue=1}" CornerRadius="3" Padding="6">
+            <Border x:Name="Bd" Background="Transparent" Opacity="{Binding RowFade, RelativeSource={RelativeSource AncestorType=ListView}, FallbackValue=1}" CornerRadius="{DynamicResource r3}" Padding="6">
               <ContentPresenter/>
             </Border>
-            <Border x:Name="Focus" CornerRadius="3" BorderThickness="1" IsHitTestVisible="False"/>
+            <Border x:Name="Focus" CornerRadius="{DynamicResource r3}" BorderThickness="1" IsHitTestVisible="False"/>
             </Grid>
             <ControlTemplate.Triggers>
               <MultiTrigger>
@@ -227,7 +309,7 @@
               <!-- the inactive pane's rows recede (FileList.RowFade), its selected rows don't -->
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="1"/></Trigger>
               <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c10FFFFFF}"/></Trigger>
               <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/><Setter Property="Foreground" Value="{DynamicResource AccentSelectText}"/></Trigger>
               <!-- the folder a drag would drop into: brighter than the selection, so the two never look alike -->
               <DataTrigger Binding="{Binding DropHover}" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentEdge}"/></DataTrigger>
@@ -239,23 +321,23 @@
 
     <Style x:Key="SidebarHeader" TargetType="Border">
       <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="CornerRadius" Value="5"/>
+      <Setter Property="CornerRadius" Value="{DynamicResource r5}"/>
       <Style.Triggers>
-        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#10FFFFFF"/></Trigger>
+        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource c10FFFFFF}"/></Trigger>
       </Style.Triggers>
     </Style>
 
     <Style x:Key="Ghost" TargetType="Button">
-      <Setter Property="Foreground" Value="#D0FFFFFF"/>
+      <Setter Property="Foreground" Value="{DynamicResource cD0FFFFFF}"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="5" Padding="7,4">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource r5}" Padding="7,4">
               <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#14FFFFFF"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c14FFFFFF}"/></Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
@@ -265,20 +347,20 @@
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
     </Style>
     <Style x:Key="Tab" TargetType="Button" BasedOn="{StaticResource Ghost}">
-      <Setter Property="Foreground" Value="#80FFFFFF"/>
+      <Setter Property="Foreground" Value="{DynamicResource c80FFFFFF}"/>
       <Setter Property="FontSize" Value="11"/>
       <Setter Property="MaxWidth" Value="140"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Background="Transparent" CornerRadius="5" Padding="9,3" Margin="0,0,2,0">
+            <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource r5}" Padding="9,3" Margin="0,0,2,0">
               <ContentPresenter/>
             </Border>
             <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#10FFFFFF"/></Trigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c10FFFFFF}"/></Trigger>
               <Trigger Property="Tag" Value="on">
-                <Setter TargetName="Bd" Property="Background" Value="#1AFFFFFF"/>
-                <Setter Property="Foreground" Value="#F0FFFFFF"/>
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c1AFFFFFF}"/>
+                <Setter Property="Foreground" Value="{DynamicResource cF0FFFFFF}"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -286,7 +368,7 @@
       </Setter>
     </Style>
     <Style x:Key="BrowserTab" TargetType="Button">
-      <Setter Property="Foreground" Value="#B4BECC"/>
+      <Setter Property="Foreground" Value="{DynamicResource cFFB4BECC}"/>
       <Setter Property="FontSize" Value="12"/>
       <Setter Property="MinWidth" Value="0"/>
       <Setter Property="Cursor" Value="Hand"/>
@@ -298,22 +380,23 @@
               <!-- the strip shape behind paints the tab; this only adds hover, the divider and the active tab's accent
                    line along its rounded top (as Frostpane's). The 2 px line is always there, transparent when not
                    active, and comes out of the top padding: no tab changes height. -->
-              <Border x:Name="Bd" Background="Transparent" CornerRadius="8,8,0,0" Padding="9,5,6,7" Margin="0,4,0,0" BorderThickness="0,2,0,0" BorderBrush="Transparent">
+              <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource r8_8_0_0}" Padding="9,5,6,7" Margin="0,4,0,0" BorderThickness="0,2,0,0" BorderBrush="Transparent">
                 <!-- as tall as the close button, shown or not: a pinned tab has none, and the row of tabs
                      grew 2 px whenever a hover or a click brought one up -->
                 <ContentPresenter MinHeight="18"/>
               </Border>
-              <Border x:Name="Divider" Width="1" Margin="0,12,0,8" HorizontalAlignment="Right" Background="#2EFFFFFF"/>
+              <Border x:Name="Divider" Width="1" Margin="0,12,0,8" HorizontalAlignment="Right" Background="{DynamicResource c2EFFFFFF}"/>
             </Grid>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="Bd" Property="Background" Value="#0DFFFFFF"/>
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c0DFFFFFF}"/>
               </Trigger>
               <Trigger Property="Tag" Value="on">
                 <Setter TargetName="Bd" Property="Background" Value="Transparent"/>
-                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource TabMark}"/>
+                <Setter Property="FontWeight" Value="{DynamicResource TabWeight}"/>
                 <Setter TargetName="Divider" Property="Visibility" Value="Hidden"/>
-                <Setter Property="Foreground" Value="#F2F6FB"/>
+                <Setter Property="Foreground" Value="{DynamicResource cFFF2F6FB}"/>
               </Trigger>
               <Trigger Property="Uid" Value="beforeActive">
                 <Setter TargetName="Divider" Property="Visibility" Value="Hidden"/>
@@ -324,18 +407,18 @@
       </Setter>
     </Style>
     <Style x:Key="TabClose" TargetType="Button">
-      <Setter Property="Foreground" Value="#8A97AA"/>
+      <Setter Property="Foreground" Value="{DynamicResource cFF8A97AA}"/>
       <Setter Property="Visibility" Value="Collapsed"/> <!-- takes no room when not shown, so narrow tabs keep their name -->
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
-            <Border x:Name="Bd" Width="18" Height="18" CornerRadius="4" Background="Transparent" Margin="6,0,0,0">
+            <Border x:Name="Bd" Width="18" Height="18" CornerRadius="{DynamicResource r4}" Background="Transparent" Margin="6,0,0,0">
               <TextBlock Text="&#xE711;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="9" FontWeight="Normal" Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="Bd" Property="Background" Value="#26FFFFFF"/>
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource c26FFFFFF}"/>
                 <Setter Property="Foreground" Value="White"/>
               </Trigger>
             </ControlTemplate.Triggers>
@@ -354,7 +437,7 @@
     </Style>
     <Style x:Key="Bare" TargetType="TextBox">
       <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="Foreground" Value="#F0FFFFFF"/>
+      <Setter Property="Foreground" Value="{DynamicResource cF0FFFFFF}"/>
       <Setter Property="CaretBrush" Value="White"/>
       <Setter Property="BorderThickness" Value="0"/>
       <Setter Property="VerticalAlignment" Value="Center"/>
@@ -370,8 +453,8 @@
         <Setter.Value>
           <ControlTemplate TargetType="ProgressBar">
             <Grid>
-              <Border x:Name="PART_Track" Background="#1AFFFFFF" CornerRadius="2"/>
-              <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" CornerRadius="2" HorizontalAlignment="Left"/>
+              <Border x:Name="PART_Track" Background="{DynamicResource c1AFFFFFF}" CornerRadius="{DynamicResource r2}"/>
+              <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" CornerRadius="{DynamicResource r2}" HorizontalAlignment="Left"/>
             </Grid>
           </ControlTemplate>
         </Setter.Value>
@@ -384,11 +467,11 @@
         <Setter.Value>
           <ControlTemplate TargetType="Slider">
             <Grid Height="18">
-              <Border Height="3" CornerRadius="1.5" Background="#1AFFFFFF" VerticalAlignment="Center"/>
+              <Border Height="3" CornerRadius="{DynamicResource r1p5}" Background="{DynamicResource c1AFFFFFF}" VerticalAlignment="Center"/>
               <Track x:Name="PART_Track">
                 <Track.DecreaseRepeatButton>
                   <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
-                    <RepeatButton.Template><ControlTemplate><Border Height="3" CornerRadius="1.5" Background="{DynamicResource Accent}"/></ControlTemplate></RepeatButton.Template>
+                    <RepeatButton.Template><ControlTemplate><Border Height="3" CornerRadius="{DynamicResource r1p5}" Background="{DynamicResource Accent}"/></ControlTemplate></RepeatButton.Template>
                   </RepeatButton>
                 </Track.DecreaseRepeatButton>
                 <Track.IncreaseRepeatButton>
@@ -398,7 +481,7 @@
                 </Track.IncreaseRepeatButton>
                 <Track.Thumb>
                   <Thumb>
-                    <Thumb.Template><ControlTemplate><Ellipse Width="12" Height="12" Fill="#E8EEF6"/></ControlTemplate></Thumb.Template>
+                    <Thumb.Template><ControlTemplate><Ellipse Width="12" Height="12" Fill="{DynamicResource cFFE8EEF6}"/></ControlTemplate></Thumb.Template>
                   </Thumb>
                 </Track.Thumb>
               </Track>
@@ -409,14 +492,14 @@
     </Style>
 
     <Style TargetType="CheckBox">
-      <Setter Property="Foreground" Value="#E8EEF6"/>
+      <Setter Property="Foreground" Value="{DynamicResource cFFE8EEF6}"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="CheckBox">
             <DockPanel Background="Transparent">
-              <Border x:Name="Track" DockPanel.Dock="Left" Width="30" Height="16" CornerRadius="8" Background="#1FFFFFFF" Margin="0,0,10,0" VerticalAlignment="Center">
-                <Ellipse x:Name="Knob" Width="10" Height="10" Fill="#8A97AA" HorizontalAlignment="Left" Margin="3,0"/>
+              <Border x:Name="Track" DockPanel.Dock="Left" Width="30" Height="16" CornerRadius="{DynamicResource r8}" Background="{DynamicResource c1FFFFFFF}" Margin="0,0,10,0" VerticalAlignment="Center">
+                <Ellipse x:Name="Knob" Width="10" Height="10" Fill="{DynamicResource cFF8A97AA}" HorizontalAlignment="Left" Margin="3,0"/>
               </Border>
               <ContentPresenter VerticalAlignment="Center"/>
             </DockPanel>
@@ -427,7 +510,7 @@
                 <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right"/>
               </Trigger>
               <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter TargetName="Track" Property="BorderBrush" Value="#994C8DFF"/>
+                <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource e994C8DFF}"/>
                 <Setter TargetName="Track" Property="BorderThickness" Value="1"/>
               </Trigger>
             </ControlTemplate.Triggers>
@@ -439,13 +522,13 @@
     <!-- Menus stay opaque (Branding: menus on glass become unreadable) -->
     <!-- Context menu: opaque (menus on glass become unreadable), rounded, icon | text | shortcut -->
     <Style TargetType="ContextMenu">
-      <Setter Property="Foreground" Value="#E8EEF6"/>
+      <Setter Property="Foreground" Value="{DynamicResource cFFE8EEF6}"/>
       <Setter Property="FontSize" Value="12"/>
       <Setter Property="HasDropShadow" Value="True"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ContextMenu">
-            <Border Background="#1C2029" BorderBrush="#2EFFFFFF" BorderThickness="1" CornerRadius="8" Padding="0,4" MinWidth="220" Margin="0,0,6,6">
+            <Border Background="{DynamicResource cFF1C2029}" BorderBrush="{DynamicResource e2EFFFFFF}" BorderThickness="1" CornerRadius="{DynamicResource r8}" Padding="0,4" MinWidth="220" Margin="0,0,6,6">
               <Border.Effect><DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.45"/></Border.Effect>
               <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
             </Border>
@@ -454,28 +537,28 @@
       </Setter>
     </Style>
     <Style TargetType="MenuItem">
-      <Setter Property="Foreground" Value="#E8EEF6"/>
+      <Setter Property="Foreground" Value="{DynamicResource cFFE8EEF6}"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="MenuItem">
             <Grid>
-              <Border x:Name="Bd" Background="Transparent" CornerRadius="5" Margin="4,0" Padding="8,5">
+              <Border x:Name="Bd" Background="Transparent" CornerRadius="{DynamicResource r5}" Margin="4,0" Padding="8,5">
                 <Grid>
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="26"/>
                     <ColumnDefinition/>
                     <ColumnDefinition Width="Auto"/>
                   </Grid.ColumnDefinitions>
-                  <ContentPresenter ContentSource="Icon" VerticalAlignment="Center" TextElement.Foreground="#8A97AA"/>
+                  <ContentPresenter ContentSource="Icon" VerticalAlignment="Center" TextElement.Foreground="{DynamicResource cFF8A97AA}"/>
                   <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="True" VerticalAlignment="Center"/>
-                  <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}" Foreground="#6E7A8C" Margin="28,0,0,0" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="2" Text="{TemplateBinding InputGestureText}" Foreground="{DynamicResource cFF6E7A8C}" Margin="28,0,0,0" VerticalAlignment="Center"/>
                   <!-- an item with children shows the usual arrow instead of a shortcut -->
-                  <Path x:Name="Arrow" Grid.Column="2" Data="M0,0 L4,4 L0,8 Z" Fill="#8A97AA" Margin="28,0,2,0" VerticalAlignment="Center" Visibility="Collapsed"/>
+                  <Path x:Name="Arrow" Grid.Column="2" Data="M0,0 L4,4 L0,8 Z" Fill="{DynamicResource cFF8A97AA}" Margin="28,0,2,0" VerticalAlignment="Center" Visibility="Collapsed"/>
                 </Grid>
               </Border>
               <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsSubmenuOpen}" Placement="Right" HorizontalOffset="-6"
                      AllowsTransparency="True" Focusable="False" PopupAnimation="{DynamicResource {x:Static SystemParameters.MenuPopupAnimationKey}}">
-                <Border Background="#1C2029" BorderBrush="#2EFFFFFF" BorderThickness="1" CornerRadius="8" Padding="0,4" MinWidth="160" Margin="0,0,6,6">
+                <Border Background="{DynamicResource cFF1C2029}" BorderBrush="{DynamicResource e2EFFFFFF}" BorderThickness="1" CornerRadius="{DynamicResource r8}" Padding="0,4" MinWidth="160" Margin="0,0,6,6">
                   <Border.Effect><DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.45"/></Border.Effect>
                   <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle"/>
                 </Border>
@@ -501,7 +584,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Separator">
-            <Border Height="1" Margin="12,4" Background="#1FFFFFFF"/>
+            <Border Height="1" Margin="12,4" Background="{DynamicResource c1FFFFFFF}"/>
           </ControlTemplate>
         </Setter.Value>
       </Setter>

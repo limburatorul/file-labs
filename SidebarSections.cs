@@ -131,6 +131,7 @@ public partial class MainWindow
             Foreground = Hex("#8A97AA"), Margin = new(0, 1, 7, 0), VerticalAlignment = VerticalAlignment.Center,
         };
         var title = new TextBlock { Text = section.Title, Foreground = (Brush)FindResource("Muted"), FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+        if (Themes.Current.SideCaps) { title.Text = section.Title.ToUpperInvariant(); title.FontWeight = FontWeights.Bold; }
         var grip = new TextBlock
         {
             Text = "", FontFamily = new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontSize = 11, Foreground = Hex("#59FFFFFF"),
@@ -180,7 +181,7 @@ public partial class MainWindow
         var wrapper = new Border
         {
             Child = body, Tag = section.Key, CornerRadius = new(7),
-            BorderThickness = new(1), BorderBrush = Hex("#16FFFFFF"), Background = Hex("#08FFFFFF"), Margin = new(0, 0, 0, 8), Padding = new(2, 2, 2, 4),
+            BorderThickness = new(1), BorderBrush = Themes.Current.SideCard is { A: 0 } ? Brushes.Transparent : Hex("#16FFFFFF"), Background = Themes.Current.SideCard is Color card ? new SolidColorBrush(card) : Hex("#08FFFFFF"), Margin = new(0, 0, 0, 8), Padding = new(2, 2, 2, 4),
         };
 
         header.MouseLeftButtonDown += (_, e) => { dragFrom = e.GetPosition(SidebarHost); dragKey = section.Key; };
