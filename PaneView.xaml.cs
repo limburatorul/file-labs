@@ -123,13 +123,15 @@ public class Entry : INotifyPropertyChanged
             return Stops[^1].c;
         }
     }
-    public Brush AgeBrush { get { if (NoDate) return Brushes.Transparent; var b = new SolidColorBrush(AgeColor); b.Freeze(); return b; } }
+    // a monochrome theme shows the age in its one colour too, brighter for newer
+    Color AgeShown => Themes.Current.Mono != null ? Themes.Map(AgeColor) : AgeColor;
+    public Brush AgeBrush { get { if (NoDate) return Brushes.Transparent; var b = new SolidColorBrush(AgeShown); b.Freeze(); return b; } }
     // text on the age badge's own colour, the same in every theme
     static readonly Brush DarkOnAge = Frozen(Color.FromArgb(0xE6, 0x11, 0x11, 0x11)), LightOnAge = Frozen(Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF));
     static Brush Frozen(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
     public Brush AgeTextBrush
     {
-        get { var c = AgeColor; return 0.299 * c.R + 0.587 * c.G + 0.114 * c.B > 140 ? DarkOnAge : LightOnAge; }
+        get { var c = AgeShown; return 0.299 * c.R + 0.587 * c.G + 0.114 * c.B > 140 ? DarkOnAge : LightOnAge; }
     }
     public string Age
     {

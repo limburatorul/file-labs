@@ -21,7 +21,7 @@ public sealed record Theme(
     public Func<Brush> Edge { get; init; }
     /// The tab strip is dark (a title bar's blue): what sits on it keeps the dark look's light colours.
     public bool DarkStrip { get; init; }
-    /// The active tab carries an accent line along its top (off in macOS 27, which marks it by its text).
+    /// The active tab carries an accent line along its top (only the Windows themes now; the others mark it by bolder text).
     public bool TabLine { get; init; } = true;
     /// The sidebar sections' own ground, where the sidebar is coloured (XP's light-blue task pane boxes).
     public Color? SideCard { get; init; }
@@ -31,6 +31,8 @@ public sealed record Theme(
     public bool Lights { get; init; }
     /// The window buttons drawn as that system's: "98" or "xp" (null: Windows 11's).
     public string Buttons { get; init; }
+    /// A monochrome terminal's one colour (amber, green phosphor): every colour becomes this colour at its own brightness.
+    public Color? Mono { get; init; }
 }
 
 public static class Themes
@@ -46,7 +48,7 @@ public static class Themes
 
     public static readonly Theme[] All =
     {
-        new("default", "File Labs", false, default, default, default, default, default, 1, default, 1, null, "Segoe UI Variable Text, Segoe UI", 1, false),
+        new("default", "File Labs", false, default, default, default, default, default, 1, default, 1, null, "Segoe UI Variable Text, Segoe UI", 1, false) { TabLine = false },
         // grey 3D chrome, navy selection, Tahoma's older sibling, square corners
         new("win98", "Windows 98", true, C("#C0C0C0"), C("#C0C0C0"), C("#000000"), C("#4A4A4A"), C("#000000"), 1.5, C("#000000"), 0.35,
             "#000080", "Microsoft Sans Serif, Tahoma", 0, true, 0.7)
@@ -75,6 +77,11 @@ public static class Themes
         // macOS 27: Liquid Glass, light and see-through, large corners
         new("macos27", "macOS 27", true, C("#F5F5F7"), C("#FAFAFC"), C("#1D1D1F"), C("#6E6E73"), C("#000000"), 0.85, C("#FFFFFF"), 1.2,
             "#0071E3", "Segoe UI Variable Display, Segoe UI", 1.5, false, 0.8) { TabLine = false, Field = C("#E6FFFFFF") },
+        // the monochrome terminals: one colour glowing on black, a fixed-width font, square corners
+        new("amber", "Amber", false, C("#0C0700"), C("#140C00"), C("#FFB000"), C("#A87400"), default, 1, default, 1,
+            "#FFB000", "Cascadia Mono, Consolas", 0, true) { Mono = C("#FFB000"), TabLine = false },
+        new("phosphor", "Phosphor", false, C("#010A02"), C("#021204"), C("#33FF66"), C("#1FA640"), default, 1, default, 1,
+            "#33FF66", "Cascadia Mono, Consolas", 0, true) { Mono = C("#33FF66"), TabLine = false },
     };
 
     public static Theme Current { get; private set; } = All[0];
@@ -118,6 +125,7 @@ public static class Themes
     public static Color Map(Color c)
     {
         var t = Current;
+        if (t.Mono is Color mono) return Mono(c, t, mono);
         if (!t.Light) return c;
         double max = Math.Max(c.R, Math.Max(c.G, c.B)) / 255.0, min = Math.Min(c.R, Math.Min(c.G, c.B)) / 255.0;
         double sat = max == 0 ? 0 : (max - min) / max, l = (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255;
@@ -132,6 +140,18 @@ public static class Themes
         }
         if (max < 0.04) return With(t.Shade, c.A * t.ShadeGain);                     // black veils: sidebar, tab strip, shades
         return With(c.A >= 0xE0 ? t.Popup : t.Surface, t.Solid && c.A >= 0x80 ? 255 : c.A); // the dark grounds
+    }
+
+    /// The colour at its own brightness in the terminal's one colour, from the black ground up; half-white text made
+    /// opaque (dim to full by its strength) so it stays readable, the dark grounds opaque as on the screen.
+    static Color Mono(Color c, Theme t, Color mono)
+    {
+        double l = (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255, alpha = c.A;
+        if (l >= 0.7 && c.A >= 0x60 && c.A < 0xC8) { l = 0.55 + 0.37 * (c.A - 0x60) / (double)(0xC8 - 0x60); alpha = 255; }
+        else if (l < 0.2 && c.A >= 0x80) alpha = 255;
+        double k = Math.Min(1, l * 1.1);
+        var g = t.Surface;
+        return With(Color.FromRgb((byte)(g.R + (mono.R - g.R) * k), (byte)(g.G + (mono.G - g.G) * k), (byte)(g.B + (mono.B - g.B) * k)), alpha);
     }
 
     static Color With(Color c, double alpha) => Color.FromArgb((byte)Math.Clamp(Math.Round(alpha), 0, 255), c.R, c.G, c.B);

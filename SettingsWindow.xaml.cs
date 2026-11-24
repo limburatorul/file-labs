@@ -107,7 +107,7 @@ public partial class SettingsWindow : Window
     {
         foreach (var t in Themes.All)
         {
-            System.Windows.Media.Color Ground(System.Windows.Media.Color c, string dark) => t.Light ? c : (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(dark);
+            System.Windows.Media.Color Ground(System.Windows.Media.Color c, string dark) => t.Light || t.Mono != null ? c : (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(dark);
             System.Windows.Media.Brush Solid(System.Windows.Media.Color c) => new System.Windows.Media.SolidColorBrush(c);
             var accent = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(t.Accent ?? "#4C8DFF");
             System.Windows.Media.Brush Of(string key, System.Windows.Media.Brush otherwise) => t.Brushes.TryGetValue(key, out var make) ? make() : otherwise;

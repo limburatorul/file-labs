@@ -431,7 +431,7 @@ public partial class App : Application
             // themes (1.0.78): on a light theme the dark look's text, veils and grounds become readable text, ink and
             // an opaque ground, and the default theme leaves every colour as it is
             static System.Windows.Media.Color Hx(string h) => (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(h);
-            foreach (var theme in Themes.All.Where(t => t.Light))
+            foreach (var theme in Themes.All.Where(t => t.Light || t.Mono != null))
             {
                 Themes.Apply(theme.Id);
                 var ground = Themes.Map(Hx("#B30A0D13"));

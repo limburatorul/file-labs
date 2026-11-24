@@ -242,7 +242,7 @@ public partial class MainWindow : Window
     }
 
     public static Brush Tint() =>
-        new SolidColorBrush(Color.FromArgb((byte)(Backdrop == 1 ? 255 : Settings.Opacity * 2.55), 0x0A, 0x0D, 0x13) is var c && Themes.Current.Light
+        new SolidColorBrush(Color.FromArgb((byte)(Backdrop == 1 ? 255 : Settings.Opacity * 2.55), 0x0A, 0x0D, 0x13) is var c && (Themes.Current.Light || Themes.Current.Mono != null)
             ? Color.FromArgb(c.A, Themes.Current.Surface.R, Themes.Current.Surface.G, Themes.Current.Surface.B) : c);
 
     /// The backdrop in use: the classic themes are opaque, whatever Settings says.
