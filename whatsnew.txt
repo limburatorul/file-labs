@@ -1,6 +1,12 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.79 | 2026-11-25 | Rename works again
+Renaming a single file or folder works again.
+**On Windows**
+- F2 and a new name kept the old one since 1.0.77, with Enter or with a click away; renaming many at once was not affected. Thanks to the user who reported it.
+- On Linux nothing changes in this version.
+
 ## 1.0.78 | 2026-11-24 | Themes
 File Labs can now dress as the systems you grew up with, and Settings is no longer one long page.
 **Seven looks**
