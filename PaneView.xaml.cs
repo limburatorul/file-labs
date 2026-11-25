@@ -1928,12 +1928,14 @@ public partial class PaneView : UserControl
     void Finish(TextBox box, bool commit, bool refocus = true)
     {
         if (box.Tag is not Entry entry || !entry.Renaming) return;
+        // read first: ending the rename takes the box away, and its text falls back to the bound name (1.0.77 to
+        // 1.0.78 renamed nothing that way)
+        var name = box.Text.Trim();
         entry.Renaming = false;
         renamingEntry = null; renameBox = null;
         foreach (var other in items) other.Dimmed = false;
         // back to the row, not to the list as a whole: from there the next arrow key started over at the top
         if (refocus && (List.ItemContainerGenerator.ContainerFromItem(entry) as UIElement)?.Focus() != true) List.Focus();
-        var name = box.Text.Trim();
         if (commit && name != "" && name != entry.Name) RenameCommitted?.Invoke(entry, name);
     }
 
