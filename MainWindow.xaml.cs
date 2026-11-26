@@ -1285,6 +1285,11 @@ public partial class MainWindow : Window
     void UpdateLamp()
     {
         bool busy = jobs.Any(j => j.Active);
+        // the bar under the label: bytes done of all running transfers, so the progress shows with the window closed
+        long total = 0, done = 0;
+        foreach (var j in jobs) if (j.Active) { total += j.TotalBytes; done += j.DoneBytes; }
+        TransfersBar.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        TransfersBar.Value = total > 0 ? Math.Clamp(done / (double)total, 0, 1) : 0;
         Color? glow = transfersFailed ? Color.FromRgb(0xE5, 0x48, 0x48) : busy ? AccentColor : null;
         TransfersLamp.Background = glow is Color g ? new SolidColorBrush(Color.FromArgb(0x48, g.R, g.G, g.B)) : Brushes.Transparent;
         TransfersLamp.BorderBrush = glow is Color e ? new SolidColorBrush(e) : Brushes.Transparent;
