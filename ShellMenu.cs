@@ -185,6 +185,9 @@ public static class ShellMenu
         // drive: the extensions read the files on the UI thread, and a share that is asleep would freeze the window
         // (1.0.49 fixed that for backups); the Windows menu… item still has them there.
         // ponytail: network items get none; asking on an STA thread of their own would bring them back if missed
+        // nor for a big selection: every item is parsed and bound here, on the UI thread, before the menu shows
+        // ponytail: over 50 items get none (hundreds froze the right-click); the Windows menu… item still has them
+        if (items.Count > 50) return found;
         if (items.Count == 0 || items.Select(Path.GetDirectoryName).Distinct(StringComparer.OrdinalIgnoreCase).Count() != 1 || PaneView.IsRemote(items[0])) return found;
         var hwnd = new WindowInteropHelper(owner).Handle;
         var folder = Path.GetDirectoryName(items[0]);

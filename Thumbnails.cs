@@ -14,7 +14,9 @@ public static class Thumbnails
     // XL icons held 230 MB under the old 4 000-image limit, and the limit allowed three times that.
     // The key carries the file's timestamp: an edited photo gets a new thumbnail instead of the old one.
     static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (BitmapSource Image, long UsedAt)> cache = new(StringComparer.OrdinalIgnoreCase);
-    const int MaxCached = 4000; // sync badges, below
+    // sync badges, below. Was 4,000 with the whole cache dropped when full: a folder of 5,000 files emptied it on the
+    // way through, so every visit asked the shell for all of them again (about 1.5 s of CPU in the background)
+    const int MaxCached = 50_000;
     const long MaxBytes = 128L << 20; // ~700 photos at 256 px, or tens of thousands of icons; Windows keeps its own on disk
     static long bytes;
 

@@ -102,7 +102,11 @@ public partial class MainWindow : Window
 
         // the drive rows and the folder tree's drives come after the first frame (RefreshDrives in ContentRendered):
         // building them took 200-270 ms of a throttled start
-        driveTimer.Tick += (_, _) => { RefreshDrives(); UpdateStats(); }; // free space changes without us doing anything
+        // free space changes without us doing anything; not asked while nobody can see it (seven shares were asked every
+        // 10 s all day), and RefreshDrives redoes the stats itself when a figure moved
+        driveTimer.Tick += (_, _) => { if (IsVisible && WindowState != WindowState.Minimized) RefreshDrives(); };
+        IsVisibleChanged += (_, _) => { if (IsVisible && driveTimer.IsEnabled) RefreshDrives(); };
+        StateChanged += (_, _) => { if (WindowState != WindowState.Minimized && driveTimer.IsEnabled) RefreshDrives(); };
         // The sidebar's folders are one click away, so read them into the panes' caches while the user
         // is still looking at the first folder.
         var warmUp = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
@@ -513,7 +517,9 @@ public partial class MainWindow : Window
     {
         if (updateDialog != null) { Bring(updateDialog); return null; }
         Updater.Release release;
-        try { release = await Updater.Check(manual); }
+        // off the UI thread: the first call builds the HTTP client and resolves the proxy before its first await, a 30-150 ms
+        // hitch three seconds after every start (seconds where proxy auto-detect is on)
+        try { release = await Task.Run(() => Updater.Check(manual)); }
         catch (Exception ex) when (Updater.Failed(ex))
         {
             return manual ? Updater.CheckFailed : null; // the automatic check stays quiet and tries again next hour
@@ -1205,7 +1211,7 @@ public partial class MainWindow : Window
         // A folder Windows protects (Program Files, Common Files\VST3): File Labs runs without administrator rights, so
         // every file failed with "access denied". As Explorer does, the transfer goes to Windows, which asks to continue as
         // administrator and shows its own progress. A move also has to take the files out of where they are.
-        if (!Writable(dest) || move && sources.Select(s => Path.GetDirectoryName(s.TrimEnd('\\'))).Distinct(StringComparer.OrdinalIgnoreCase).Any(d => d != null && !Writable(d)))
+        if (!Writable(dest) || move && sources.Select(s => Path.GetDirectoryName(s.TrimEnd('\\'))).Distinct(StringComparer.OrdinalIgnoreCase).Take(4).Any(d => d != null && !Writable(d))) // ponytail: the first four source folders stand for the rest (a probe each, on the UI thread); probe off-thread if moves out of protected folders ever gather from more
         {
             ShellTransfer(sources, dest, move);
             return null;
@@ -1235,6 +1241,9 @@ public partial class MainWindow : Window
     /// other trouble (a full disk, a share gone to sleep) is left for the transfer itself to report.
     static bool Writable(string dir)
     {
+        // only local folders are asked: the ones Windows protects are local, and a probe on a share costs 10-100 ms on
+        // the UI thread (up to 21 s with the server off); what a share refuses, the transfer itself reports
+        if (PaneView.IsRemote(dir)) return true;
         try
         {
             using var probe = new FileStream(Path.Combine(dir, $".filelabs-{Guid.NewGuid():N}.tmp"), FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose);

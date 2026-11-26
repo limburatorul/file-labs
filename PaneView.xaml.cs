@@ -96,7 +96,8 @@ public class Entry : INotifyPropertyChanged
     (string icon, string color) Kind => IsUp ? ("", "#9CA3AF") : IsDir ? ("", "#60A5FA")
         : Kinds.TryGetValue(System.IO.Path.GetExtension(Name), out var k) ? k : ("", "#9CA3AF");
     public string Icon => Kind.icon;
-    public string KindColor => Kind.color;
+    string kindColor; // asked for every row at every selection change (the stats cards): worked out once
+    public string KindColor => kindColor ??= Kind.color;
     public Brush IconBrush => MainWindow.Hex(Kind.color);
 
     // Recency at a glance, OneCommander-style: hot red for minutes, fading through
@@ -500,7 +501,20 @@ public partial class PaneView : UserControl
         // when it's ready. The window never freezes on a folder change.
         Task.Run(() =>
         {
-            var (used, driveText) = DriveUsage(di.FullName);
+            // A network drive answers "how full are you" in 150 ms to a second: asked beside the read there, and shown
+            // when it comes, so the rows don't wait for it. A local drive answers at once and goes in with the rows.
+            bool slowDrive = IsRemote(di.FullName);
+            var (used, driveText) = slowDrive ? (0, null) : DriveUsage(di.FullName);
+            if (slowDrive) Task.Run(() =>
+            {
+                var u = DriveUsage(di.FullName);
+                if (u.Text != null) Dispatcher.BeginInvoke(() =>
+                {
+                    if (v != navVersion) return; // moved on
+                    UsedBar.SetBinding(WidthProperty, new Binding("ActualWidth") { Source = UsedBar.Parent, Converter = new Scale(u.Used) });
+                    DriveInfoText.Text = u.Text;
+                }, DispatcherPriority.Background);
+            });
 
             // Always read: a folder's timestamp moves when a child is added, removed or renamed, but not
             // when a file inside is rewritten — a growing download or log kept its old size forever.
@@ -640,9 +654,12 @@ public partial class PaneView : UserControl
     {
         prefetching?.Cancel();
         var cts = prefetching = new CancellationTokenSource();
-        var todo = (extra ?? Enumerable.Empty<string>())
+        // subfolders and the sidebar's folders only on local drives: on a share each is a listing over the network (40 per
+        // folder opened), and the warm-up at start woke a sleeping NAS; the other tabs are still read, one listing each
+        bool here = Dir != "" && Dir != ThisPC && !IsRemote(Dir);
+        var todo = (extra ?? Enumerable.Empty<string>()).Where(p => !IsRemote(p))
             .Concat(tabs.Where(t => t != "" && t != ThisPC && !t.Equals(Dir, StringComparison.OrdinalIgnoreCase)))
-            .Concat(items.Where(e => e.IsDir && !e.IsUp).Select(e => e.Path).Take(40))
+            .Concat(here ? items.Where(e => e.IsDir && !e.IsUp).Select(e => e.Path).Take(40) : Enumerable.Empty<string>())
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         bool hidden = ShowHidden;
         Task.Run(() =>
@@ -1331,6 +1348,7 @@ public partial class PaneView : UserControl
     }
 
     // Folder sizes: walk each subfolder in the background, fill cells as they finish.
+    bool sizesShown; // a footer and stats refresh is already queued (UI thread only)
     void StartSizing()
     {
         sizing?.Cancel();
@@ -1344,7 +1362,15 @@ public partial class PaneView : UserControl
                 long total;
                 try { total = Measure(new DirectoryInfo(e.Path), cts.Token); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; } // gone or unreadable: leave it at "…"
-                Dispatcher.BeginInvoke(() => { e.Size = total; UpdateFooter(); StatsChanged?.Invoke(); });
+                // each size goes into its row at once; the footer and the stats cards, which walk every row, are redone
+                // once for however many sizes arrived meanwhile (2,000 subfolders kept the UI thread busy 700-830 ms)
+                Dispatcher.BeginInvoke(() =>
+                {
+                    e.Size = total;
+                    if (sizesShown) return;
+                    sizesShown = true;
+                    Dispatcher.BeginInvoke(() => { sizesShown = false; UpdateFooter(); StatsChanged?.Invoke(); }, DispatcherPriority.Background);
+                });
             });
         }, cts.Token).ContinueWith(_ => { }); // swallow cancellation
     }
@@ -2104,8 +2130,11 @@ public partial class PaneView : UserControl
         var q = searchQuery != null ? "" : FilterBox.Text; // search results are already the matches
         // the same words and terms as the search, but contents only on Enter: the filter runs at every keystroke
         var find = SearchQuery.Parse(q, DateTime.Now);
-        view.Filter = q.Trim() == "" || find.Error != null ? null : o => o is Entry { IsUp: true }
+        Predicate<object> filter = q.Trim() == "" || find.Error != null ? null : o => o is Entry { IsUp: true }
             || o is Entry e && find.MatchesMeta(e.Name, e.IsDir, e.Size, e.Modified);
+        // setting Filter refreshes the view, a full sort, even from null to null: every folder was sorted twice as it opened
+        if (filter == null && view.Filter == null) return;
+        view.Filter = filter;
     }
 
     void Header_Click(object s, RoutedEventArgs e)
@@ -2258,7 +2287,8 @@ public partial class PaneView : UserControl
         // 1.0.76: the switch rebuilds the whole list in one frame (about 200 ms with 200 photos), and a fade begun before that
         // frame lost its start to it, then the tiles filled in one by one. Now the view being left stays on screen as a
         // still picture while the new one is built under it, and gives way to it once it is drawn with its thumbnails.
-        bool crossFade = Motion.On && IsVisible && List.ActualWidth > 0 && List.ActualHeight > 0;
+        // (not before the window is on screen: at start there is no old view to hold, and its picture cost 15-40 ms a pane)
+        bool crossFade = Motion.On && WindowShown && IsVisible && List.ActualWidth > 0 && List.ActualHeight > 0;
         if (crossFade) HoldPicture(lean);
         // Template, item style and panel are three separate changes, and the list would rebuild its
         // containers after each one. Detached from its items it rebuilds once, when they come back.
