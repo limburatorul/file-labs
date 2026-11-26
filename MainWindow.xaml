@@ -396,7 +396,7 @@
         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" TextElement.FontSize="11">
           <Button Style="{StaticResource Ghost}" Click="Rename_Click"><TextBlock><Run Foreground="{DynamicResource Muted}">F2</Run> Rename</TextBlock></Button>
           <Button Style="{StaticResource Ghost}" Click="Open_Click"><TextBlock><Run Foreground="{DynamicResource Muted}">F3</Run> Open</TextBlock></Button>
-          <Button Style="{StaticResource Ghost}" Click="Copy_Click" ToolTip="Copy to the other pane (Ctrl+F5). F5 refreshes."><TextBlock><Run Foreground="{DynamicResource Muted}">Ctrl+F5</Run> Copy</TextBlock></Button>
+          <Button x:Name="CopyButton" Style="{StaticResource Ghost}" Click="Copy_Click" ToolTip="Copy to the other pane (Ctrl+F5). F5 refreshes."><TextBlock><Run x:Name="CopyKey" Foreground="{DynamicResource Muted}">Ctrl+F5</Run> Copy</TextBlock></Button>
           <Button Style="{StaticResource Ghost}" Click="Move_Click"><TextBlock><Run Foreground="{DynamicResource Muted}">F6</Run> Move</TextBlock></Button>
           <Button Style="{StaticResource Ghost}" Click="MkDir_Click" ToolTip="New folder (F7 or Ctrl+Shift+N)"><TextBlock><Run Foreground="{DynamicResource Muted}">F7</Run> New folder</TextBlock></Button>
           <Button Style="{StaticResource Ghost}" Click="NewFile_Click" ToolTip="New file (Ctrl+N)"><TextBlock><Run Foreground="{DynamicResource Muted}">Ctrl+N</Run> New file</TextBlock></Button>

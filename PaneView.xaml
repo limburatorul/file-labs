@@ -60,7 +60,7 @@
     </DataTemplate>
     <DataTemplate x:Key="DateCell">
       <StackPanel Orientation="Horizontal">
-        <Border Background="{Binding AgeBrush}" CornerRadius="{DynamicResource r3}" Width="46" Margin="0,0,8,0">
+        <Border Background="{Binding AgeBrush}" CornerRadius="{DynamicResource r3}" Width="46" Margin="0,0,8,0" Visibility="{DynamicResource AgeBadge}">
           <TextBlock Text="{Binding Age}" Foreground="{Binding AgeTextBrush}" FontSize="11" FontWeight="SemiBold"
                      HorizontalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
         </Border>

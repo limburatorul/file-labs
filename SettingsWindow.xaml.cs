@@ -50,6 +50,20 @@ public partial class SettingsWindow : Window
         VerifyBox.IsChecked = Settings.Verify;
         ParallelBox.IsChecked = Settings.ParallelCopy;
         CloseTransfersBox.IsChecked = Settings.CloseTransfersWhenDone;
+        F5CopiesBox.IsChecked = Settings.F5Copies;
+        AgeBadgesBox.IsChecked = Settings.AgeBadges;
+        SidebarParts.Children.Clear();
+        foreach (var (key, title) in main.SidebarParts)
+        {
+            var box = new System.Windows.Controls.CheckBox { Content = title.Trim(), IsChecked = !Settings.SidebarHidden.Contains(key), Margin = new(0, 0, 14, 6), MinWidth = 110 };
+            box.Click += (_, _) =>
+            {
+                if (box.IsChecked == true) Settings.SidebarHidden.Remove(key); else Settings.SidebarHidden.Add(key);
+                Settings.Save();
+                main.BuildSidebar();
+            };
+            SidebarParts.Children.Add(box);
+        }
         EditorBox.IsChecked = Settings.InternalEditor;
         DefaultBox.IsChecked = Settings.IsDefaultFileManager;
         WinEBox.IsChecked = Settings.TakeWinE;
@@ -83,10 +97,10 @@ public partial class SettingsWindow : Window
     {
         "theme", "backdrop", "opacity", "bgimage", "bgopacity", "bgblur", "bgbright", "accent", "accentstrength", "rowpad", "textscale",
         "scale.sidebar", "scale.tabs", "scale.path", "scale.list", "singlepane", "closeemptypane", "stats", "animations", "smoothscroll",
-        "autoscroll", "autoscrollx",
+        "autoscroll", "autoscrollx", "agebadges", "sidebarhidden",
     };
     internal static readonly string[] FilesKeys = { "hidden", "dothidden", "shortcutfolders", "internaleditor", "quicklook", "itemtips", "tipdelay", "deletesound", "nativemenu", "searchlimit", "missingapps" };
-    internal static readonly string[] TransfersKeys = { "verify", "parallel", "transferswindow", "transfersclose" };
+    internal static readonly string[] TransfersKeys = { "verify", "parallel", "f5copies", "transferswindow", "transfersclose" };
     /// What File Labs keeps that isn't a choice in these cards: Windows integration, and what it remembers by itself.
     internal static readonly string[] NotReset =
     {
@@ -179,6 +193,7 @@ public partial class SettingsWindow : Window
         main.ApplyCloseEmptyPane();
         main.RefreshPanes(); // hidden files
         main.ResortPanes(); // shortcuts with the folders
+        main.BuildSidebar(); // sections and places left out
         MainWindow.SetBackdrop(this);
         loading = true; // the controls take the defaults without each one saving and repainting again
         ShowValues();
@@ -575,6 +590,8 @@ public partial class SettingsWindow : Window
     void Verify_Click(object s, RoutedEventArgs e) { Settings.Verify = VerifyBox.IsChecked == true; Settings.Save(); }
     void Parallel_Click(object s, RoutedEventArgs e) { Settings.ParallelCopy = ParallelBox.IsChecked == true; Settings.Save(); }
     void CloseTransfers_Click(object s, RoutedEventArgs e) { Settings.CloseTransfersWhenDone = CloseTransfersBox.IsChecked == true; Settings.Save(); }
+    void F5Copies_Click(object s, RoutedEventArgs e) { Settings.F5Copies = F5CopiesBox.IsChecked == true; Settings.Save(); main.ApplyAppearance(); }
+    void AgeBadges_Click(object s, RoutedEventArgs e) { Settings.AgeBadges = AgeBadgesBox.IsChecked == true; Settings.Save(); main.ApplyAppearance(); }
     void TransfersAt_Click(object s, RoutedEventArgs e)
     {
         Settings.TransfersInWindow = s == TransfersWindowTab;

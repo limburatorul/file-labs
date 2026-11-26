@@ -79,6 +79,9 @@ public static class Settings
     public static double SidebarWidth = 270;
     public static List<string> SidebarOrder = new() { "quick", "favorites", "drives" };
     public static readonly HashSet<string> SidebarCollapsed = new();
+    public static readonly HashSet<string> SidebarHidden = new(); // sections ("tree") and Favorites places ("Pictures") left out
+    public static bool F5Copies;             // F5 copies to the other pane, as in other two-pane managers; Ctrl+R refreshes
+    public static bool AgeBadges = true;     // the coloured age badge before the date in Modified
     public static double Split = 0.5;                                  // left pane share
     public static Rect? WindowBounds;                                  // restore bounds
     public static bool Maximized;
@@ -186,6 +189,9 @@ public static class Settings
                 case "groupdate" when v != "": DateGroupFolders.Add(v); break;
                 case "sidebarorder" when v != "": SidebarOrder = v.Split(',').Where(x => x != "").ToList(); break;
                 case "sidebarcollapsed": SidebarCollapsed.Clear(); SidebarCollapsed.UnionWith(v.Split(',').Where(x => x != "")); break;
+                case "sidebarhidden": SidebarHidden.Clear(); SidebarHidden.UnionWith(v.Split(',').Where(x => x != "")); break;
+                case "f5copies": F5Copies = v == "1"; break;
+                case "agebadges": AgeBadges = v != "0"; break;
                 case "sidebar" when double.TryParse(v, CultureInfo.InvariantCulture, out var w) && double.IsFinite(w): SidebarWidth = Math.Clamp(w, 160, 600); break;
             }
         }
@@ -256,6 +262,9 @@ public static class Settings
             $"sidebar={SidebarWidth.ToString(CultureInfo.InvariantCulture)}",
             $"sidebarorder={string.Join(",", SidebarOrder)}",
             $"sidebarcollapsed={string.Join(",", SidebarCollapsed)}",
+            $"sidebarhidden={string.Join(",", SidebarHidden)}",
+            $"f5copies={(F5Copies ? 1 : 0)}",
+            $"agebadges={(AgeBadges ? 1 : 0)}",
             $"split={Split.ToString(CultureInfo.InvariantCulture)}",
             $"maximized={(Maximized ? 1 : 0)}",
             WindowBounds is { } r ? $"window={r.ToString(CultureInfo.InvariantCulture)}" : "",

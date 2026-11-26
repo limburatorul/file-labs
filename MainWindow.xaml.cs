@@ -264,6 +264,9 @@ public partial class MainWindow : Window
         Root.Background = Tint();
         SetBackdrop(this);
         Application.Current.Resources["ItemTips"] = Settings.ItemTips; // the rows' tooltips (App.xaml)
+        Application.Current.Resources["AgeBadge"] = Settings.AgeBadges ? Visibility.Visible : Visibility.Collapsed; // Modified's badge (PaneView.xaml)
+        CopyKey.Text = Settings.F5Copies ? "F5" : "Ctrl+F5";
+        CopyButton.ToolTip = Settings.F5Copies ? "Copy to the other pane (F5). Ctrl+R refreshes." : "Copy to the other pane (Ctrl+F5). F5 refreshes.";
         if (quick != null) SetBackdrop(quick);
         EditorWindow.AccentChanged();
         ApplyAccent();
@@ -721,6 +724,7 @@ public partial class MainWindow : Window
 
     Button SideButton(string icon, string text, string path, Action click = null)
     {
+        // (its name in Uid: Settings → Layout leaves out Favorites places by name)
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition());
@@ -729,7 +733,7 @@ public partial class MainWindow : Window
         label.Children.Add(new TextBlock { Text = text, TextTrimming = TextTrimming.CharacterEllipsis });
         Grid.SetColumn(label, 1);
         grid.Children.Add(label);
-        var b = new Button { Content = grid, Style = (Style)FindResource("Side"), HorizontalContentAlignment = HorizontalAlignment.Stretch, Margin = new(0, 1, 0, 1), ToolTip = click == null ? path : text };
+        var b = new Button { Content = grid, Style = (Style)FindResource("Side"), HorizontalContentAlignment = HorizontalAlignment.Stretch, Margin = new(0, 1, 0, 1), ToolTip = click == null ? path : text, Uid = text };
         if (click != null) { b.Click += (_, _) => click(); return b; }
         b.Click += (_, _) => { active.Navigate(path); active.FocusList(); };
         b.PreviewMouseDown += (_, e) => { if (e.ChangedButton == MouseButton.Middle) { active.OpenInBackgroundTab(path); e.Handled = true; } };
@@ -1198,7 +1202,6 @@ public partial class MainWindow : Window
             && PromptDialog.Choose(this, $"Move {sources.Count:N0} items from {folders:N0} folders into one folder?", "All of them go into " + dest, "Move", "Cancel") != 0)
             return null;
         Settings.Bump(Settings.RecentDestinations, dest, Settings.DestinationsMax); // for Copy to / Move to
-        var job = Ferry.Submit(sources, dest, move, names, journal ? Path.Combine(JournalDir, $"{Guid.NewGuid():N}.txt") : null);
         // A folder Windows protects (Program Files, Common Files\VST3): File Labs runs without administrator rights, so
         // every file failed with "access denied". As Explorer does, the transfer goes to Windows, which asks to continue as
         // administrator and shows its own progress. A move also has to take the files out of where they are.
@@ -1207,6 +1210,7 @@ public partial class MainWindow : Window
             ShellTransfer(sources, dest, move);
             return null;
         }
+        var job = Ferry.Submit(sources, dest, move, names, journal ? Path.Combine(JournalDir, $"{Guid.NewGuid():N}.txt") : null);
         job.Seq = ++jobSeq;
         job.Hue = Hex(JobHues[(jobSeq - 1) % JobHues.Length]);
         if (!jobsWatched)
@@ -1219,15 +1223,14 @@ public partial class MainWindow : Window
                 ShowBottomJobs();
             };
         }
-        WatchJobs();
         jobs.Insert(0, job);
+        WatchJobs();
         if (Settings.TransfersInWindow) ShowTransfers(activate: false); // the keyboard stays in the list
         return job;
     }
 
     bool jobsWatched;
 
-    /// Settings → Transfers changed where they show: the cards go under the panes, or the window takes them again.
     /// Whether this user may create files in `dir`: a file made and dropped at once. Only "access denied" says no; any
     /// other trouble (a full disk, a share gone to sleep) is left for the transfer itself to report.
     static bool Writable(string dir)
@@ -1267,6 +1270,7 @@ public partial class MainWindow : Window
         thread.Start();
     }
 
+    /// Settings → Transfers changed where they show: the cards go under the panes, or the window takes them again.
     internal void PlaceTransfers()
     {
         ShowBottomJobs();
@@ -1294,8 +1298,8 @@ public partial class MainWindow : Window
         timer.Start();
     }
 
-    // On top the total speed and a chart as wide as the window, each running job a band in its own colour; under it the
     // ---- the Transfers window: every copy and move, apart from the panes (under them it took the files' room) ----
+    // On top the total speed and a chart as wide as the window, each running job a band in its own colour; under it the
     // jobs in three sections, what needs you first, then what runs, then what is done (each card edged in its colour).
     Window transfersWindow;
     readonly HashSet<Job> askedForward = new(); // a job's conflicts bring the window forward once
@@ -1413,8 +1417,8 @@ public partial class MainWindow : Window
         UpdateTransfers(); // into Done
         RememberJob(job);
         CloseTransfersSoon(job);
-        // instead of somewhere among the folder's other hundred files (Rico, 1.0.61)
         // what was pasted or dropped is selected where it arrived, the first of it in sight with the keyboard on it,
+        // instead of somewhere among the folder's other hundred files (Rico, 1.0.61)
         if (job.Phase == Phase.Done)
         {
             var arrived = job.Sources.Select(s => Path.GetFileName(job.Duplicates.GetValueOrDefault(s) ?? s.TrimEnd('\\'))).Where(n => n != "").ToList();
@@ -1784,8 +1788,9 @@ public partial class MainWindow : Window
             case Key.C when ctrl && !shift: ClipboardPut(cut: false); break;
             case Key.X when ctrl: ClipboardPut(cut: true); break;
             case Key.V when ctrl: ClipboardPaste(); break;
-            // F5 refreshes, as in other file managers; Ctrl+F5 copies to the other pane (below)
-            case Key.R when ctrl: case Key.F5 when !ctrl: SizeCache.Clear(); active.Refresh(force: true); break;
+            // F5 refreshes, as in Explorer; Ctrl+F5 copies to the other pane (below). With Settings → Transfers "F5 copies",
+            // F5 copies as in other two-pane managers and Ctrl+R refreshes.
+            case Key.R when ctrl: case Key.F5 when !ctrl && !Settings.F5Copies: SizeCache.Clear(); active.Refresh(force: true); break;
             case Key.C when ctrl && shift:
                 Clipboard.SetText(string.Join(Environment.NewLine, active.Selected.Select(x => x.Path)));
                 Status.Text = "Path copied"; break;

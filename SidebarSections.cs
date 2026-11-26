@@ -95,7 +95,7 @@ public partial class MainWindow
         return d as TreeViewItem;
     }
 
-    void BuildSidebar()
+    internal void BuildSidebar()
     {
         // One drop target for the whole sidebar. Per-section DragEnter/DragLeave flickered: those fire
         // again for every child the pointer crosses inside a section.
@@ -118,8 +118,15 @@ public partial class MainWindow
         var order = Settings.SidebarOrder.Where(known.ContainsKey)
             .Concat(Sections.Select(s => s.Key).Where(k => !Settings.SidebarOrder.Contains(k))).ToList();
         Settings.SidebarOrder = order;
-        foreach (var key in order) SidebarHost.Children.Add(SectionPanel(known[key]));
+        // Settings → Layout: sections left out, and single places in Favorites
+        foreach (var key in order) if (!Settings.SidebarHidden.Contains(key)) SidebarHost.Children.Add(SectionPanel(known[key]));
+        foreach (var place in Favorites.Children.OfType<Button>()) place.Visibility = Settings.SidebarHidden.Contains(place.Uid) ? Visibility.Collapsed : Visibility.Visible;
     }
+
+    /// What Settings → Layout can leave out of the sidebar: the sections, then the places in Favorites.
+    internal IEnumerable<(string Key, string Title)> SidebarParts =>
+        Sections.Select(s => (s.Key, s.Key == "quick" ? "Quick access" : s.Title))
+            .Concat(Favorites.Children.OfType<Button>().Select(b => (b.Uid, "  " + b.Uid)));
 
     FrameworkElement SectionPanel((string Key, string Title, string Glyph, Panel Content) section)
     {

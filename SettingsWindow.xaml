@@ -189,6 +189,11 @@
                   <CheckBox x:Name="StatsBox" Content="Summary cards below the panes" Click="Stats_Click" Margin="0,4,0,0"/>
                   <CheckBox x:Name="StatsCompactBox" Content="Compact: one line each" Click="Stats_Click" Margin="22,6,0,0"/>
                   <TextBlock Style="{StaticResource Hint}" Text="The drive, the folder and the selection. Compact keeps the figures and drops the icons, bars and second lines; off gives the panes the whole height."/>
+                  <CheckBox x:Name="AgeBadgesBox" Content="Age badge in the Modified column" Click="AgeBadges_Click" Margin="0,4,0,0"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="The coloured badge before the date (5d, 2mo). Off: only the date, and the colour stays on the stripe at the start of each row."/>
+                  <TextBlock Text="In the sidebar" Margin="0,4,0,0"/>
+                  <WrapPanel x:Name="SidebarParts" Margin="0,6,0,2"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Untick a whole section, or single places in Favorites, to leave them out of the sidebar."/>
 
                 </StackPanel>
               </Border>
@@ -263,6 +268,8 @@
                   </DockPanel>
                   <CheckBox x:Name="VerifyBox" Content="Verify copies after transfer" Click="Verify_Click"/>
                   <TextBlock Style="{StaticResource Hint}" Text="Reads source and copy back and compares xxHash3 digests. Catches a disk or cable that dropped bytes, at the cost of a second full read. On a move, a source whose copy doesn't match is kept."/>
+                  <CheckBox x:Name="F5CopiesBox" Content="F5 copies to the other pane" Margin="0,10,0,0" Click="F5Copies_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="As in Total Commander and other two-pane file managers. Ctrl+R then refreshes the list. Off: F5 refreshes, as in Explorer, and Ctrl+F5 copies."/>
                   <CheckBox x:Name="ParallelBox" Content="Copy small files several at once" Margin="0,10,0,0" Click="Parallel_Click"/>
                   <TextBlock Style="{StaticResource Hint}" Text="Files under 16 MB go four at a time when both drives are SSDs or network shares, where a small file is mostly waiting. To or from a spinning disk they still go one by one, and big files always do."/>
                   <TextBlock Text="Show copies and moves" Margin="0,10,0,0"/>
