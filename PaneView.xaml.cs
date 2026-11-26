@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.TextFormatting;
 using System.Windows.Threading;
 
 namespace FileExplorer;
@@ -206,6 +207,10 @@ public class FileList : ListView
     public static readonly DependencyProperty RowFadeProperty = DependencyProperty.Register(nameof(RowFade), typeof(double), typeof(FileList), new PropertyMetadata(1.0));
     public double RowFade { get => (double)GetValue(RowFadeProperty); set => SetValue(RowFadeProperty, value); }
 
+    /// The Details columns in the order PaneView.xaml has them: Name, Version, Type, Size, Modified. A drawn row
+    /// (DetailsRow) knows a column by its place here, wherever its header has been dragged to.
+    internal GridViewColumn[] Cells;
+
     // Esc arrives as the character 27 too, and type-to-find compares names the culture's way, which
     // ignores control characters: every name "started with" it, so Esc jumped to the first row.
     protected override void OnTextInput(TextCompositionEventArgs e)
@@ -223,6 +228,328 @@ public class FileList : ListView
     {
         protected override List<System.Windows.Automation.Peers.AutomationPeer> GetChildrenCore() => null;
         protected override string GetNameCore() => Item is Entry e ? e.Name : base.GetNameCore();
+    }
+}
+
+/// One row of Details, drawn. A row used to be five cells the GridView built from templates: some twenty elements and as
+/// many bindings, 2 to 2.5 ms each, the largest part of every folder change (profile of 26.11.2026). Here a row is one
+/// element that draws its icon and its texts where the columns are. Only the rename box is a real control, and it
+/// exists while a rename lasts.
+public sealed class DetailsRow : Decorator
+{
+    static DependencyProperty Look<T>(string name) =>
+        DependencyProperty.Register(name, typeof(T), typeof(DetailsRow), new FrameworkPropertyMetadata(default(T), FrameworkPropertyMetadataOptions.AffectsRender));
+    // what the theme and the settings decide, handed in by the row's template so a change redraws the row
+    public static readonly DependencyProperty QuietProperty = Look<Brush>(nameof(Quiet)), BarCornerProperty = Look<CornerRadius>(nameof(BarCorner)),
+        BadgeCornerProperty = Look<CornerRadius>(nameof(BadgeCorner)), BadgeProperty = Look<Visibility>(nameof(Badge));
+    public Brush Quiet { get => (Brush)GetValue(QuietProperty); set => SetValue(QuietProperty, value); } // "in <folder>" after a search result's name
+    public CornerRadius BarCorner { get => (CornerRadius)GetValue(BarCornerProperty); set => SetValue(BarCornerProperty, value); }
+    public CornerRadius BadgeCorner { get => (CornerRadius)GetValue(BadgeCornerProperty); set => SetValue(BadgeCornerProperty, value); }
+    public Visibility Badge { get => (Visibility)GetValue(BadgeProperty); set => SetValue(BadgeProperty, value); } // Settings → Files → age badge
+
+    public static DetailsRow Of(ListViewItem row) => row.Template?.FindName("Cells", row) as DetailsRow;
+
+    Entry shown;
+    FileList list;
+    FileList List { get { for (DependencyObject d = this; list == null && d != null; d = VisualTreeHelper.GetParent(d)) list = d as FileList; return list; } }
+
+    public DetailsRow()
+    {
+        RenderOptions.SetBitmapScalingMode(this, BitmapScalingMode.HighQuality); // the icons
+        DataContextChanged += (_, e) => Follow(e.NewValue as Entry);
+        Loaded += (_, _) => Follow(DataContext as Entry); // back in a window after EntryChanged let go
+    }
+
+    // one weak subscription for the whole row, where every binding had its own
+    void Follow(Entry e)
+    {
+        if (e != shown)
+        {
+            if (shown != null) PropertyChangedEventManager.RemoveHandler(shown, EntryChanged, "");
+            shown = e;
+            if (e != null) PropertyChangedEventManager.AddHandler(e, EntryChanged, "");
+        }
+        Redraw();
+    }
+
+    void EntryChanged(object s, PropertyChangedEventArgs e)
+    {
+        if (!CheckAccess()) { Dispatcher.BeginInvoke(() => EntryChanged(s, e)); return; }
+        // A row the list has dropped still hears its entry until it is collected (a folder shown again keeps its
+        // entries and gets new rows): it lets go here, instead of drawing itself for nobody.
+        if (PresentationSource.FromVisual(this) == null) Follow(null); else Redraw();
+    }
+
+    /// The row's entry, a column or the screen's scale changed.
+    public void Redraw()
+    {
+        // the rename box: a real control, there while this row's name is being edited (RenameBox in PaneView.xaml)
+        var box = shown?.Renaming == true ? TryFindResource("RenameBox") as DataTemplate : null;
+        if ((box != null) != (Child != null))
+            Child = box != null ? new ContentControl { Content = shown, ContentTemplate = box, Focusable = false, IsTabStop = false } : null;
+        InvalidateMeasure();
+        InvalidateVisual();
+    }
+
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi) => InvalidateVisual();
+
+    // A cell: where its column is, less the 6 px the GridView keeps on each side of one. The columns are asked in the
+    // order they are shown in (a header can be dragged to another place); kind is the column's place in PaneView.xaml.
+    IEnumerable<(int kind, double left, double room)> Cells()
+    {
+        if (List is not { View: GridView grid, Cells: { } cells }) yield break;
+        double x = 0;
+        foreach (var c in grid.Columns)
+        {
+            yield return (Array.IndexOf(cells, c), x + 6, c.ActualWidth - 12);
+            x += c.ActualWidth;
+        }
+    }
+
+    const double IconBox = 24; // the 16 px icon and the 8 px after it
+
+    protected override Size MeasureOverride(Size available)
+    {
+        // as tall as a line of the list's font, and never less than the icon: the same for every row
+        double h = Math.Max(16, TextBlock.GetFontFamily(this).LineSpacing * TextBlock.GetFontSize(this)), w = 0;
+        foreach (var (kind, _, room) in Cells())
+        {
+            w += room + 12;
+            if (kind == 0 && Child is { } box) { box.Measure(new Size(Math.Max(0, room - IconBox), double.PositiveInfinity)); h = Math.Max(h, box.DesiredSize.Height); }
+        }
+        return new Size(w, h); // the columns' width: what makes the list scroll sideways when they are wider than the pane
+    }
+
+    protected override Size ArrangeOverride(Size size)
+    {
+        if (Child is { } box)
+            foreach (var (kind, left, room) in Cells())
+                if (kind == 0) box.Arrange(new Rect(left + IconBox, 0, Math.Max(0, room - IconBox), size.Height));
+        return size;
+    }
+
+    // ---- drawing ----
+    Typeface face, semi;
+    double em, dip;
+    Brush ink;
+    System.Globalization.CultureInfo culture;
+    TextFormatter formatter;
+    static readonly TextFormatter Ideal = TextFormatter.Create(TextFormattingMode.Ideal), Display = TextFormatter.Create(TextFormattingMode.Display);
+    static FontFamily facesOf;
+    static Typeface normalFace, semiFace;
+
+    void Ready()
+    {
+        var family = TextBlock.GetFontFamily(this);
+        if (family != facesOf)
+        {
+            facesOf = family;
+            normalFace = new Typeface(family, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+            semiFace = new Typeface(family, FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal);
+        }
+        face = normalFace; semi = semiFace;
+        em = TextBlock.GetFontSize(this);
+        dip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+        ink = TextBlock.GetForeground(this);
+        culture = Language.GetEquivalentCulture();
+        formatter = TextOptions.GetTextFormattingMode(this) == TextFormattingMode.Display ? Display : Ideal;
+    }
+
+    Ink Plain() => new(face, em, ink, culture, dip, false);
+    Ink Digits() => new(face, em, ink, culture, dip, true);
+
+    /// One line, laid out by WPF's own text engine, cut short with "…" where it is longer than the room.
+    TextLine Lay(double room, string a, Ink la, string b = null, Ink lb = null)
+    {
+        // the room is the paragraph's width: only a line that overflows one can be cut short
+        var line = formatter.FormatLine(new Source(a, la, b, lb), 0, double.IsInfinity(room) ? 0 : room, new Para(la), null);
+        if (!line.HasOverflowed) return line;
+        var cut = line.Collapse(new TextTrailingCharacterEllipsis(room, la));
+        if (cut != line) line.Dispose();
+        return cut;
+    }
+
+    /// Draws a line in a cell, centred in the row's height as the cells were. side: 0 left, 1 right. The quieter
+    /// columns are faded as a layer, the way an element's Opacity fades it: a fainter colour draws thinner letters.
+    /// dots: a line too long ends in "…" (names, versions); without, it is cut at the cell's edge and keeps more of itself.
+    void Put(DrawingContext dc, double left, double room, double h, int side, double opacity, bool dots, string a, Ink la, string b = null, Ink lb = null)
+    {
+        if (room < 1 || a.Length + (b?.Length ?? 0) == 0) return;
+        using var line = Lay(dots ? room : double.PositiveInfinity, a, la, b, lb);
+        bool cut = line.Width > room;
+        if (cut) dc.PushClip(new RectangleGeometry(new Rect(left, -h, room, 3 * h)));
+        Fade(dc, opacity, left, room, h);
+        line.Draw(dc, new Point(left + (side == 1 && !cut ? room - line.Width : 0), (h - line.Height) / 2), InvertAxes.None);
+        if (opacity < 1) { dc.Pop(); dc.Pop(); }
+        if (cut) dc.Pop();
+    }
+
+    // A faded layer is as large as what it may draw on, and nothing says how little that is but a clip: without one each
+    // was the size of the whole list, and the picture taken of Details when leaving it (HoldPicture) cost 90 ms more.
+    // The clip is the cell and the row's padding around it. Ended with two Pops.
+    static void Fade(DrawingContext dc, double opacity, double left, double room, double h)
+    {
+        if (opacity >= 1) return;
+        dc.PushClip(new RectangleGeometry(new Rect(left - 6, -6, Math.Max(0, room + 12), h + 12))); // a column narrower than what comes before the text
+        dc.PushOpacity(opacity);
+    }
+
+    protected override void OnRender(DrawingContext dc)
+    {
+        if (shown is not { } e) return;
+        Ready();
+        double h = RenderSize.Height;
+        // the age bar, in the row's padding left of the first cell
+        var age = e.AgeBrush;
+        if (age != Brushes.Transparent) dc.DrawRoundedRectangle(age, null, new Rect(-4, 0, 6, h), BarCorner.TopLeft, BarCorner.TopLeft);
+        foreach (var (kind, left, room) in Cells())
+        {
+            if (room < 1) continue;
+            switch (kind)
+            {
+                case 0: // icon, name, and for a search result the folder it is in
+                    bool tight = room < 16; // a column narrower than the icon
+                    if (tight) dc.PushClip(new RectangleGeometry(new Rect(left, -h, room, 3 * h)));
+                    Fade(dc, e.IsCut ? 0.4 : 1, left, 16, h); // cut (Ctrl+X): the icon dims
+                    var box = new Rect(left, (h - 16) / 2, 16, 16);
+                    if (e.SmallIcon is { } icon) dc.DrawImage(icon, Fit(icon, box));
+                    else
+                    {
+                        using var glyph = Lay(double.PositiveInfinity, e.Icon, new Ink(GlyphFace, em, e.IconBrush, culture, dip, false));
+                        Fade(dc, 0.9, left, 16, h);
+                        glyph.Draw(dc, new Point(left, box.Y + (16 - glyph.Height) / 2), InvertAxes.None);
+                        dc.Pop(); dc.Pop();
+                    }
+                    if (e.Overlay is { } badge) dc.DrawImage(badge, Fit(badge, box)); // sync badge (Google Drive, Nextcloud, ...)
+                    if (e.IsCut) { dc.Pop(); dc.Pop(); }
+                    if (tight) dc.Pop();
+                    if (!e.Renaming) Put(dc, left + IconBox, room - IconBox, h, 0, 1, true, e.Name, Plain(), e.Where, new Ink(face, 11, Quiet, culture, dip, false));
+                    break;
+                case 1: Put(dc, left, room, h, 0, 0.55, true, e.Version, Digits()); break;
+                case 2: Put(dc, left, room, h, 0, 0.55, false, e.Ext, Plain()); break;
+                case 3: Put(dc, left, room - 6, h, 1, 0.7, false, e.SizeText, Digits()); break;
+                case 4: // the age badge, then the date
+                    if (e.DateText is not { Length: > 0 } date) break; // no date, no age
+                    using (var when = Lay(double.PositiveInfinity, date, Digits()))
+                    {
+                        const double wide = 46, gap = 8;
+                        bool badged = Badge == Visibility.Visible, cut = (badged ? wide + gap : 0) + when.Width > room;
+                        if (cut) dc.PushClip(new RectangleGeometry(new Rect(left, -h, room, 3 * h)));
+                        double top = (h - when.Height) / 2, x = left;
+                        if (badged) // as tall as the date beside it
+                        {
+                            using var text = Lay(wide, e.Age, new Ink(semi, 11, e.AgeTextBrush, culture, dip, true));
+                            dc.DrawRoundedRectangle(age, null, new Rect(left, top, wide, when.Height), BadgeCorner.TopLeft, BadgeCorner.TopLeft);
+                            text.Draw(dc, new Point(left + (wide - text.Width) / 2, top), InvertAxes.None);
+                            x += wide + gap;
+                        }
+                        Fade(dc, 0.6, x, left + room - x, h);
+                        when.Draw(dc, new Point(x, top), InvertAxes.None);
+                        dc.Pop(); dc.Pop();
+                        if (cut) dc.Pop();
+                    }
+                    break;
+            }
+        }
+    }
+
+    static readonly Typeface GlyphFace = new(new FontFamily("Segoe Fluent Icons, Segoe MDL2 Assets"), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+
+    // an icon in its 16 px box, whole (they are square, but nothing promises it)
+    static Rect Fit(ImageSource image, Rect box)
+    {
+        double w = image.Width, h = image.Height, scale = 16 / Math.Max(1, Math.Max(w, h));
+        return new Rect(box.X + (16 - w * scale) / 2, box.Y + (16 - h * scale) / 2, w * scale, h * scale);
+    }
+
+    /// The width a column needs to show this row's cell whole: the answer to a double-click on the column's edge.
+    public double Wants(int kind)
+    {
+        if (shown is not { } e) return 0;
+        Ready();
+        double wide(string s, Ink look) { if (s.Length == 0) return 0; using var line = Lay(double.PositiveInfinity, s, look); return line.Width; }
+        return 12 + kind switch
+        {
+            1 => wide(e.Version, Digits()),
+            2 => wide(e.Ext, Plain()),
+            3 => 6 + wide(e.SizeText, Digits()),
+            _ => (Badge == Visibility.Visible ? 54 : 0) + wide(e.DateText, Digits()),
+        };
+    }
+
+    // ---- what the text engine asks for: the characters, their look, the line's rules ----
+    sealed class Source(string a, Ink la, string b, Ink lb) : TextSource
+    {
+        public override TextRun GetTextRun(int i) =>
+            i < a.Length ? new TextCharacters(a, i, a.Length - i, la)
+            : b != null && i < a.Length + b.Length ? new TextCharacters(b, i - a.Length, a.Length + b.Length - i, lb)
+            : new TextEndOfParagraph(1);
+        public override TextSpan<CultureSpecificCharacterBufferRange> GetPrecedingText(int i) => new(0, new(la.CultureInfo, CharacterBufferRange.Empty));
+        public override int GetTextEffectCharacterIndexFromTextSourceCharacterIndex(int i) => i;
+    }
+
+    sealed class Ink : TextRunProperties
+    {
+        readonly Typeface face; readonly double size; readonly Brush ink; readonly System.Globalization.CultureInfo culture; readonly bool tabular;
+        public Ink(Typeface face, double size, Brush ink, System.Globalization.CultureInfo culture, double dip, bool tabular)
+        { this.face = face; this.size = size; this.ink = ink; this.culture = culture; this.tabular = tabular; PixelsPerDip = dip; }
+        public override Typeface Typeface => face;
+        public override double FontRenderingEmSize => size;
+        public override double FontHintingEmSize => size;
+        public override TextDecorationCollection TextDecorations => null;
+        public override Brush ForegroundBrush => ink;
+        public override Brush BackgroundBrush => null;
+        public override System.Globalization.CultureInfo CultureInfo => culture;
+        public override TextEffectCollection TextEffects => null;
+        public override TextRunTypographyProperties TypographyProperties => tabular ? Features.Tabular : Features.Plain;
+    }
+
+    sealed class Para(TextRunProperties look) : TextParagraphProperties
+    {
+        public override FlowDirection FlowDirection => FlowDirection.LeftToRight;
+        public override TextAlignment TextAlignment => TextAlignment.Left;
+        public override double LineHeight => 0;
+        public override bool FirstLineInParagraph => true;
+        public override TextRunProperties DefaultTextRunProperties => look;
+        public override TextWrapping TextWrapping => TextWrapping.NoWrap;
+        public override TextMarkerProperties TextMarkerProperties => null;
+        public override double Indent => 0;
+    }
+
+    // The font features a TextBlock asks for: the usual ligatures and kerning, and for the columns of numbers digits
+    // all one width (Typography.NumeralAlignment="Tabular"), so sizes and dates line up down a column: Segoe UI
+    // Variable's are not unless asked. The text engine wants every feature spelled out.
+    sealed class Features(bool tabular) : TextRunTypographyProperties
+    {
+        public static readonly Features Plain = new(false), Tabular = new(true);
+        public override FontNumeralAlignment NumeralAlignment => tabular ? FontNumeralAlignment.Tabular : FontNumeralAlignment.Normal;
+        public override bool StandardLigatures => true;
+        public override bool ContextualLigatures => true;
+        public override bool ContextualAlternates => true;
+        public override bool Kerning => true;
+        public override bool DiscretionaryLigatures => false;
+        public override bool HistoricalLigatures => false;
+        public override bool CaseSensitiveForms => false;
+        public override bool HistoricalForms => false;
+        public override bool CapitalSpacing => false;
+        public override bool SlashedZero => false;
+        public override bool MathematicalGreek => false;
+        public override bool EastAsianExpertForms => false;
+        public override int AnnotationAlternates => 0;
+        public override int ContextualSwashes => 0;
+        public override int StylisticAlternates => 0;
+        public override int StandardSwashes => 0;
+        public override FontCapitals Capitals => FontCapitals.Normal;
+        public override FontEastAsianLanguage EastAsianLanguage => FontEastAsianLanguage.Normal;
+        public override FontEastAsianWidths EastAsianWidths => FontEastAsianWidths.Normal;
+        public override FontFraction Fraction => FontFraction.Normal;
+        public override FontNumeralStyle NumeralStyle => FontNumeralStyle.Normal;
+        public override FontVariants Variants => FontVariants.Normal;
+        public override bool StylisticSet1 => false; public override bool StylisticSet2 => false; public override bool StylisticSet3 => false; public override bool StylisticSet4 => false;
+        public override bool StylisticSet5 => false; public override bool StylisticSet6 => false; public override bool StylisticSet7 => false; public override bool StylisticSet8 => false;
+        public override bool StylisticSet9 => false; public override bool StylisticSet10 => false; public override bool StylisticSet11 => false; public override bool StylisticSet12 => false;
+        public override bool StylisticSet13 => false; public override bool StylisticSet14 => false; public override bool StylisticSet15 => false; public override bool StylisticSet16 => false;
+        public override bool StylisticSet17 => false; public override bool StylisticSet18 => false; public override bool StylisticSet19 => false; public override bool StylisticSet20 => false;
     }
 }
 
@@ -266,6 +593,7 @@ public partial class PaneView : UserControl
     {
         InitializeComponent();
         details = List.View;
+        List.Cells = ((GridView)details).Columns.ToArray();
         SetSort(sortKey, sortDesc);
         Loaded += (_, _) => SetView(FolderView(Dir));
         Loaded += (_, _) => Themes.Strip(TabBand);
@@ -397,8 +725,24 @@ public partial class PaneView : UserControl
             if (c == NameColumn)
                 widthProp.AddValueChanged(c, (_, _) => { if (double.IsNaN(c.Width)) { Settings.ColumnWidths.Remove("Name"); FitName(); } });
             else
-                widthProp.AddValueChanged(c, (_, _) => { Settings.ColumnWidths[colKey[c]] = c.Width; if (!ResizingColumn) FitName(); });
+                widthProp.AddValueChanged(c, (_, _) =>
+                {
+                    // A double-click on a column's edge asks for the width of what the column holds. The header can't
+                    // measure that itself (the rows are drawn, DetailsRow), so the rows on screen are asked.
+                    if (double.IsNaN(c.Width))
+                    {
+                        int kind = Array.IndexOf(List.Cells, c);
+                        // ponytail: the header's own text is guessed at 7 px a letter plus its padding and sort arrow
+                        c.Width = Math.Ceiling(RowsOf(List).Select(r => DetailsRow.Of(r)?.Wants(kind) ?? 0).Append(colKey[c].Length * 7 + 28).Max());
+                        return;
+                    }
+                    Settings.ColumnWidths[colKey[c]] = c.Width;
+                    if (!ResizingColumn) FitName();
+                });
+            // the rows draw their cells where the columns are: a column that moves takes its cells along
+            ((INotifyPropertyChanged)c).PropertyChanged += (_, e) => { if (e.PropertyName is "Width" or "ActualWidth") RedrawRows(); };
         }
+        ((GridView)List.View).Columns.CollectionChanged += (_, _) => RedrawRows(); // a header dragged to another place
         // The line where Name ends follows its width, the sideways scroll and the list's height.
         ((System.ComponentModel.INotifyPropertyChanged)NameColumn).PropertyChanged += (_, e) => { if (e.PropertyName == "ActualWidth") PlaceNameEdge(); };
         List.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, _) =>
@@ -2335,7 +2679,7 @@ public partial class PaneView : UserControl
             List.View = details;
             List.ClearValue(ItemsControl.ItemTemplateProperty);
             List.ClearValue(ItemsControl.ItemsPanelProperty);
-            List.ClearValue(ItemsControl.ItemContainerStyleProperty);
+            List.ItemContainerStyle = (Style)FindResource("DetailsItem");
             ScrollViewer.SetHorizontalScrollBarVisibility(List, ScrollBarVisibility.Auto); // columns wider than the pane scroll sideways
             Dispatcher.BeginInvoke(HideScrollCorner, DispatcherPriority.Loaded); // once the Details template is in
         }
@@ -2844,6 +3188,8 @@ public partial class PaneView : UserControl
             else foreach (var r in RowsOf(child)) yield return r;
         }
     }
+
+    void RedrawRows() { foreach (var row in RowsOf(List)) DetailsRow.Of(row)?.Redraw(); }
 
     void MarqueeMove(Point p)
     {

@@ -37,36 +37,35 @@
         </DataTrigger>
       </Style.Triggers>
     </Style>
-    <DataTemplate x:Key="NameCell">
-      <!-- a DockPanel, not a horizontal StackPanel: the name gets the column's width, so a long name is
-           trimmed and the rename box scrolls to its end instead of running on, cut off, past the column -->
-      <DockPanel>
-        <Grid DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource CutDim}">
-          <TextBlock Text="{Binding Icon}" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{Binding IconBrush}" VerticalAlignment="Center" Opacity="0.9">
-            <TextBlock.Visibility><Binding Path="NoSmallIcon"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility>
-          </TextBlock>
-          <Image Source="{Binding SmallIcon}" RenderOptions.BitmapScalingMode="HighQuality"/>
-          <Image Source="{Binding Overlay}" RenderOptions.BitmapScalingMode="HighQuality"/> <!-- sync badge (Google Drive, Nextcloud, ...) -->
-        </Grid>
-        <Grid>
-          <!-- not hit-testable: a right-click landing on one of its Runs made the list drop a multi-selection -->
-          <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsHitTestVisible="False"><TextBlock.Visibility><Binding Path="NotRenaming"><Binding.Converter><BooleanToVisibilityConverter/></Binding.Converter></Binding></TextBlock.Visibility><Run Text="{Binding Name, Mode=OneWay}"/><Run Text="{Binding Where, Mode=OneWay}" Foreground="{DynamicResource c70FFFFFF}" FontSize="11"/></TextBlock>
-          <ContentControl Style="{StaticResource RenameSlot}"/>
-        </Grid>
-      </DockPanel>
-    </DataTemplate>
-    <DataTemplate x:Key="SizeCell">
-      <TextBlock Text="{Binding SizeText}" Opacity="0.7" Typography.NumeralAlignment="Tabular" TextAlignment="Right" Margin="0,0,6,0"/>
-    </DataTemplate>
-    <DataTemplate x:Key="DateCell">
-      <StackPanel Orientation="Horizontal">
-        <Border Background="{Binding AgeBrush}" CornerRadius="{DynamicResource r3}" Width="46" Margin="0,0,8,0" Visibility="{DynamicResource AgeBadge}">
-          <TextBlock Text="{Binding Age}" Foreground="{Binding AgeTextBrush}" FontSize="11" FontWeight="SemiBold"
-                     HorizontalAlignment="Center" Typography.NumeralAlignment="Tabular"/>
-        </Border>
-        <TextBlock Text="{Binding DateText}" Opacity="0.6" Typography.NumeralAlignment="Tabular"/>
-      </StackPanel>
-    </DataTemplate>
+    <!-- A Details row: one element that draws the row's cells (DetailsRow) where the GridView would build five from
+         templates. The frame and its triggers are those of every GridView row (App.xaml); the age bar, a block in the
+         row's age colour left of the name, is drawn with the rest. -->
+    <Style x:Key="DetailsItem" TargetType="ListViewItem" BasedOn="{StaticResource {x:Type ListViewItem}}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListViewItem">
+            <Grid>
+              <Border x:Name="Bd" Background="Transparent" Opacity="{Binding RowFade, RelativeSource={RelativeSource AncestorType=ListView}, FallbackValue=1}" CornerRadius="{DynamicResource r2}" Padding="{TemplateBinding Padding}">
+                <local:DetailsRow x:Name="Cells" Quiet="{DynamicResource c70FFFFFF}" BarCorner="{DynamicResource r2}" BadgeCorner="{DynamicResource r3}" Badge="{DynamicResource AgeBadge}"/>
+              </Border>
+              <Border x:Name="Focus" CornerRadius="{DynamicResource r2}" BorderThickness="1" IsHitTestVisible="False"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <MultiTrigger>
+                <MultiTrigger.Conditions><Condition Property="IsKeyboardFocused" Value="True"/><Condition Property="IsSelected" Value="False"/></MultiTrigger.Conditions>
+                <Setter TargetName="Focus" Property="BorderBrush" Value="{DynamicResource Accent}"/>
+              </MultiTrigger>
+              <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="1"/></Trigger>
+              <Trigger Property="ItemsControl.AlternationIndex" Value="1"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c08FFFFFF}"/></Trigger>
+              <DataTrigger Binding="{Binding Dimmed}" Value="True"><Setter TargetName="Bd" Property="Opacity" Value="0.45"/></DataTrigger>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource c10FFFFFF}"/></Trigger>
+              <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSelect}"/><Setter Property="Foreground" Value="{DynamicResource AccentSelectText}"/></Trigger>
+              <DataTrigger Binding="{Binding DropHover}" Value="True"><Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentEdge}"/></DataTrigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
     <DataTemplate x:Key="TileCell">
       <StackPanel>
         <Grid Width="{Binding Tag, RelativeSource={RelativeSource AncestorType=ListView}}"
@@ -250,7 +249,7 @@
       <local:FileList x:Name="List" AlternationCount="2" Background="Transparent" BorderThickness="0" Margin="4,0"
                 TextSearch.TextPath="Name" VirtualizingPanel.IsVirtualizing="True"
                 VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel" VirtualizingPanel.IsVirtualizingWhenGrouping="True"
-                ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                ScrollViewer.HorizontalScrollBarVisibility="Auto" ItemContainerStyle="{StaticResource DetailsItem}">
         <!-- Group by date (Details): a quiet heading per group, its count, and a rule to the edge -->
         <ListView.GroupStyle>
           <GroupStyle>
@@ -269,20 +268,13 @@
           </GroupStyle>
         </ListView.GroupStyle>
         <ListView.View>
+          <!-- the columns: headers and widths only. Their cells are drawn by the row (DetailsRow), which knows a column by its place here -->
           <GridView>
-            <GridViewColumn x:Name="NameColumn" Header="Name" Width="200" CellTemplate="{StaticResource NameCell}"/>
-            <GridViewColumn Header="Version" Width="80">
-              <GridViewColumn.CellTemplate>
-                <DataTemplate><TextBlock Text="{Binding Version}" Opacity="0.55" TextTrimming="CharacterEllipsis" Typography.NumeralAlignment="Tabular"/></DataTemplate>
-              </GridViewColumn.CellTemplate>
-            </GridViewColumn>
-            <GridViewColumn Header="Type" Width="50">
-              <GridViewColumn.CellTemplate>
-                <DataTemplate><TextBlock Text="{Binding Ext}" Opacity="0.55"/></DataTemplate>
-              </GridViewColumn.CellTemplate>
-            </GridViewColumn>
-            <GridViewColumn Header="Size" Width="80" CellTemplate="{StaticResource SizeCell}"/>
-            <GridViewColumn Header="Modified" Width="170" CellTemplate="{StaticResource DateCell}"/>
+            <GridViewColumn x:Name="NameColumn" Header="Name" Width="200"/>
+            <GridViewColumn Header="Version" Width="80"/>
+            <GridViewColumn Header="Type" Width="50"/>
+            <GridViewColumn Header="Size" Width="80"/>
+            <GridViewColumn Header="Modified" Width="170"/>
           </GridView>
         </ListView.View>
       </local:FileList>
