@@ -836,6 +836,56 @@ public partial class App : Application
             Check(PaneView.AutoscrollSpeed(0) == 0 && PaneView.AutoscrollSpeed(-12) == 0 && PaneView.AutoscrollSpeed(30) > 0 && PaneView.AutoscrollSpeed(-30) == -PaneView.AutoscrollSpeed(30)
                   && PaneView.AutoscrollSpeed(200) > PaneView.AutoscrollSpeed(100) && PaneView.AutoscrollSpeed(100000) == 8000, "autoscroll speed");
 
+            // 1.0.81 a Details row draws itself (DetailsRow). At every column width, with the columns in another order and
+            // without the age badge, it lays out and draws without an error (a Modified column narrower than the badge
+            // once asked for a rectangle of negative width), it leaves ink, and it knows how wide its cells want to be.
+            {
+                var cols = new System.Windows.Controls.GridView();
+                foreach (var name in new[] { "Name", "Version", "Type", "Size", "Modified" }) cols.Columns.Add(new System.Windows.Controls.GridViewColumn { Header = name, Width = 100 });
+                var rowTemplate = new System.Windows.Controls.ControlTemplate(typeof(System.Windows.Controls.ListViewItem)) { VisualTree = new FrameworkElementFactory(typeof(DetailsRow), "Cells") };
+                var drawn = new FileList
+                {
+                    View = cols, Cells = cols.Columns.ToArray(),
+                    ItemContainerStyle = new Style(typeof(System.Windows.Controls.ListViewItem)) { Setters = { new Setter(System.Windows.Controls.Control.TemplateProperty, rowTemplate) } },
+                    ItemsSource = new[]
+                    {
+                        new Entry { Name = "report-final 2026.pdf", Path = @"C:\x\report-final 2026.pdf", Location = "sub", Size = 123456, Modified = DateTime.Now.AddDays(-3), Version = "10.0.26100.1" },
+                        new Entry { Name = "folder", Path = @"C:\x\folder", IsDir = true }, new Entry { Name = "..", Path = @"C:\" },
+                    },
+                };
+                List<DetailsRow> Rows() => Enumerable.Range(0, 3).Select(i => drawn.ItemContainerGenerator.ContainerFromIndex(i) is System.Windows.Controls.ListViewItem item ? DetailsRow.Of(item) : null).Where(r => r != null).ToList();
+                void Layout()
+                {
+                    for (int pass = 0; pass < 2; pass++) // the header places the columns, then the rows follow them (PaneView.RedrawRows in the app)
+                    {
+                        drawn.Measure(new Size(700, 120)); drawn.Arrange(new Rect(0, 0, 700, 120)); drawn.UpdateLayout();
+                        foreach (var r in Rows()) r.Redraw();
+                    }
+                    drawn.UpdateLayout();
+                }
+                Layout();
+                Check(Rows().Count == 3, "drawn rows: the list makes one for each entry, " + Rows().Count);
+                var shot = new System.Windows.Media.Imaging.RenderTargetBitmap(700, 120, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                shot.Render(drawn);
+                var ink = new byte[700 * 120 * 4];
+                shot.CopyPixels(ink, 700 * 4, 0);
+                Check(ink.Any(v => v != 0), "drawn rows: something is drawn");
+                var topRow = Rows()[0];
+                Check(topRow.Wants(1) > 12 && topRow.Wants(2) > 12 && topRow.Wants(3) > 18 && topRow.Wants(4) > topRow.Wants(3) + 54,
+                      $"drawn rows: what the cells want, {topRow.Wants(1):0} {topRow.Wants(2):0} {topRow.Wants(3):0} {topRow.Wants(4):0}");
+                foreach (var badge in new[] { Visibility.Visible, Visibility.Collapsed })
+                    foreach (var w in new double[] { 0, 0.5, 1, 3, 7, 12, 13, 17, 25, 31, 47, 55, 61, 300 })
+                    {
+                        foreach (var r in Rows()) r.Badge = badge;
+                        foreach (var c in cols.Columns) c.Width = w;
+                        Layout();
+                    }
+                Check(Math.Abs(topRow.Wants(4) - topRow.Wants(3)) < 60, "drawn rows: without the badge the date wants less");
+                cols.Columns.Move(0, 4); cols.Columns.Move(1, 2);
+                Layout();
+                Check(topRow.DesiredSize.Width == 1500 && topRow.DesiredSize.Height >= 16, "drawn rows: as wide as the columns, " + topRow.DesiredSize);
+            }
+
             Console.WriteLine("selftest: all passed");
             return 0;
         }
