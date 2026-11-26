@@ -45,9 +45,11 @@ public partial class SettingsWindow : Window
         BgBlurSlider.Value = Settings.ImageBlur;
         BgBrightSlider.Value = Settings.ImageBrightness;
         HiddenBox.IsChecked = Settings.ShowHidden;
+        DotsHiddenBox.IsChecked = Settings.DotsHidden;
         ShortcutFoldersBox.IsChecked = Settings.ShortcutsWithFolders;
         VerifyBox.IsChecked = Settings.Verify;
         ParallelBox.IsChecked = Settings.ParallelCopy;
+        CloseTransfersBox.IsChecked = Settings.CloseTransfersWhenDone;
         EditorBox.IsChecked = Settings.InternalEditor;
         DefaultBox.IsChecked = Settings.IsDefaultFileManager;
         WinEBox.IsChecked = Settings.TakeWinE;
@@ -83,8 +85,8 @@ public partial class SettingsWindow : Window
         "scale.sidebar", "scale.tabs", "scale.path", "scale.list", "singlepane", "closeemptypane", "stats", "animations", "smoothscroll",
         "autoscroll", "autoscrollx",
     };
-    internal static readonly string[] FilesKeys = { "hidden", "shortcutfolders", "internaleditor", "quicklook", "itemtips", "tipdelay", "deletesound", "nativemenu", "searchlimit", "missingapps" };
-    internal static readonly string[] TransfersKeys = { "verify", "parallel" };
+    internal static readonly string[] FilesKeys = { "hidden", "dothidden", "shortcutfolders", "internaleditor", "quicklook", "itemtips", "tipdelay", "deletesound", "nativemenu", "searchlimit", "missingapps" };
+    internal static readonly string[] TransfersKeys = { "verify", "parallel", "transferswindow", "transfersclose" };
     /// What File Labs keeps that isn't a choice in these cards: Windows integration, and what it remembers by itself.
     internal static readonly string[] NotReset =
     {
@@ -448,6 +450,9 @@ public partial class SettingsWindow : Window
         BdSolid.Tag = Settings.Backdrop == 1 ? "on" : null;
         OpacitySlider.IsEnabled = Settings.Backdrop != 1;
         MenuOwn.Tag = Settings.NativeMenu ? null : "on";
+        TransfersWindowTab.Tag = Settings.TransfersInWindow ? "on" : null;
+        TransfersBottomTab.Tag = Settings.TransfersInWindow ? null : "on";
+        CloseTransfersBox.IsEnabled = Settings.TransfersInWindow;
         MenuWin.Tag = Settings.NativeMenu ? "on" : null;
         foreach (var (b, v) in new[] { (Limit1k, 1_000), (Limit10k, 10_000), (Limit100k, 100_000), (LimitNone, 0) })
             b.Tag = Settings.SearchLimit == v ? "on" : null;
@@ -556,6 +561,7 @@ public partial class SettingsWindow : Window
     }
 
     void Hidden_Click(object s, RoutedEventArgs e) { Settings.ShowHidden = HiddenBox.IsChecked == true; Settings.Save(); main.RefreshPanes(); }
+    void DotsHidden_Click(object s, RoutedEventArgs e) { Settings.DotsHidden = DotsHiddenBox.IsChecked == true; Settings.Save(); main.RefreshPanes(); }
     void ShortcutFolders_Click(object s, RoutedEventArgs e) { Settings.ShortcutsWithFolders = ShortcutFoldersBox.IsChecked == true; Settings.Save(); main.ResortPanes(); }
     void Editor_Click(object s, RoutedEventArgs e) { Settings.InternalEditor = EditorBox.IsChecked == true; Settings.Save(); }
     void QuickLook_Click(object s, RoutedEventArgs e) { Settings.QuickLook = QuickLookBox.IsChecked == true; Settings.Save(); }
@@ -568,6 +574,14 @@ public partial class SettingsWindow : Window
     void MissingApps_Click(object s, RoutedEventArgs e) { Settings.MissingApps = MissingAppsBox.IsChecked == true; Settings.Save(); }
     void Verify_Click(object s, RoutedEventArgs e) { Settings.Verify = VerifyBox.IsChecked == true; Settings.Save(); }
     void Parallel_Click(object s, RoutedEventArgs e) { Settings.ParallelCopy = ParallelBox.IsChecked == true; Settings.Save(); }
+    void CloseTransfers_Click(object s, RoutedEventArgs e) { Settings.CloseTransfersWhenDone = CloseTransfersBox.IsChecked == true; Settings.Save(); }
+    void TransfersAt_Click(object s, RoutedEventArgs e)
+    {
+        Settings.TransfersInWindow = s == TransfersWindowTab;
+        Settings.Save();
+        main.PlaceTransfers(); // the transfers listed now move there too
+        Refresh();
+    }
     void Tray_Click(object s, RoutedEventArgs e)
     {
         Settings.CloseToTray = TrayBox.IsChecked == true;

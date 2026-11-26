@@ -216,6 +216,8 @@
                   </DockPanel>
                   <CheckBox x:Name="HiddenBox" Content="Show hidden files" Click="Hidden_Click"/>
                   <TextBlock Style="{StaticResource Hint}" Text="Also Ctrl+H."/>
+                  <CheckBox x:Name="DotsHiddenBox" Content="Treat names starting with a dot as hidden" Click="DotsHidden_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Files and folders like .git, .config or .bashrc, as on Linux and in a WSL home: hidden with the hidden files, shown with them by Ctrl+H."/>
                   <CheckBox x:Name="ShortcutFoldersBox" Content="Sort shortcuts to folders with the folders" Click="ShortcutFolders_Click"/>
                   <TextBlock Style="{StaticResource Hint}" Text="A shortcut that opens a folder is listed among the folders, at the top, instead of among the files."/>
                   <CheckBox x:Name="EditorBox" Content="Open code and text files in the File Labs editor" Click="Editor_Click"/>
@@ -263,6 +265,14 @@
                   <TextBlock Style="{StaticResource Hint}" Text="Reads source and copy back and compares xxHash3 digests. Catches a disk or cable that dropped bytes, at the cost of a second full read. On a move, a source whose copy doesn't match is kept."/>
                   <CheckBox x:Name="ParallelBox" Content="Copy small files several at once" Margin="0,10,0,0" Click="Parallel_Click"/>
                   <TextBlock Style="{StaticResource Hint}" Text="Files under 16 MB go four at a time when both drives are SSDs or network shares, where a small file is mostly waiting. To or from a spinning disk they still go one by one, and big files always do."/>
+                  <TextBlock Text="Show copies and moves" Margin="0,10,0,0"/>
+                  <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                    <Button x:Name="TransfersWindowTab" Content="In their own window" Style="{StaticResource Tab}" Click="TransfersAt_Click"/>
+                    <Button x:Name="TransfersBottomTab" Content="Under the panes" Style="{StaticResource Tab}" Click="TransfersAt_Click"/>
+                  </StackPanel>
+                  <TextBlock Style="{StaticResource Hint}" Text="Their own window: it opens with each copy or move, with the total speed and its chart. Under the panes: each transfer is a card below the file lists, nothing opens over them. Either way the Transfers button at the bottom opens the window with every transfer, and Ctrl+Z takes the last one back."/>
+                  <CheckBox x:Name="CloseTransfersBox" Content="Close the window when everything is done" Margin="0,4,0,0" Click="CloseTransfers_Click"/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Once every copy and move has finished, the window goes away by itself after a moment. It stays when something failed or a question waits for you."/>
                 </StackPanel>
               </Border>
           </StackPanel>

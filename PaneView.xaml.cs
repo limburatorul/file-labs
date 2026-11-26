@@ -228,6 +228,8 @@ public class FileList : ListView
 public partial class PaneView : UserControl
 {
     public static bool ShowHidden;
+    /// Names starting with a dot (.git, .config, a WSL home) count as hidden files: Ctrl+H shows them with the rest.
+    public static bool DotsHidden;
     static readonly HashSet<string> CutPaths = new(StringComparer.OrdinalIgnoreCase);
 
     // Marks exactly these paths as cut in every pane; an empty list clears the mark.
@@ -616,7 +618,7 @@ public partial class PaneView : UserControl
         {
             foreach (var fsi in di.EnumerateFileSystemInfos())
             {
-                if (!hidden && fsi.Attributes.HasFlag(FileAttributes.Hidden)) continue;
+                if (!hidden && (fsi.Attributes.HasFlag(FileAttributes.Hidden) || DotsHidden && fsi.Name.StartsWith('.'))) continue;
                 bool isDir = fsi is DirectoryInfo;
                 var e = new Entry { Name = fsi.Name, Path = fsi.FullName, IsDir = isDir, Modified = fsi.LastWriteTime, IsCut = CutPaths.Contains(fsi.FullName) };
                 e.Size = isDir ? SizeCache.Peek(fsi.FullName, fsi.LastWriteTimeUtc) : ((FileInfo)fsi).Length; // never waits for the cache

@@ -384,7 +384,11 @@
       </Border>
       </Grid>
 
-      <!-- Ferry transfers live in a window of their own (MainWindow.ShowTransfers): under the panes they took the files' room -->
+      <!-- Ferry transfers live in a window of their own (MainWindow.ShowTransfers), or here under the panes when Settings →
+           Transfers says so (as before 1.0.55): nothing opens over the files, the cards take a little of their room -->
+      <ScrollViewer x:Name="BottomTransfers" Grid.Row="2" MaxHeight="280" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0" Visibility="Collapsed">
+        <ItemsControl x:Name="BottomJobs" ItemTemplate="{StaticResource JobCard}"/>
+      </ScrollViewer>
 
       <!-- Command bar -->
       <DockPanel Grid.Row="3" Margin="0,6,0,6">

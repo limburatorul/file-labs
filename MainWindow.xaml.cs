@@ -21,6 +21,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         Title = $"File Labs {Updater.Current}";
         PaneView.ShowHidden = Settings.ShowHidden;
+        PaneView.DotsHidden = Settings.DotsHidden;
         SidebarColumn.Width = new GridLength(Settings.SidebarWidth);
         SetUpChrome();
         ApplyPanes();
@@ -469,6 +470,7 @@ public partial class MainWindow : Window
     public void RefreshPanes()
     {
         PaneView.ShowHidden = Settings.ShowHidden;
+        PaneView.DotsHidden = Settings.DotsHidden;
         Left.Refresh(); Right.Refresh();
     }
 
@@ -1200,12 +1202,52 @@ public partial class MainWindow : Window
         job.Seq = ++jobSeq;
         job.Hue = Hex(JobHues[(jobSeq - 1) % JobHues.Length]);
         jobs.Insert(0, job);
+        if (!jobsWatched)
+        {
+            jobsWatched = true;
+            jobs.CollectionChanged += (_, _) =>
+            {
+                TransfersButton.Visibility = jobs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                TransfersText.Text = jobs.Count > 1 ? $"Transfers ({jobs.Count})" : "Transfers";
+                ShowBottomJobs();
+            };
+        }
         WatchJobs();
-        ShowTransfers(activate: false); // the keyboard stays in the list
+        if (Settings.TransfersInWindow) ShowTransfers(activate: false); // the keyboard stays in the list
         return job;
     }
 
     // ---- the Transfers window: every copy and move, apart from the panes (under them it took the files' room) ----
+    bool jobsWatched;
+
+    /// Settings → Transfers changed where they show: the cards go under the panes, or the window takes them again.
+    internal void PlaceTransfers()
+    {
+        ShowBottomJobs();
+        if (!Settings.TransfersInWindow) transfersWindow?.Hide();
+        else if (jobs.Any(j => j.Active)) ShowTransfers(activate: false);
+    }
+
+    void ShowBottomJobs()
+    {
+        BottomJobs.ItemsSource ??= jobs; // newest first, as they are listed
+        BottomTransfers.Visibility = !Settings.TransfersInWindow && jobs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    // Settings → Transfers: once everything has ended, the window goes away after a moment to read "Done"; not when
+    // the transfer that just ended had a problem, nor while another runs or a question waits
+    void CloseTransfersSoon(Job ended)
+    {
+        if (!Settings.TransfersInWindow || !Settings.CloseTransfersWhenDone || ended.HasErrors || ended.FailedFiles > 0 || ended.Phase != Phase.Done) return;
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            if (!jobs.Any(j => j.Active)) transfersWindow?.Hide();
+        };
+        timer.Start();
+    }
+
     // On top the total speed and a chart as wide as the window, each running job a band in its own colour; under it the
     // jobs in three sections, what needs you first, then what runs, then what is done (each card edged in its colour).
     Window transfersWindow;
@@ -1258,12 +1300,7 @@ public partial class MainWindow : Window
             // closing only hides it: the jobs go on, and the Transfers button or the next copy brings it back
             w.Closing += (_, e) => { if (!quitting && IsLoaded) { e.Cancel = true; w.Hide(); } };
             w.PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { w.Hide(); e.Handled = true; } };
-            jobs.CollectionChanged += (_, _) =>
-            {
-                TransfersButton.Visibility = jobs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-                TransfersText.Text = jobs.Count > 1 ? $"Transfers ({jobs.Count})" : "Transfers";
-                if (jobs.Count == 0) { w.Hide(); totalChart.Clear(); } // the last one dismissed
-            };
+            jobs.CollectionChanged += (_, _) => { if (jobs.Count == 0) { w.Hide(); totalChart.Clear(); } }; // the last one dismissed
             TransfersButton.Visibility = Visibility.Visible;
             UpdateTransfers();
         }
@@ -1317,7 +1354,8 @@ public partial class MainWindow : Window
         if (full) jobsRefreshed = now;
         foreach (var j in jobs) if (full) j.Refresh(); else if (j.Active) j.RefreshBars();
         // a question waits (files already there): the window comes forward with it, once per job
-        if (full) foreach (var j in jobs) if (j.HasConflicts && askedForward.Add(j)) ShowTransfers(activate: true);
+        // (under the panes the question is already in sight, on the job's card)
+        if (full && Settings.TransfersInWindow) foreach (var j in jobs) if (j.HasConflicts && askedForward.Add(j)) ShowTransfers(activate: true);
         if (full) UpdateTransfers();
         if (full && !jobs.Any(j => j.Active)) { CompositionTarget.Rendering -= JobFrame; watchingJobs = false; }
     }
@@ -1328,6 +1366,7 @@ public partial class MainWindow : Window
         UpdateTransfers(); // into Done
         RememberJob(job);
         // what was pasted or dropped is selected where it arrived, the first of it in sight with the keyboard on it,
+        CloseTransfersSoon(job);
         // instead of somewhere among the folder's other hundred files (Rico, 1.0.61)
         if (job.Phase == Phase.Done)
         {

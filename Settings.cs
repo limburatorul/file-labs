@@ -44,8 +44,11 @@ public static class Settings
     public static bool InternalEditor = true; // Enter on a code/text file opens the F4 editor, not its app
     public static bool Verify;               // xxHash3 check after copying
     public static bool ParallelCopy = true;  // small files several at once on SSDs and network shares (Ferry.Fast)
+    public static bool TransfersInWindow = true; // copies and moves in their own window; off: under the panes, as before 1.0.55
+    public static bool CloseTransfersWhenDone = true; // that window hides itself once everything ended without a problem
     public static int SearchLimit = 10_000;     // a search in subfolders pauses after this many results; 0 = never
     public static bool ShowHidden;
+    public static bool DotsHidden;           // names starting with a dot count as hidden (PaneView.DotsHidden)
     public static bool ShortcutsWithFolders;     // shortcuts to folders sort among the folders, not the files
     public static string LastSeenVersion = "";   // What's new is shown once per version
     public static bool NativeMenu;          // right-click shows the Windows menu instead of ours
@@ -150,9 +153,12 @@ public static class Settings
                 case "accentstrength" when double.TryParse(v, CultureInfo.InvariantCulture, out var ast) && double.IsFinite(ast): AccentStrength = Math.Clamp(ast, 0.3, 2.5); break;
                 case "verify": Verify = v == "1"; break;
                 case "parallel": ParallelCopy = v != "0"; break;
+                case "transferswindow": TransfersInWindow = v != "0"; break;
+                case "transfersclose": CloseTransfersWhenDone = v != "0"; break;
                 case "searchlimit" when int.TryParse(v, out var sl) && sl >= 0: SearchLimit = sl; break;
                 case "internaleditor": InternalEditor = v == "1"; break;
                 case "hidden": ShowHidden = v == "1"; break;
+                case "dothidden": DotsHidden = v == "1"; break;
                 case "shortcutfolders": ShortcutsWithFolders = v == "1"; break;
                 case "nativemenu": NativeMenu = v == "1"; break;
                 case "wine": TakeWinE = v != "0"; break;
@@ -229,9 +235,12 @@ public static class Settings
             $"accentstrength={AccentStrength.ToString(CultureInfo.InvariantCulture)}",
             $"verify={(Verify ? 1 : 0)}",
             $"parallel={(ParallelCopy ? 1 : 0)}",
+            $"transferswindow={(TransfersInWindow ? 1 : 0)}",
+            $"transfersclose={(CloseTransfersWhenDone ? 1 : 0)}",
             $"searchlimit={SearchLimit}",
             $"internaleditor={(InternalEditor ? 1 : 0)}",
             $"hidden={(ShowHidden ? 1 : 0)}",
+            $"dothidden={(DotsHidden ? 1 : 0)}",
             $"shortcutfolders={(ShortcutsWithFolders ? 1 : 0)}",
             $"nativemenu={(NativeMenu ? 1 : 0)}",
             $"wine={(TakeWinE ? 1 : 0)}",
