@@ -2118,9 +2118,23 @@ public partial class PaneView : UserControl
     {
         FilterHint.Visibility = FilterBox.Text == "" ? Visibility.Visible : Visibility.Collapsed;
         FilterClear.Visibility = FilterBox.Text == "" ? Visibility.Collapsed : Visibility.Visible;
+        // In a big folder every keystroke filtered and sorted every row again (130 ms a letter at 20,000 files): there the
+        // list follows when the typing pauses. Emptying the box, and small folders, are answered at once.
+        if (FilterBox.Text != "" && items.Count > 2000)
+        {
+            if (filterWait == null)
+            {
+                filterWait = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+                filterWait.Tick += (_, _) => { filterWait.Stop(); ApplyFilter(); if (view != null) UpdateFooter(); };
+            }
+            filterWait.Stop(); filterWait.Start();
+            return;
+        }
+        filterWait?.Stop();
         ApplyFilter();
         if (view != null) UpdateFooter();
     }
+    DispatcherTimer filterWait;
 
     // Empties the box, and leaves search results if it was showing them, as Esc does; the keyboard stays there for what comes next.
     void FilterClear_Click(object s, RoutedEventArgs e) { ClearFilter(); FilterBox.Focus(); }
@@ -2799,6 +2813,17 @@ public partial class PaneView : UserControl
 
     void MarqueeMove(MouseEventArgs e) => MarqueeMove(e.GetPosition(List));
 
+    /// The rows and tiles that exist now (the list is virtualized), grouped or not; a row's own insides are not walked.
+    static IEnumerable<ListViewItem> RowsOf(DependencyObject d)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(d); i++)
+        {
+            var child = VisualTreeHelper.GetChild(d, i);
+            if (child is ListViewItem row) yield return row;
+            else foreach (var r in RowsOf(child)) yield return r;
+        }
+    }
+
     void MarqueeMove(Point p)
     {
         var offset = ScrollOffset;
@@ -2824,9 +2849,10 @@ public partial class PaneView : UserControl
 
         // Only rows on screen have containers (the list is virtualized): each one seen is remembered where it sits in the
         // content, so it stays in (or out) once scrolled away. Rows never on screen keep their state.
-        foreach (Entry item in view)
+        // (the rows that exist are walked, not every item asked for its row: at 20,000 files that was 5-15 ms a move)
+        foreach (var c in RowsOf(List))
         {
-            if (item.IsUp || List.ItemContainerGenerator.ContainerFromItem(item) is not ListViewItem c || !c.IsVisible) continue;
+            if (c.DataContext is not Entry item || item.IsUp || !c.IsVisible) continue;
             var bounds = c.TransformToAncestor(List).TransformBounds(new Rect(c.RenderSize));
             bounds.Offset(offset);
             marqueeSeen[item] = bounds;

@@ -248,6 +248,8 @@ public static class Ferry
         var plan = new Plan();
         int links = 0;
         var topNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // folders that are not at the destination yet, and come once: nothing under them can meet a file already there
+        var fresh = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         void Walk(string dir, string rel)
         {
             IEnumerable<FileSystemInfo> children;
@@ -283,7 +285,8 @@ public static class Ferry
             if (here) { var copy = CopyName(s.TrimEnd('\\'), fsi is DirectoryInfo); job.Duplicates[s] = copy; Add(fsi, Path.GetFileName(copy)); continue; }
             var name = job.Names?.GetValueOrDefault(s) ?? fsi.Name;
             // a folder poured into one already there, or two sources of the same name (from different folders): file by file
-            if (!topNames.Add(name) || fsi is DirectoryInfo && Directory.Exists(Path.Combine(job.Destination, name))) job.Merged = true;
+            if (!topNames.Add(name) || fsi is DirectoryInfo && Directory.Exists(Path.Combine(job.Destination, name))) { job.Merged = true; fresh.Remove(name); }
+            else if (fsi is DirectoryInfo) fresh.Add(name);
             int files = job.TotalFiles; long bytes = job.TotalBytes;
             Add(fsi, name);
             plan.PerSource[s] = (job.TotalFiles - files, job.TotalBytes - bytes);
@@ -294,6 +297,10 @@ public static class Ferry
         for (int i = 0; i < plan.Files.Count; i++)
         {
             var f = plan.Files[i];
+            // so its files are not asked for one by one: a folder of 100,000 files spent seconds "Scanning" before a move
+            // that is a single rename, and every copy of a new folder paid one more round trip per file on a share
+            int cut = f.Relative.IndexOf('\\');
+            if (cut > 0 && fresh.Contains(f.Relative[..cut])) continue;
             var target = new FileInfo(Path.Combine(job.Destination, f.Relative));
             if (target.Exists)
                 plan.Conflicts.Add(new Conflict(i, f.Relative, f.Size, File.GetLastWriteTime(f.Source), target.Length, target.LastWriteTime));
