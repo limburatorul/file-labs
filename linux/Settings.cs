@@ -26,6 +26,13 @@ public static class Settings
     public static bool ParallelCopy = true;
     public static int SearchLimit = 10_000;
     public static bool ShowHidden;
+    // as on Windows: where copies and moves show ("button": only the Transfers button lights up; "window"; "bottom":
+    // cards under the panes), whether that window closes itself, F5 copying, the age badge, sidebar parts left out
+    public static string TransfersShow = "button";
+    public static bool CloseTransfersWhenDone = true;
+    public static bool F5Copies;
+    public static bool AgeBadges = true;
+    public static readonly HashSet<string> SidebarHidden = new();
     public static bool DeleteSound = true; // the question before a permanent delete
     public static string LastSeenVersion = "";
     public static string BackgroundImage = "";
@@ -104,6 +111,11 @@ public static class Settings
                         case "parallel": ParallelCopy = v != "0"; break;
                         case "searchlimit" when int.TryParse(v, out var sl) && sl >= 0: SearchLimit = sl; break;
                         case "hidden": ShowHidden = v == "1"; break;
+                        case "transfers" when v is "button" or "window" or "bottom": TransfersShow = v; break;
+                        case "transfersclose": CloseTransfersWhenDone = v != "0"; break;
+                        case "f5copies": F5Copies = v == "1"; break;
+                        case "agebadges": AgeBadges = v != "0"; break;
+                        case "sidebarhidden": SidebarHidden.Clear(); SidebarHidden.UnionWith(v.Split(',').Where(x => x != "")); break;
                         case "deletesound": DeleteSound = v == "1"; break;
                         case "lastseen": LastSeenVersion = v; break;
                         case "bgimage": BackgroundImage = v; break;
@@ -153,6 +165,11 @@ public static class Settings
         yield return $"parallel={(ParallelCopy ? 1 : 0)}";
         yield return $"searchlimit={SearchLimit}";
         yield return $"hidden={(ShowHidden ? 1 : 0)}";
+        yield return $"transfers={TransfersShow}";
+        yield return $"transfersclose={(CloseTransfersWhenDone ? 1 : 0)}";
+        yield return $"f5copies={(F5Copies ? 1 : 0)}";
+        yield return $"agebadges={(AgeBadges ? 1 : 0)}";
+        yield return $"sidebarhidden={string.Join(',', SidebarHidden)}";
         yield return $"deletesound={(DeleteSound ? 1 : 0)}";
         yield return $"lastseen={LastSeenVersion}";
         yield return $"bgimage={BackgroundImage}";

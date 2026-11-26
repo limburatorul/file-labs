@@ -14,6 +14,7 @@ public class Entry : INotifyPropertyChanged
     public bool IsDir { get; init; }
     public bool IsLink { get; init; }
     public bool Hidden => Name.StartsWith('.') && !IsUp;
+    public bool AgeBadgeShown => Settings.AgeBadges; // Settings → Appearance
     DateTime modified;
     public DateTime Modified
     {

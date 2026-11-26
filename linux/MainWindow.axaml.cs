@@ -52,7 +52,13 @@ public partial class MainWindow : Window
         BuildBin();
         StartUpdates();
         Ferry.Finished += job => Dispatcher.UIThread.Post(() => JobFinished(job));
-        jobTimer.Tick += (_, _) => { foreach (var j in jobs.Where(j => j.Active)) j.Refresh(); };
+        jobTimer.Tick += (_, _) =>
+        {
+            foreach (var j in jobs.Where(j => j.Active)) j.Refresh();
+            // a question waits (files already there): the window comes up with it, once per job; under the panes it is on the card
+            if (Settings.TransfersShow != "bottom") foreach (var j in jobs.Where(j => j.HasConflicts).ToList()) if (askedForward.Add(j)) ShowTransfers();
+            UpdateLamp();
+        };
         mountTimer.Tick += (_, _) => { var now = MountKey(); if (now != mountKey) { mountKey = now; BuildSidebar(); } };
         mountKey = MountKey(); mountTimer.Start();
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
@@ -224,7 +230,7 @@ public partial class MainWindow : Window
         var lists = new Button { Classes = { "ghost" }, Padding = new(6, 1), Content = new TextBlock { Text = Glyph.ListView, Classes = { "icon" }, FontSize = 11, Foreground = F.Brush("#8A97AA") } };
         ToolTip.SetTip(lists, "Quick access lists: switch, add, rename, reorder, delete");
         lists.Click += (_, _) => QuickListsMenu().Open(lists);
-        SidebarHost.Children.Add(Section("quick", Settings.CurrentQuickList.Name, quick, lists));
+        if (!Settings.SidebarHidden.Contains("quick")) SidebarHost.Children.Add(Section("quick", Settings.CurrentQuickList.Name, quick, lists));
 
         var home = PaneView.Home;
         var places = new StackPanel();
@@ -233,12 +239,12 @@ public partial class MainWindow : Window
             (Glyph.Home, "Home", home), (Glyph.Desktop, "Desktop", UserDir("DESKTOP", "Desktop")), (Glyph.Document, "Documents", UserDir("DOCUMENTS", "Documents")),
             (Glyph.Download, "Downloads", UserDir("DOWNLOAD", "Downloads")), (Glyph.Image, "Pictures", UserDir("PICTURES", "Pictures")),
             (Glyph.Music, "Music", UserDir("MUSIC", "Music")), (Glyph.Video, "Videos", UserDir("VIDEOS", "Videos")),
-        }.Where(x => x.Item3 != home || x.Item2 == "Home").DistinctBy(x => x.Item3))
+        }.Where(x => x.Item3 != home || x.Item2 == "Home").Where(x => !Settings.SidebarHidden.Contains(x.Item2)).DistinctBy(x => x.Item3))
             places.Children.Add(SideButton(glyph, name, path, "#60A5FA"));
         var trash = SideButton(Glyph.Trash, "Trash", null, "#9CA3AF");
         trash.Click += (_, _) => Open(() => new TrashWindow());
-        places.Children.Add(trash);
-        SidebarHost.Children.Add(Section("favorites", "Favorites", places));
+        if (!Settings.SidebarHidden.Contains("Trash")) places.Children.Add(trash);
+        if (!Settings.SidebarHidden.Contains("favorites")) SidebarHost.Children.Add(Section("favorites", "Favorites", places));
 
         var drives = new StackPanel();
         foreach (var m in Mounts.Places())
@@ -276,8 +282,8 @@ public partial class MainWindow : Window
             AllowDropOn(b, point);
             drives.Children.Add(b);
         }
-        SidebarHost.Children.Add(Section("drives", "Drives", drives));
-        SidebarHost.Children.Add(Section("folders", "Folders", BuildTree()));
+        if (!Settings.SidebarHidden.Contains("drives")) SidebarHost.Children.Add(Section("drives", "Drives", drives));
+        if (!Settings.SidebarHidden.Contains("folders")) SidebarHost.Children.Add(Section("folders", "Folders", BuildTree()));
         if (active != null) Dispatcher.UIThread.Post(() => SyncTree(active.Dir, reveal: false), DispatcherPriority.Background);
     }
 
@@ -415,7 +421,7 @@ public partial class MainWindow : Window
     // ---- the command bar ----
     void BuildCommandBar()
     {
-        void Cmd(string key, string text, Action run, string tip = null)
+        Avalonia.Controls.Documents.Run Cmd(string key, string text, Action run, string tip = null)
         {
             var b = new Button { Classes = { "ghost", "bar" }, FontSize = 11 };
             var t = new TextBlock();
@@ -425,10 +431,11 @@ public partial class MainWindow : Window
             if (tip != null) ToolTip.SetTip(b, tip);
             b.Click += (_, _) => run();
             CommandBar.Children.Add(b);
+            return (Avalonia.Controls.Documents.Run)t.Inlines[0];
         }
         Cmd("F2", "Rename", () => active.BeginRename());
         Cmd("F3", "Open", () => active.OpenSelected());
-        Cmd("Ctrl+F5", "Copy", () => Transfer(false), "Copy to the other pane (Ctrl+F5). F5 refreshes.");
+        copyKey = Cmd(Settings.F5Copies ? "F5" : "Ctrl+F5", "Copy", () => Transfer(false), "Copy to the other pane");
         Cmd("F6", "Move", () => Transfer(true));
         Cmd("F7", "New folder", NewFolder, "New folder (F7 or Ctrl+Shift+N)");
         Cmd("Ctrl+N", "New file", NewFile);
@@ -437,12 +444,23 @@ public partial class MainWindow : Window
         Cmd("Ctrl+H", "Hidden", ToggleHidden);
         Cmd("Ctrl+P", "One / two panes", TogglePanes);
         Cmd("Alt+P", "Preview", TogglePreview);
-        transfersButton = new Button { Classes = { "ghost", "bar" }, IsVisible = false, FontSize = 11 };
-        transfersButton.Content = new TextBlock { Inlines = { new Avalonia.Controls.Documents.Run(Glyph.Transfers) { Classes = { "icon" } }, new Avalonia.Controls.Documents.Run(" Transfers") } };
+        // always there (as on Windows): it lights up while a copy or move runs, with a thin bar of how far they all are
+        transfersButton = new Button { Classes = { "ghost", "bar" }, FontSize = 11 };
+        transfersBar = new ProgressBar { Height = 2, MinHeight = 0, MinWidth = 0, Minimum = 0, Maximum = 1, VerticalAlignment = VerticalAlignment.Bottom, Margin = new(0, 0, 0, -4), IsVisible = false, IsHitTestVisible = false };
+        transfersBar.Bind(ProgressBar.ForegroundProperty, transfersBar.GetResourceObservable("Accent"));
+        // the lamp is a border of its own: the button's style paints its own background over the button's
+        transfersLamp = new Border { CornerRadius = new(5), BorderThickness = new(1), BorderBrush = Brushes.Transparent, Padding = new(6, 1), Margin = new(-6, -2),
+            Child = new Grid { Children = { new TextBlock { Inlines = { new Avalonia.Controls.Documents.Run(Glyph.Transfers) { Classes = { "icon" } }, new Avalonia.Controls.Documents.Run(" Transfers") } }, transfersBar } } };
+        transfersButton.Content = transfersLamp;
+        transfersLamp.Transitions = new Avalonia.Animation.Transitions { new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = TimeSpan.FromMilliseconds(850) } };
+        ToolTip.SetTip(transfersButton, "Copies and moves: progress, history and Undo");
         transfersButton.Click += (_, _) => ShowTransfers();
         CommandBar.Children.Add(transfersButton);
     }
     Button transfersButton;
+    ProgressBar transfersBar;
+    Border transfersLamp;
+    Avalonia.Controls.Documents.Run copyKey;
 
     // ---- keyboard: the same keys as on Windows ----
     void OnKeyDown(object s, KeyEventArgs e)
@@ -459,7 +477,7 @@ public partial class MainWindow : Window
             case Key.F3: active.OpenSelected(); break;
             case Key.F4 when !ctrl: if (active.Current is { IsDir: false } f) new EditorWindow(f.Path).Show(); break;
             case Key.F5 when ctrl: Transfer(false); break;
-            case Key.F5: active.Refresh(keepSelection: true); break;
+            case Key.F5: if (Settings.F5Copies) Transfer(false); else active.Refresh(keepSelection: true); break; // Settings → Transfers
             case Key.F6: Transfer(true); break;
             case Key.F7: NewFolder(); break;
             case Key.N when ctrl && shift: NewFolder(); break;
@@ -622,12 +640,62 @@ public partial class MainWindow : Window
         jobs.Insert(0, j);
         Settings.AddRecent(Settings.RecentDestinations, into, Settings.DestinationsMax);
         jobTimer.Start();
-        ShowTransfers();
+        if (Settings.TransfersShow == "window") ShowTransfers();
+        RebuildBottom();
+        UpdateLamp();
     }
+
+    readonly HashSet<Job> askedForward = new();
+    bool transfersFailed;
+    int lampTick;
+
+    /// The Transfers button's lamp: the accent while something runs, breathing; red when a transfer failed while nothing
+    /// showed it, until the window is opened; off otherwise. The bar under it: bytes done of all that runs.
+    void UpdateLamp()
+    {
+        bool busy = jobs.Any(j => j.Active);
+        long total = 0, done = 0;
+        foreach (var j in jobs) if (j.Active) { total += j.TotalBytes; done += j.DoneBytes; }
+        transfersBar.IsVisible = busy;
+        transfersBar.Value = total > 0 ? Math.Clamp(done / (double)total, 0, 1) : 0;
+        Color? glow = transfersFailed ? Color.Parse("#E54848") : busy ? Color.Parse(Settings.Accent) : null;
+        transfersLamp.Background = glow is Color g ? new SolidColorBrush(Color.FromArgb(0x48, g.R, g.G, g.B)) : Brushes.Transparent;
+        transfersLamp.BorderBrush = glow is Color e ? new SolidColorBrush(e) : Brushes.Transparent;
+        lampTick++;
+        transfersLamp.Opacity = busy && !transfersFailed && Settings.Animations && lampTick / 9 % 2 == 1 ? 0.55 : 1;
+    }
+
+    /// Settings → Transfers "Under the panes": a card per job below the file lists.
+    void RebuildBottom()
+    {
+        BottomJobs.Children.Clear();
+        bool show = Settings.TransfersShow == "bottom" && jobs.Count > 0;
+        BottomTransfers.IsVisible = show;
+        if (show) foreach (var j in jobs) BottomJobs.Children.Add(TransfersWindow.Card(j, this, RebuildBottom));
+    }
+
+    /// What Settings changed that the window shows: the copy key's label, the sidebar, the age badges, where transfers go.
+    public void ApplyOptions()
+    {
+        copyKey.Text = Settings.F5Copies ? "F5" : "Ctrl+F5";
+        BuildSidebar();
+        Left.Refresh(keepSelection: true); Right.Refresh(keepSelection: true);
+        if (Settings.TransfersShow != "window") transfers?.Close();
+        RebuildBottom();
+        UpdateLamp();
+    }
+
+    /// What Settings → Appearance can leave out of the sidebar: its sections, then the places in Favorites.
+    public static readonly (string Key, string Title)[] SidebarParts =
+    {
+        ("quick", "Quick access"), ("favorites", "Favorites"), ("drives", "Drives"), ("folders", "Folders"),
+        ("Home", "Home"), ("Desktop", "Desktop"), ("Documents", "Documents"), ("Downloads", "Downloads"), ("Pictures", "Pictures"),
+        ("Music", "Music"), ("Videos", "Videos"), ("Trash", "Trash"),
+    };
 
     void ShowTransfers()
     {
-        transfersButton.IsVisible = jobs.Count > 0;
+        transfersFailed = false; // seen now
         if (transfers == null || !transfers.IsVisible)
         {
             transfers = new TransfersWindow(jobs, this);
@@ -659,9 +727,15 @@ public partial class MainWindow : Window
         if (target != null && job.Phase == Phase.Done) Dispatcher.UIThread.Post(() => target.SelectNames(job.Completed.Select(c => Path.GetRelativePath(job.Destination, c.To).Split('/')[0]).Distinct()), DispatcherPriority.Background);
         Say(job.Title);
         transfers?.Rebuild();
+        // a failure nobody saw: under the panes it is on the card, in an open window on screen
+        if ((!job.Errors.IsEmpty || job.FailedFiles > 0) && Settings.TransfersShow != "bottom" && transfers?.IsVisible != true) transfersFailed = true;
+        // the window goes away a moment after everything ended well (Settings → Transfers, window mode)
+        if (Settings.TransfersShow == "window" && Settings.CloseTransfersWhenDone && job.Errors.IsEmpty && job.FailedFiles == 0 && job.Phase == Phase.Done)
+            DispatcherTimer.RunOnce(() => { if (!jobs.Any(j => j.Active)) transfers?.Close(); }, TimeSpan.FromSeconds(1.5));
+        UpdateLamp();
     }
 
-    public void DismissJob(Job j) { jobs.Remove(j); transfers?.Rebuild(); transfersButton.IsVisible = jobs.Count > 0; if (jobs.Count == 0) transfers?.Close(); }
+    public void DismissJob(Job j) { jobs.Remove(j); askedForward.Remove(j); transfers?.Rebuild(); if (jobs.Count == 0) transfers?.Close(); RebuildBottom(); }
     public void UndoJob(Job j) { if (jobUndo.TryGetValue(j, out var e)) Undo(e); }
 
     async void Delete(bool permanent)

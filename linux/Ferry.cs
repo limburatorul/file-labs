@@ -137,7 +137,7 @@ public class Job : INotifyPropertyChanged
     public bool HasConflicts => Phase == Phase.Conflicts;
     public string ConflictTitle => $"{Conflicts.Count} file(s) already exist in the destination";
     public bool HasErrors => !Errors.IsEmpty || !Notes.IsEmpty;
-    public string ErrorSummary => string.Join("  ·  ", new[] { Errors.IsEmpty ? null : $"{Errors.Count} error(s)" }.Concat(Notes).Where(x => x != null));
+    public string ErrorSummary => string.Join("  ·  ", new[] { Errors.Count switch { 0 => null, 1 => Errors.First(), var n => $"{Errors.First()} (and {n - 1} more)" } }.Concat(Notes).Where(x => x != null));
     public string ErrorDetail => string.Join("\n", Errors.Take(50));
     public string PauseGlyph => Paused ? Glyph.Play : Glyph.Pause;
     public string PauseText => Paused ? "Resume" : "Pause";
@@ -301,7 +301,7 @@ public static class Ferry
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { job.Errors.Enqueue($"{name}: {ex.Message}"); Interlocked.Add(ref job.FailedFiles, holds.Files); }
             }
-            job.Notes.Enqueue("Moved within the same drive");
+            if (job.DoneFiles > 0) job.Notes.Enqueue("Moved within the same drive");
             return;
         }
 

@@ -83,6 +83,17 @@ sealed class SettingsWindow : Window
         Slider("Accent strength", 0.3, 2.5, Settings.AccentStrength, v => Settings.AccentStrength = v);
         Slider("Row height", 0, 8, Settings.RowPad, v => Settings.RowPad = Math.Round(v));
         Toggle("Cards under the panes", "Drive, folder and selection", Settings.Stats > 0, v => Settings.Stats = v ? 2 : 0);
+        Toggle("Age badge in the Modified column", "The coloured badge before the date; off, the colour stays on the row's stripe", Settings.AgeBadges, v => { Settings.AgeBadges = v; MainWindow.Instance?.ApplyOptions(); });
+        var parts = new WrapPanel();
+        foreach (var (key, title) in MainWindow.SidebarParts)
+        {
+            var k = key;
+            var box = new CheckBox { Content = title, IsChecked = !Settings.SidebarHidden.Contains(k), Margin = new(0, 0, 14, 4), MinWidth = 120 };
+            box.IsCheckedChanged += (_, _) => { if (box.IsChecked == true) Settings.SidebarHidden.Remove(k); else Settings.SidebarHidden.Add(k); Settings.Save(); MainWindow.Instance?.ApplyOptions(); };
+            parts.Children.Add(box);
+        }
+        page.Children.Add(Card(new StackPanel { Children = { new TextBlock { Text = "In the sidebar", Margin = new(0, 0, 0, 6) }, parts,
+            new TextBlock { Text = "Untick a whole section, or single places in Favorites, to leave them out.", Foreground = Fmt.Brush("#8A97AA"), FontSize = 11, Margin = new(0, 4, 0, 0) } } }));
         var pick = new Button { Content = Settings.BackgroundImage == "" ? "Choose a picture…" : Path.GetFileName(Settings.BackgroundImage), Classes = { "job" } };
         pick.Click += async (_, _) =>
         {
@@ -112,6 +123,19 @@ sealed class SettingsWindow : Window
         Head("Transfers");
         Toggle("Verify every copy", "Read both copies back and compare them (xxHash3); a move deletes only what matched", Settings.Verify, v => Settings.Verify = v);
         Toggle("Small files several at once", "On SSDs and network shares; one by one on spinning disks", Settings.ParallelCopy, v => Settings.ParallelCopy = v);
+        Toggle("F5 copies to the other pane", "As in other two-pane file managers; Ctrl+R then refreshes. Off: F5 refreshes, Ctrl+F5 copies", Settings.F5Copies, v => { Settings.F5Copies = v; MainWindow.Instance?.ApplyOptions(); });
+        var ways = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        foreach (var (id, text) in new[] { ("button", "Only the button"), ("window", "In their own window"), ("bottom", "Under the panes") })
+        {
+            var b = new Button { Content = text, Classes = { "job" }, FontWeight = Settings.TransfersShow == id ? FontWeight.SemiBold : FontWeight.Normal, Background = Settings.TransfersShow == id ? Fmt.Brush("#334C8DFF") : null };
+            var way = id;
+            b.Click += (_, _) => { Settings.TransfersShow = way; Settings.Save(); MainWindow.Instance?.ApplyOptions(); Show(activeNav, Transfers); };
+            ways.Children.Add(b);
+        }
+        page.Children.Add(Card(new StackPanel { Children = { new TextBlock { Text = "Show copies and moves", Margin = new(0, 0, 0, 8) }, ways,
+            new TextBlock { Text = "Only the button: nothing opens, the Transfers button at the bottom lights up while a copy or move runs, red if one failed. Their own window: it opens with each one. Under the panes: a card per transfer below the file lists. A question (files already there) opens the window, except under the panes.", Foreground = Fmt.Brush("#8A97AA"), FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new(0, 8, 0, 0) } } }));
+        if (Settings.TransfersShow == "window")
+            Toggle("Close the window when everything is done", "It stays when something failed or a question waits", Settings.CloseTransfersWhenDone, v => Settings.CloseTransfersWhenDone = v);
     }
 
     void Linux()

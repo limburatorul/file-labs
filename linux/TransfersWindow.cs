@@ -30,13 +30,15 @@ sealed class TransfersWindow : Window
     public void Rebuild()
     {
         cards.Children.Clear();
-        foreach (var j in jobs) cards.Children.Add(Card(j));
+        foreach (var j in jobs) cards.Children.Add(Card(j, main, Rebuild));
+        if (jobs.Count == 0) cards.Children.Add(new TextBlock { Text = "No transfers yet", FontSize = 22, FontWeight = FontWeight.SemiBold, Margin = new(2, 4, 0, 0) });
         Height = Math.Clamp(40 + jobs.Sum(j => j.HasConflicts ? 250 : 130), 170, 720);
     }
 
     static Binding B(string path) => new(path) { Mode = BindingMode.OneWay };
 
-    Control Card(Job j)
+    /// One job's card; also under the panes (MainWindow.RebuildBottom). `grew`: its conflicts list filled in.
+    internal static Control Card(Job j, MainWindow main, Action grew)
     {
         var title = new TextBlock { FontWeight = FontWeight.SemiBold, FontSize = 13, TextTrimming = TextTrimming.CharacterEllipsis };
         title.Bind(TextBlock.TextProperty, B(nameof(Job.Title)));
@@ -61,6 +63,7 @@ sealed class TransfersWindow : Window
         errors.Bind(IsVisibleProperty, B(nameof(Job.HasErrors)));
         errors.Bind(ToolTip.TipProperty, B(nameof(Job.ErrorDetail)));
 
+        static Binding B(string path) => new(path) { Mode = BindingMode.OneWay };
         Button Action(string glyph, string text, Action run, string visibleWhen)
         {
             var t = new TextBlock();
@@ -117,7 +120,7 @@ sealed class TransfersWindow : Window
                 DockPanel.SetDock(detail, Dock.Right);
                 list.Children.Add(row);
             }
-            Rebuild();
+            grew();
         });
 
         var body = new StackPanel { Children = { head, bar, currentRow, errors, foot, conflicts } };
