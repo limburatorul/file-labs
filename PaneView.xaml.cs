@@ -1109,13 +1109,31 @@ public partial class PaneView : UserControl
         }
 
         /// Files up to 64 MB, read as text (UTF-8, or the encoding their BOM names). Files kept only in the cloud are
-        /// skipped rather than downloaded. ponytail: whole-file read; a streaming search would lift the 64 MB ceiling.
+        /// skipped rather than downloaded.
         public bool MatchesContent(FileInfo f)
         {
             if (Content == null) return true;
             const FileAttributes InCloud = FileAttributes.Offline | (FileAttributes)0x40000 | (FileAttributes)0x400000;
             if (f.Length > 64_000_000 || (f.Attributes & InCloud) != 0) return false;
-            try { return File.ReadAllText(f.FullName).Contains(Content, StringComparison.OrdinalIgnoreCase); }
+            // Read in pieces: a match near the start ends the read, a binary file (a NUL in its first piece, git's test) is
+            // left after one piece, and nothing the size of the file is held in memory (a 64 MB file was 128 MB of string).
+            try
+            {
+                using var reader = new StreamReader(f.FullName, detectEncodingFromByteOrderMarks: true);
+                var buffer = new char[64 * 1024];
+                int keep = 0, tail = Math.Min(Math.Max(0, Content.Length - 1), buffer.Length / 2), read;
+                bool first = true;
+                while ((read = reader.Read(buffer, keep, buffer.Length - keep)) > 0)
+                {
+                    ReadOnlySpan<char> piece = buffer.AsSpan(0, keep + read);
+                    if (first && piece.Contains((char)0)) return false;
+                    first = false;
+                    if (piece.Contains(Content.AsSpan(), StringComparison.OrdinalIgnoreCase)) return true;
+                    keep = Math.Min(tail, piece.Length); // a match may straddle two pieces
+                    piece[^keep..].CopyTo(buffer);
+                }
+                return false;
+            }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
         }
     }
@@ -1360,7 +1378,9 @@ public partial class PaneView : UserControl
             Parallel.ForEach(todo, new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = cts.Token }, e =>
             {
                 long total;
-                try { total = Measure(new DirectoryInfo(e.Path), cts.Token); }
+                // the cache first: at start the listing came before the cache was read, so every folder on screen was walked
+                // again though its size was known (Get waits for the cache; this is a pool thread)
+                try { var di = new DirectoryInfo(e.Path); total = SizeCache.Get(e.Path, di.LastWriteTimeUtc) is var known and >= 0 ? known : Measure(di, cts.Token); }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return; } // gone or unreadable: leave it at "…"
                 // each size goes into its row at once; the footer and the stats cards, which walk every row, are redone
                 // once for however many sizes arrived meanwhile (2,000 subfolders kept the UI thread busy 700-830 ms)
@@ -1375,7 +1395,8 @@ public partial class PaneView : UserControl
         }, cts.Token).ContinueWith(_ => { }); // swallow cancellation
     }
 
-    static readonly EnumerationOptions OneLevel = new() { IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint };
+    // (a 64 KB buffer: the default asks Windows for about 30 names at a time, a round trip each on a share)
+    static readonly EnumerationOptions OneLevel = new() { IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint, BufferSize = 64 * 1024 };
 
     /// A folder's size, walked one level at a time so that every folder on the way is remembered too:
     /// measuring D:\ used to cache D:\ alone, and opening any folder under it walked that whole subtree

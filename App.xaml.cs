@@ -641,6 +641,14 @@ public partial class App : Application
             var sq = PaneView.SearchQuery.Parse("report size:1MB-100MB within:7d re:\"^q\\d\" content:\"two words\"", at);
             Check(sq.Error == null && sq.Name == "report" && sq.MinSize == 1_000_000 && sq.MaxSize == 100_000_000 && sq.After == at.AddDays(-7)
                   && sq.Pattern.IsMatch("Q3 report.pdf") && sq.Content == "two words" && sq.FilesOnly, "search terms: parsed");
+            // content: read in pieces (1.0.81): a match at the start, one that straddles two 64K pieces, a binary file left alone
+            var texts = Directory.CreateDirectory(Path.Combine(root, "content")).FullName;
+            File.WriteAllText(Path.Combine(texts, "start.txt"), "two words, then the rest");
+            File.WriteAllText(Path.Combine(texts, "straddle.txt"), new string('x', 64 * 1024 - 4) + "Two Words" + new string('y', 100_000));
+            File.WriteAllText(Path.Combine(texts, "none.txt"), new string('x', 200_000));
+            File.WriteAllBytes(Path.Combine(texts, "binary.bin"), new byte[] { 1, 0, 2, 0 }.Concat(System.Text.Encoding.UTF8.GetBytes("two words")).ToArray());
+            Check(sq.MatchesContent(new FileInfo(Path.Combine(texts, "start.txt"))) && sq.MatchesContent(new FileInfo(Path.Combine(texts, "straddle.txt")))
+                  && !sq.MatchesContent(new FileInfo(Path.Combine(texts, "none.txt"))) && !sq.MatchesContent(new FileInfo(Path.Combine(texts, "binary.bin"))), "content search: start, across pieces, none, binary");
             var overGb = PaneView.SearchQuery.Parse("size:>1GB", at);
             Check(!overGb.MatchesMeta("a.iso", false, 1_000_000_000, at) && overGb.MatchesMeta("a.iso", false, 1_000_000_001, at) && !overGb.MatchesMeta("dir", true, 0, at)
                   && PaneView.SearchQuery.Parse("*.txt before:2026-01-01", at).MatchesMeta("a.txt", false, 5, new DateTime(2025, 6, 1))
