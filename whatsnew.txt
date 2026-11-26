@@ -12,7 +12,9 @@ Copies and moves stop opening a window over your files, and File Labs bends to t
 - Leave out of the sidebar what you don't use: whole sections, or single places such as This PC or Pictures (Settings → Layout and motion).
 - The age badge in the Modified column can be turned off; the colour stays on the row's stripe.
 - Names starting with a dot (.git, .config, a WSL home) can count as hidden files (Settings → Files).
-- On Linux nothing changes in this version.
+**On Linux too**
+- The Transfers button that lights up with its progress bar, and the choice of button, window or cards under the panes.
+- F5 copies, sidebar sections and places left out, and the age badge turned off, in Settings. Names starting with a dot were already the hidden files there (Ctrl+H).
 
 ## 1.0.79 | 2026-11-25 | Rename works again
 Renaming a single file or folder works again.
