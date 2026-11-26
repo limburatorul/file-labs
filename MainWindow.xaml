@@ -412,8 +412,9 @@
             <Border x:Name="TransfersLamp" CornerRadius="{DynamicResource r5}" BorderThickness="1" BorderBrush="Transparent" Padding="6,1" Margin="-6,-2">
               <Grid>
                 <TextBlock><Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource Accent}" Text="&#xE8AB;"/> <Run x:Name="TransfersText" Text="Transfers"/></TextBlock>
-                <!-- how far the running transfers are, all together; over the lamp's lower edge, so the bar's row never grows -->
-                <ProgressBar x:Name="TransfersBar" Height="2" Maximum="1" VerticalAlignment="Bottom" Margin="0,0,0,-3" Foreground="{DynamicResource Accent}" Visibility="Collapsed" IsHitTestVisible="False"/>
+                <!-- how far the running transfers are, all together; under the lamp, two pixels clear of its border (on the border it
+                     could not be told from it), drawn into the row's own margin so the row never grows -->
+                <ProgressBar x:Name="TransfersBar" Height="2" Maximum="1" VerticalAlignment="Bottom" Margin="-5,0,-5,-6" Foreground="{DynamicResource Accent}" Visibility="Collapsed" IsHitTestVisible="False"/>
               </Grid>
             </Border></Button>
         </StackPanel>

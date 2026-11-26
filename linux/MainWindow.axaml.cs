@@ -446,7 +446,7 @@ public partial class MainWindow : Window
         Cmd("Alt+P", "Preview", TogglePreview);
         // always there (as on Windows): it lights up while a copy or move runs, with a thin bar of how far they all are
         transfersButton = new Button { Classes = { "ghost", "bar" }, FontSize = 11 };
-        transfersBar = new ProgressBar { Height = 2, MinHeight = 0, MinWidth = 0, Minimum = 0, Maximum = 1, VerticalAlignment = VerticalAlignment.Bottom, Margin = new(0, 0, 0, -4), IsVisible = false, IsHitTestVisible = false };
+        transfersBar = new ProgressBar { Height = 2, MinHeight = 0, MinWidth = 0, Minimum = 0, Maximum = 1, VerticalAlignment = VerticalAlignment.Bottom, Margin = new(-5, 0, -5, -7), IsVisible = false, IsHitTestVisible = false };
         transfersBar.Bind(ProgressBar.ForegroundProperty, transfersBar.GetResourceObservable("Accent"));
         // the lamp is a border of its own: the button's style paints its own background over the button's
         transfersLamp = new Border { CornerRadius = new(5), BorderThickness = new(1), BorderBrush = Brushes.Transparent, Padding = new(6, 1), Margin = new(-6, -2),
