@@ -1,6 +1,19 @@
 # Every release's notes, newest first, shown by What's new (WhatsNewWindow.cs).
 # "## version | date | title", then the notes: "- " a point, a line in ** ** a heading, anything else a paragraph.
 
+## 1.0.80 | 2026-11-26 | Your way
+Copies and moves stop opening a window over your files, and File Labs bends to the way you work. Most of this came from your mails: thank you.
+**Transfers out of the way**
+- The **Transfers** button stays in the bottom bar and lights up in your accent colour while a copy or move runs, with a thin progress bar under it; red if one failed. A click shows them all, with Undo.
+- Nothing opens by itself any more, unless File Labs has a question for you. In **Settings → Transfers** you can have the window back (it now closes itself when everything is done) or the cards under the panes, as before 1.0.55.
+- Copying or moving into **Program Files** and other folders Windows protects works: Windows asks for administrator permission and does it, as from Explorer. Before, every file failed.
+**Make it yours**
+- **F5 copies** to the other pane, as in Total Commander, if you turn it on (Settings → Transfers); Ctrl+R then refreshes.
+- Leave out of the sidebar what you don't use: whole sections, or single places such as This PC or Pictures (Settings → Layout and motion).
+- The age badge in the Modified column can be turned off; the colour stays on the row's stripe.
+- Names starting with a dot (.git, .config, a WSL home) can count as hidden files (Settings → Files).
+- On Linux nothing changes in this version.
+
 ## 1.0.79 | 2026-11-25 | Rename works again
 Renaming a single file or folder works again.
 **On Windows**
