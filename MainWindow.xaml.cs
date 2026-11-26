@@ -1199,9 +1199,16 @@ public partial class MainWindow : Window
             return null;
         Settings.Bump(Settings.RecentDestinations, dest, Settings.DestinationsMax); // for Copy to / Move to
         var job = Ferry.Submit(sources, dest, move, names, journal ? Path.Combine(JournalDir, $"{Guid.NewGuid():N}.txt") : null);
+        // A folder Windows protects (Program Files, Common Files\VST3): File Labs runs without administrator rights, so
+        // every file failed with "access denied". As Explorer does, the transfer goes to Windows, which asks to continue as
+        // administrator and shows its own progress. A move also has to take the files out of where they are.
+        if (!Writable(dest) || move && sources.Select(s => Path.GetDirectoryName(s.TrimEnd('\\'))).Distinct(StringComparer.OrdinalIgnoreCase).Any(d => d != null && !Writable(d)))
+        {
+            ShellTransfer(sources, dest, move);
+            return null;
+        }
         job.Seq = ++jobSeq;
         job.Hue = Hex(JobHues[(jobSeq - 1) % JobHues.Length]);
-        jobs.Insert(0, job);
         if (!jobsWatched)
         {
             jobsWatched = true;
@@ -1213,14 +1220,53 @@ public partial class MainWindow : Window
             };
         }
         WatchJobs();
+        jobs.Insert(0, job);
         if (Settings.TransfersInWindow) ShowTransfers(activate: false); // the keyboard stays in the list
         return job;
     }
 
-    // ---- the Transfers window: every copy and move, apart from the panes (under them it took the files' room) ----
     bool jobsWatched;
 
     /// Settings → Transfers changed where they show: the cards go under the panes, or the window takes them again.
+    /// Whether this user may create files in `dir`: a file made and dropped at once. Only "access denied" says no; any
+    /// other trouble (a full disk, a share gone to sleep) is left for the transfer itself to report.
+    static bool Writable(string dir)
+    {
+        try
+        {
+            using var probe = new FileStream(Path.Combine(dir, $".filelabs-{Guid.NewGuid():N}.tmp"), FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose);
+            return true;
+        }
+        catch (UnauthorizedAccessException) { return false; }
+        catch (Exception ex) when (ex is IOException or ArgumentException or NotSupportedException) { return true; }
+    }
+
+    /// The copy or move done by Windows' own file operation, on a thread of its own so File Labs stays usable: Windows says
+    /// the folder needs administrator permission, asks UAC, shows its progress and asks about files already there.
+    void ShellTransfer(List<string> sources, string dest, bool move)
+    {
+        var owner = new WindowInteropHelper(this).Handle;
+        Status.Text = $"{(move ? "Moving" : "Copying")} as administrator: Windows asks to confirm";
+        var thread = new Thread(() =>
+        {
+            var op = new SHFILEOPSTRUCT
+            {
+                hwnd = owner, wFunc = move ? FO_MOVE : FO_COPY, pFrom = string.Join("\0", sources) + "\0", pTo = dest + "\0",
+                fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMMKDIR,
+            };
+            int r = SHFileOperation(ref op);
+            Dispatcher.BeginInvoke(() =>
+            {
+                Status.Text = r == 0 && !op.fAnyOperationsAborted ? $"{(move ? "Moved" : "Copied")} as administrator"
+                    : r is ERROR_CANCELLED || op.fAnyOperationsAborted ? "Cancelled" : $"Windows couldn't finish it (error {r})";
+                Left.Refresh(); Right.Refresh();
+                RefreshDrives(); UpdateStats();
+            });
+        }) { IsBackground = true };
+        thread.SetApartmentState(ApartmentState.STA); // the shell's dialogs and its elevation want a COM apartment of their own
+        thread.Start();
+    }
+
     internal void PlaceTransfers()
     {
         ShowBottomJobs();
@@ -1238,7 +1284,7 @@ public partial class MainWindow : Window
     // the transfer that just ended had a problem, nor while another runs or a question waits
     void CloseTransfersSoon(Job ended)
     {
-        if (!Settings.TransfersInWindow || !Settings.CloseTransfersWhenDone || ended.HasErrors || ended.FailedFiles > 0 || ended.Phase != Phase.Done) return;
+        if (!Settings.TransfersInWindow || !Settings.CloseTransfersWhenDone || !ended.Errors.IsEmpty || ended.FailedFiles > 0 || ended.Phase != Phase.Done) return;
         var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
         timer.Tick += (_, _) =>
         {
@@ -1249,6 +1295,7 @@ public partial class MainWindow : Window
     }
 
     // On top the total speed and a chart as wide as the window, each running job a band in its own colour; under it the
+    // ---- the Transfers window: every copy and move, apart from the panes (under them it took the files' room) ----
     // jobs in three sections, what needs you first, then what runs, then what is done (each card edged in its colour).
     Window transfersWindow;
     readonly HashSet<Job> askedForward = new(); // a job's conflicts bring the window forward once
@@ -1365,9 +1412,9 @@ public partial class MainWindow : Window
         job.Refresh();
         UpdateTransfers(); // into Done
         RememberJob(job);
-        // what was pasted or dropped is selected where it arrived, the first of it in sight with the keyboard on it,
         CloseTransfersSoon(job);
         // instead of somewhere among the folder's other hundred files (Rico, 1.0.61)
+        // what was pasted or dropped is selected where it arrived, the first of it in sight with the keyboard on it,
         if (job.Phase == Phase.Done)
         {
             var arrived = job.Sources.Select(s => Path.GetFileName(job.Duplicates.GetValueOrDefault(s) ?? s.TrimEnd('\\'))).Where(n => n != "").ToList();
@@ -1534,9 +1581,9 @@ public partial class MainWindow : Window
         return r is 0 or ERROR_CANCELLED || op.fAnyOperationsAborted ? null : $"Not everything could be deleted (error {r}).";
     }
 
-    const uint FO_DELETE = 3, PROGDLG_NOTIME = 0x4, PROGDLG_MARQUEEPROGRESS = 0x20;
+    const uint FO_MOVE = 1, FO_COPY = 2, FO_DELETE = 3, PROGDLG_NOTIME = 0x4, PROGDLG_MARQUEEPROGRESS = 0x20;
     const int ERROR_CANCELLED = 1223;
-    const ushort FOF_SILENT = 0x4, FOF_NOCONFIRMATION = 0x10, FOF_ALLOWUNDO = 0x40, FOF_WANTNUKEWARNING = 0x4000;
+    const ushort FOF_SILENT = 0x4, FOF_NOCONFIRMATION = 0x10, FOF_ALLOWUNDO = 0x40, FOF_NOCONFIRMMKDIR = 0x200, FOF_WANTNUKEWARNING = 0x4000;
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     struct SHFILEOPSTRUCT { public IntPtr hwnd; public uint wFunc; public string pFrom, pTo; public ushort fFlags; public bool fAnyOperationsAborted; public IntPtr hNameMappings; public string lpszProgressTitle; }
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern int SHFileOperation(ref SHFILEOPSTRUCT op);
