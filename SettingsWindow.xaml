@@ -274,10 +274,11 @@
                   <TextBlock Style="{StaticResource Hint}" Text="Files under 16 MB go four at a time when both drives are SSDs or network shares, where a small file is mostly waiting. To or from a spinning disk they still go one by one, and big files always do."/>
                   <TextBlock Text="Show copies and moves" Margin="0,10,0,0"/>
                   <StackPanel Orientation="Horizontal" Margin="0,6,0,2">
+                    <Button x:Name="TransfersButtonTab" Content="Only the button" Style="{StaticResource Tab}" Click="TransfersAt_Click"/>
                     <Button x:Name="TransfersWindowTab" Content="In their own window" Style="{StaticResource Tab}" Click="TransfersAt_Click"/>
                     <Button x:Name="TransfersBottomTab" Content="Under the panes" Style="{StaticResource Tab}" Click="TransfersAt_Click"/>
                   </StackPanel>
-                  <TextBlock Style="{StaticResource Hint}" Text="Their own window: it opens with each copy or move, with the total speed and its chart. Under the panes: each transfer is a card below the file lists, nothing opens over them. Either way the Transfers button at the bottom opens the window with every transfer, and Ctrl+Z takes the last one back."/>
+                  <TextBlock Style="{StaticResource Hint}" Text="Only the button: nothing opens, the Transfers button at the bottom lights up in your accent colour while a copy or move runs, red if one failed; a click shows them all. Their own window: it opens with each copy or move, with the total speed and its chart. Under the panes: each transfer is a card below the file lists. A question (files already there) always opens the window, except under the panes, where it is on the card. Ctrl+Z takes the last transfer back."/>
                   <CheckBox x:Name="CloseTransfersBox" Content="Close the window when everything is done" Margin="0,4,0,0" Click="CloseTransfers_Click"/>
                   <TextBlock Style="{StaticResource Hint}" Text="Once every copy and move has finished, the window goes away by itself after a moment. It stays when something failed or a question waits for you."/>
                 </StackPanel>

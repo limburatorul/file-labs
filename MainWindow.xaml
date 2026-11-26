@@ -407,8 +407,11 @@
           <Button Style="{StaticResource Ghost}" Click="Panes_Click" ToolTip="One pane or two (Ctrl+P)"><TextBlock><Run Foreground="{DynamicResource Muted}">Ctrl+P</Run> One / two panes</TextBlock></Button>
           <Button Style="{StaticResource Ghost}" Click="Preview_Click" ToolTip="Show the selected file beside the panes"><TextBlock><Run Foreground="{DynamicResource Muted}">Alt+P</Run> Preview</TextBlock></Button>
           <!-- brings the Transfers window back; there while any copy or move is listed -->
-          <Button x:Name="TransfersButton" Style="{StaticResource Ghost}" Click="Transfers_Click" Visibility="Collapsed" ToolTip="Show the copies and moves">
-            <TextBlock><Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource Accent}" Text="&#xE8AB;"/> <Run x:Name="TransfersText" Text="Transfers"/></TextBlock></Button>
+          <!-- always there; its lamp lights in the accent while a copy or move runs, red when one failed out of sight (UpdateLamp) -->
+          <Button x:Name="TransfersButton" Style="{StaticResource Ghost}" Click="Transfers_Click" ToolTip="Copies and moves: progress, history and Undo">
+            <Border x:Name="TransfersLamp" CornerRadius="{DynamicResource r5}" BorderThickness="1" BorderBrush="Transparent" Padding="6,1" Margin="-6,-2">
+              <TextBlock><Run FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource Accent}" Text="&#xE8AB;"/> <Run x:Name="TransfersText" Text="Transfers"/></TextBlock>
+            </Border></Button>
         </StackPanel>
         <TextBlock x:Name="Status" Foreground="{DynamicResource Muted}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420" HorizontalAlignment="Right" Margin="12,0,0,0"/>
       </DockPanel>

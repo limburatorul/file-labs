@@ -100,7 +100,7 @@ public partial class SettingsWindow : Window
         "autoscroll", "autoscrollx", "agebadges", "sidebarhidden",
     };
     internal static readonly string[] FilesKeys = { "hidden", "dothidden", "shortcutfolders", "internaleditor", "quicklook", "itemtips", "tipdelay", "deletesound", "nativemenu", "searchlimit", "missingapps" };
-    internal static readonly string[] TransfersKeys = { "verify", "parallel", "f5copies", "transferswindow", "transfersclose" };
+    internal static readonly string[] TransfersKeys = { "verify", "parallel", "f5copies", "transfers", "transfersclose" };
     /// What File Labs keeps that isn't a choice in these cards: Windows integration, and what it remembers by itself.
     internal static readonly string[] NotReset =
     {
@@ -465,9 +465,10 @@ public partial class SettingsWindow : Window
         BdSolid.Tag = Settings.Backdrop == 1 ? "on" : null;
         OpacitySlider.IsEnabled = Settings.Backdrop != 1;
         MenuOwn.Tag = Settings.NativeMenu ? null : "on";
-        TransfersWindowTab.Tag = Settings.TransfersInWindow ? "on" : null;
-        TransfersBottomTab.Tag = Settings.TransfersInWindow ? null : "on";
-        CloseTransfersBox.IsEnabled = Settings.TransfersInWindow;
+        TransfersButtonTab.Tag = Settings.TransfersShow == "button" ? "on" : null;
+        TransfersWindowTab.Tag = Settings.TransfersShow == "window" ? "on" : null;
+        TransfersBottomTab.Tag = Settings.TransfersShow == "bottom" ? "on" : null;
+        CloseTransfersBox.IsEnabled = Settings.TransfersShow == "window";
         MenuWin.Tag = Settings.NativeMenu ? "on" : null;
         foreach (var (b, v) in new[] { (Limit1k, 1_000), (Limit10k, 10_000), (Limit100k, 100_000), (LimitNone, 0) })
             b.Tag = Settings.SearchLimit == v ? "on" : null;
@@ -594,7 +595,7 @@ public partial class SettingsWindow : Window
     void AgeBadges_Click(object s, RoutedEventArgs e) { Settings.AgeBadges = AgeBadgesBox.IsChecked == true; Settings.Save(); main.ApplyAppearance(); }
     void TransfersAt_Click(object s, RoutedEventArgs e)
     {
-        Settings.TransfersInWindow = s == TransfersWindowTab;
+        Settings.TransfersShow = s == TransfersWindowTab ? "window" : s == TransfersBottomTab ? "bottom" : "button";
         Settings.Save();
         main.PlaceTransfers(); // the transfers listed now move there too
         Refresh();
