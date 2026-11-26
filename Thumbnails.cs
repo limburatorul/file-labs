@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -36,8 +36,10 @@ public static class Thumbnails
     /// Drops the least recently used images until a quarter of the budget is free again.
     static void Trim()
     {
+        // ToArray is the dictionary's own snapshot. Sorted straight from the dictionary, an image added by another thread
+        // between the count and the copy threw, on a thread nobody catches: the app closed in a big folder of photos.
         lock (cache)
-            foreach (var old in cache.OrderBy(kv => kv.Value.UsedAt).ToList())
+            foreach (var old in cache.ToArray().OrderBy(kv => kv.Value.UsedAt))
             {
                 if (Interlocked.Read(ref bytes) <= MaxBytes * 3 / 4) return;
                 if (cache.TryRemove(old.Key, out var gone)) Interlocked.Add(ref bytes, -Bytes(gone.Image));
